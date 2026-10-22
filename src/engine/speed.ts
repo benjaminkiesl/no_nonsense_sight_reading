@@ -7,7 +7,7 @@ export interface SpeedControllerOptions {
 export class SpeedController {
   public static readonly V_MIN_START = 15.0;     // Initial very slow scroll speed after countdown
   public static readonly V_TARGET_INIT = 28.0;   // Starting target speed in standard mode
-  public static readonly V_TARGET_MAX = 52.0;    // Maximum target speed where Hold begins in standard mode
+  public static readonly V_TARGET_MAX = 64.0;    // Maximum target speed where Hold begins in standard mode
   public static readonly V_ACCELERANDO_MAX = 240.0; // Maximum target speed in Accelerando mode
   public static readonly RAMP_DURATION_SEC = 4.0;
   public static readonly DELTA_HIT = 0.2;        // +0.2 BPM per correct hit

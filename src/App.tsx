@@ -8,6 +8,7 @@ import { ActiveKeyHighlight, PianoKeyboard } from './components/PianoKeyboard';
 import { ProgressBar } from './components/ProgressBar';
 import { getLevelById, getNextRecommendedLevel } from './curriculum/graph';
 import { SightReadingEngine } from './engine/engine';
+import { SpeedController } from './engine/speed';
 import { mapKeyboardEventToInput } from './input/keyboardMapper';
 import { MidiManager } from './input/midiManager';
 import { resolveVisualPianoMidi } from './input/inputRouter';
@@ -122,8 +123,8 @@ export default function App(): React.JSX.Element {
 
   // Continue to Accelerando Perpetuo from celebration overlay
   const handleCelebrationAccelerando = useCallback(() => {
-    // Current level finished tempo is 52 BPM
-    handleStartAccelerando(currentLevel.allNotes, 52);
+    // Current level finished tempo is SpeedController.V_TARGET_MAX
+    handleStartAccelerando(currentLevel.allNotes, SpeedController.V_TARGET_MAX);
   }, [currentLevel.allNotes, handleStartAccelerando]);
 
   // Main 60fps Animation Loop

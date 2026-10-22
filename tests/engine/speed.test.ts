@@ -19,20 +19,20 @@ describe('SpeedController physics & transitions', () => {
     expect(sc.targetBpm).toBe(28.0);
   });
 
-  it('increases targetBpm by 0.2 on each correct hit, reaching 52 BPM after 120 hits', () => {
+  it('increases targetBpm by 0.2 on each correct hit, reaching 64 BPM after 180 hits', () => {
     const sc = new SpeedController();
     sc.tick(4.0, false); // Finish initial ramp to 28 BPM
 
-    for (let i = 1; i <= 119; i++) {
+    for (let i = 1; i <= 179; i++) {
       const res = sc.onCorrectHit('SPEED_UP');
       expect(res.nextPhase).toBe('SPEED_UP');
       expect(sc.targetBpm).toBeCloseTo(28.0 + i * 0.2, 2);
     }
 
-    // 120th hit reaches 52 BPM and enters HOLD
+    // 180th hit reaches 64 BPM and enters HOLD
     const finalRes = sc.onCorrectHit('SPEED_UP');
-    expect(sc.targetBpm).toBe(52.0);
-    expect(sc.actualBpm).toBe(52.0);
+    expect(sc.targetBpm).toBe(64.0);
+    expect(sc.actualBpm).toBe(64.0);
     expect(finalRes.nextPhase).toBe('HOLD');
     expect(sc.getSpeedStepIndex()).toBe(24);
   });
@@ -88,11 +88,11 @@ describe('SpeedController physics & transitions', () => {
     const sc = new SpeedController();
     sc.tick(4.0, false);
 
-    // Progress to HOLD (120 hits)
-    for (let i = 0; i < 120; i++) {
+    // Progress to HOLD (180 hits)
+    for (let i = 0; i < 180; i++) {
       sc.onCorrectHit('SPEED_UP');
     }
-    expect(sc.targetBpm).toBe(52.0);
+    expect(sc.targetBpm).toBe(64.0);
 
     // Hit 31 correct notes in HOLD
     for (let i = 0; i < 31; i++) {
@@ -105,8 +105,8 @@ describe('SpeedController physics & transitions', () => {
     // Mistake on the 32nd note
     const failRes = sc.onFailure('HOLD');
     expect(failRes.nextPhase).toBe('SPEED_UP');
-    // Target speed reduced by 8%: 52 * 0.92 = 47.84
-    expect(sc.targetBpm).toBeCloseTo(47.84, 1);
+    // Target speed reduced by 8%: 64 * 0.92 = 58.88
+    expect(sc.targetBpm).toBeCloseTo(58.88, 1);
     // Hold count reset to 32
     expect(sc.holdNotesRemaining).toBe(32);
   });
@@ -114,7 +114,7 @@ describe('SpeedController physics & transitions', () => {
   it('finishes level on 32 consecutive hits in HOLD', () => {
     const sc = new SpeedController();
     sc.tick(4.0, false);
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 180; i++) {
       sc.onCorrectHit('SPEED_UP');
     }
 
