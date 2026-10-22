@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { getAllLevels } from '../curriculum/graph';
+import { getLedgerLines, getStemDirection } from '../music/notation';
+import { getStaffStepOffset } from '../music/pitch';
 import { LevelSpec } from '../types/curriculum';
+import { StaffNoteTarget } from '../types/music';
 
 export interface LevelGraphProps {
   currentLevelId: string;
@@ -10,73 +13,238 @@ export interface LevelGraphProps {
 
 const ALL_LEVELS = getAllLevels();
 
-const ROW_HEIGHT = 78;
-const PADDING_TOP = 46;
-const PADDING_BOTTOM = 46;
+const PADDING_TOP = 50;
+const TIER_HEIGHT = 96;
+const BOTH_Y_OFFSET = 36; // "both" is positioned 36px higher up than single clefs
 const SVG_WIDTH = 300;
-const SVG_HEIGHT = PADDING_TOP + 11 * ROW_HEIGHT + PADDING_BOTTOM;
-const NODE_RADIUS = 26;
+const SVG_HEIGHT = PADDING_TOP + 11 * TIER_HEIGHT + BOTH_Y_OFFSET + 70;
+const NODE_RADIUS = 25;
 
 const LANE_X: Record<string, number> = {
-  treble: 50,
+  treble: 55,
   both: 150,
-  bass: 250,
+  bass: 245,
 };
 
 function getNodePosition(level: LevelSpec): { x: number; y: number } {
   const x = LANE_X[level.lane]!;
-  const y = PADDING_TOP + (12 - level.tier) * ROW_HEIGHT;
+  const tierIndex = 12 - level.tier; // 0 for Tier 12, 11 for Tier 1
+  const baseY = PADDING_TOP + tierIndex * TIER_HEIGHT + BOTH_Y_OFFSET;
+  const y = level.lane === 'both' ? baseY - BOTH_Y_OFFSET : baseY;
   return { x, y };
 }
+
+interface MiniStaffProps {
+  cx: number;
+  cy: number;
+  clef: 'treble' | 'bass';
+  intervalNotes?: readonly [StaffNoteTarget, StaffNoteTarget];
+  accidentalSymbol?: string;
+  isCompact?: boolean;
+}
+
+const MiniStaff: React.FC<MiniStaffProps> = ({
+  cx,
+  cy,
+  clef,
+  intervalNotes,
+  accidentalSymbol,
+  isCompact = false,
+}) => {
+  const spacing = isCompact ? 1.7 : 2.5;
+  const stepScale = isCompact ? 0.85 : 1.25;
+  const halfStaff = 2 * spacing;
+  const staffWidth = isCompact ? 30 : 34;
+  const leftX = cx - staffWidth / 2;
+  const rightX = cx + staffWidth / 2;
+  const bottomY = cy + halfStaff;
+
+  const staffLines = [-2, -1, 0, 1, 2].map((i) => cy + i * spacing);
+
+  // Position notes
+  const notesToDraw: React.JSX.Element[] = [];
+  if (intervalNotes && intervalNotes.length === 2) {
+    const [lowest, highest] = intervalNotes;
+    const noteTargets = [
+      { target: lowest, nx: cx + (isCompact ? 3.5 : 4.5) },
+      { target: highest, nx: cx + (isCompact ? 9.5 : 11.5) },
+    ];
+
+    noteTargets.forEach(({ target, nx }, i) => {
+      const stepOffset = getStaffStepOffset(target.pitch, clef);
+      const ny = bottomY - stepOffset * stepScale;
+      const stemDir = getStemDirection(stepOffset);
+      const stemLength = isCompact ? 5.5 : 7.5;
+      const ledger = getLedgerLines(stepOffset);
+
+      notesToDraw.push(
+        <g key={`note-${i}`}>
+          {/* Ledger lines */}
+          {ledger.map((lOffset) => {
+            const ly = bottomY - lOffset * stepScale;
+            return (
+              <line
+                key={`ledger-${lOffset}`}
+                x1={nx - 2.8}
+                y1={ly}
+                x2={nx + 2.8}
+                y2={ly}
+                stroke="#1f2421"
+                strokeWidth={0.7}
+              />
+            );
+          })}
+
+          {/* Notehead */}
+          <ellipse
+            cx={nx}
+            cy={ny}
+            rx={isCompact ? 1.3 : 1.8}
+            ry={isCompact ? 0.9 : 1.2}
+            transform={`rotate(-20 ${nx} ${ny})`}
+            fill="#1f2421"
+          />
+
+          {/* Stem */}
+          <line
+            x1={stemDir === 'up' ? nx + (isCompact ? 1.1 : 1.5) : nx - (isCompact ? 1.1 : 1.5)}
+            y1={ny}
+            x2={stemDir === 'up' ? nx + (isCompact ? 1.1 : 1.5) : nx - (isCompact ? 1.1 : 1.5)}
+            y2={stemDir === 'up' ? ny - stemLength : ny + stemLength}
+            stroke="#1f2421"
+            strokeWidth={0.7}
+          />
+        </g>
+      );
+    });
+  }
+
+  return (
+    <g>
+      {/* 5 Staff lines */}
+      {staffLines.map((ly, idx) => (
+        <line
+          key={`line-${idx}`}
+          x1={leftX}
+          y1={ly}
+          x2={rightX}
+          y2={ly}
+          stroke="#5a625e"
+          strokeWidth={0.6}
+        />
+      ))}
+
+      {/* Clef symbol on left */}
+      <text
+        x={cx - (isCompact ? 9.5 : 10.5)}
+        y={cy + (clef === 'treble' ? (isCompact ? 1.8 : 2.5) : isCompact ? 1.0 : 1.5)}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={clef === 'treble' ? (isCompact ? '9.5px' : '14px') : isCompact ? '8px' : '11px'}
+        fontFamily="serif"
+        fill="#1f2421"
+      >
+        {clef === 'treble' ? '𝄞' : '𝄢'}
+      </text>
+
+      {/* Accidental (# or b) right of clef, left of notes */}
+      {accidentalSymbol && (
+        <text
+          x={cx - (isCompact ? 2.5 : 2.0)}
+          y={cy + (isCompact ? 1.0 : 1.5)}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize={isCompact ? '7px' : '9.5px'}
+          fontFamily="serif"
+          fontWeight="bold"
+          fill="#1f2421"
+        >
+          {accidentalSymbol}
+        </text>
+      )}
+
+      {/* Interval notes */}
+      {notesToDraw}
+    </g>
+  );
+};
 
 export const LevelGraph: React.FC<LevelGraphProps> = ({
   currentLevelId,
   completedLevelIds,
   onSelectLevel,
 }) => {
-  // Generate arrow paths
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll to center the current level node on mount and when level changes
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const currentLevel = ALL_LEVELS.find((l) => l.id === currentLevelId);
+    if (!currentLevel) return;
+
+    const { y } = getNodePosition(currentLevel);
+    const targetScrollTop = y - container.clientHeight / 2;
+    if (typeof container.scrollTo === 'function') {
+      container.scrollTo({
+        top: Math.max(0, targetScrollTop),
+        behavior: 'smooth',
+      });
+    } else {
+      container.scrollTop = Math.max(0, targetScrollTop);
+    }
+  }, [currentLevelId]);
+
+  // Generate directed arrows
   const arrows: React.JSX.Element[] = [];
 
   for (let tier = 1; tier <= 12; tier++) {
-    const yCur = PADDING_TOP + (12 - tier) * ROW_HEIGHT;
-    const yNext = PADDING_TOP + (12 - (tier + 1)) * ROW_HEIGHT;
+    const tierIdx = 12 - tier;
+    const ySingleCur = PADDING_TOP + tierIdx * TIER_HEIGHT + BOTH_Y_OFFSET;
+    const yBothCur = ySingleCur - BOTH_Y_OFFSET;
 
-    // Upward arrows (tier -> tier + 1)
+    // Upward arrows to next tier (tier -> tier + 1)
     if (tier < 12) {
+      const ySingleNext = PADDING_TOP + (tierIdx - 1) * TIER_HEIGHT + BOTH_Y_OFFSET;
+      const yBothNext = ySingleNext - BOTH_Y_OFFSET;
+
       // Treble upward
       arrows.push(
         <line
           key={`arrow-treble-${tier}`}
-          x1={50}
-          y1={yCur - NODE_RADIUS}
-          x2={50}
-          y2={yNext + NODE_RADIUS + 4}
+          x1={55}
+          y1={ySingleCur - NODE_RADIUS}
+          x2={55}
+          y2={ySingleNext + NODE_RADIUS + 4}
           stroke="#b0aba2"
           strokeWidth={1.8}
           markerEnd="url(#arrowhead)"
         />
       );
+
+      // Bass upward
+      arrows.push(
+        <line
+          key={`arrow-bass-${tier}`}
+          x1={245}
+          y1={ySingleCur - NODE_RADIUS}
+          x2={245}
+          y2={ySingleNext + NODE_RADIUS + 4}
+          stroke="#b0aba2"
+          strokeWidth={1.8}
+          markerEnd="url(#arrowhead)"
+        />
+      );
+
       // Both upward
       arrows.push(
         <line
           key={`arrow-both-${tier}`}
           x1={150}
-          y1={yCur - NODE_RADIUS}
+          y1={yBothCur - NODE_RADIUS}
           x2={150}
-          y2={yNext + NODE_RADIUS + 4}
-          stroke="#b0aba2"
-          strokeWidth={1.8}
-          markerEnd="url(#arrowhead)"
-        />
-      );
-      // Bass upward
-      arrows.push(
-        <line
-          key={`arrow-bass-${tier}`}
-          x1={250}
-          y1={yCur - NODE_RADIUS}
-          x2={250}
-          y2={yNext + NODE_RADIUS + 4}
+          y2={yBothNext + NODE_RADIUS + 4}
           stroke="#b0aba2"
           strokeWidth={1.8}
           markerEnd="url(#arrowhead)"
@@ -84,26 +252,38 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
       );
     }
 
-    // Cross arrows into Both (treble -> both, bass -> both)
+    // Slanted arrows into Both from Treble and Bass
+    // Treble-k (55, ySingleCur) -> Both-k (150, yBothCur)
+    const dx = 150 - 55; // 95
+    const dy = yBothCur - ySingleCur; // -36 (upward)
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const ux = dx / len;
+    const uy = dy / len;
+
     arrows.push(
       <line
         key={`arrow-cross-t-both-${tier}`}
-        x1={50 + NODE_RADIUS}
-        y1={yCur}
-        x2={150 - NODE_RADIUS - 4}
-        y2={yCur}
+        x1={55 + ux * NODE_RADIUS}
+        y1={ySingleCur + uy * NODE_RADIUS}
+        x2={150 - ux * (NODE_RADIUS + 4)}
+        y2={yBothCur - uy * (NODE_RADIUS + 4)}
         stroke="#b0aba2"
         strokeWidth={1.8}
         markerEnd="url(#arrowhead)"
       />
     );
+
+    // Bass-k (245, ySingleCur) -> Both-k (150, yBothCur)
+    const dxB = 150 - 245; // -95
+    const uxB = dxB / len;
+
     arrows.push(
       <line
         key={`arrow-cross-b-both-${tier}`}
-        x1={250 - NODE_RADIUS}
-        y1={yCur}
-        x2={150 + NODE_RADIUS + 4}
-        y2={yCur}
+        x1={245 + uxB * NODE_RADIUS}
+        y1={ySingleCur + uy * NODE_RADIUS}
+        x2={150 - uxB * (NODE_RADIUS + 4)}
+        y2={yBothCur - uy * (NODE_RADIUS + 4)}
         stroke="#b0aba2"
         strokeWidth={1.8}
         markerEnd="url(#arrowhead)"
@@ -112,19 +292,19 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
   }
 
   return (
-    <div className="nnsr-level-graph-container" style={{ width: '300px' }}>
+    <div className="nnsr-level-graph-container">
       <div className="nnsr-level-graph-header">
         <div style={{ width: '33%', textAlign: 'center' }}>Treble</div>
         <div style={{ width: '33%', textAlign: 'center' }}>Both</div>
         <div style={{ width: '33%', textAlign: 'center' }}>Bass</div>
       </div>
 
-      <div className="nnsr-level-graph-scroll">
+      <div ref={scrollRef} className="nnsr-level-graph-scroll">
         <svg
           viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
-          width={SVG_WIDTH}
+          width="100%"
           height={SVG_HEIGHT}
-          style={{ display: 'block' }}
+          style={{ display: 'block', overflow: 'visible' }}
         >
           <defs>
             <marker
@@ -163,19 +343,12 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
               strokeWidth = 3;
             }
 
-            const shortLabel =
-              level.lane === 'treble'
-                ? `T${level.tier}`
-                : level.lane === 'bass'
-                ? `B${level.tier}`
-                : `M${level.tier}`;
-
-            // Scale tier badge
-            let scaleBadge: string | null = null;
-            if (level.tier === 9) scaleBadge = '1♯';
-            else if (level.tier === 10) scaleBadge = '1♭';
-            else if (level.tier === 11) scaleBadge = '2♯';
-            else if (level.tier === 12) scaleBadge = '2♭';
+            // Key signature accidental symbol for scale levels
+            let accidentalSymbol: string | undefined;
+            if (level.keySignature === 'G_MAJOR') accidentalSymbol = '♯';
+            else if (level.keySignature === 'F_MAJOR') accidentalSymbol = '♭';
+            else if (level.keySignature === 'D_MAJOR') accidentalSymbol = '♯';
+            else if (level.keySignature === 'BB_MAJOR') accidentalSymbol = '♭';
 
             return (
               <g
@@ -200,10 +373,10 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
                   <circle
                     cx={x}
                     cy={y}
-                    r={NODE_RADIUS + 5}
+                    r={NODE_RADIUS + 4.5}
                     fill="none"
                     stroke="var(--jasmine)"
-                    strokeWidth={3.5}
+                    strokeWidth={3}
                     strokeDasharray="4 2"
                   />
                 )}
@@ -218,47 +391,39 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
                   strokeWidth={strokeWidth}
                 />
 
-                {/* Mini staff interval icon */}
-                <g transform={`translate(${x - 18}, ${y - 12})`}>
-                  {/* Mini staff lines */}
-                  <line x1={0} y1={4} x2={36} y2={4} stroke="#8c948f" strokeWidth={0.7} />
-                  <line x1={0} y1={9} x2={36} y2={9} stroke="#8c948f" strokeWidth={0.7} />
-                  <line x1={0} y1={14} x2={36} y2={14} stroke="#8c948f" strokeWidth={0.7} />
-                  <line x1={0} y1={19} x2={36} y2={19} stroke="#8c948f" strokeWidth={0.7} />
-                  <line x1={0} y1={24} x2={36} y2={24} stroke="#8c948f" strokeWidth={0.7} />
-
-                  {/* Two note interval dots */}
-                  <circle cx={10} cy={16} r={2.5} fill="#1f2421" />
-                  <line x1={12.5} y1={16} x2={12.5} y2={7} stroke="#1f2421" strokeWidth={0.9} />
-
-                  <circle cx={26} cy={8} r={2.5} fill="#1f2421" />
-                  <line x1={23.5} y1={8} x2={23.5} y2={17} stroke="#1f2421" strokeWidth={0.9} />
-                </g>
-
-                {/* Short level label */}
-                <text
-                  x={x}
-                  y={y + 17}
-                  textAnchor="middle"
-                  fontSize="9.5px"
-                  fontWeight="bold"
-                  fill="#1f2421"
-                >
-                  {shortLabel}
-                </text>
-
-                {/* Scale badge for Tiers 9-12 */}
-                {scaleBadge && (
-                  <text
-                    x={x + 16}
-                    y={y - 14}
-                    textAnchor="middle"
-                    fontSize="9px"
-                    fontWeight="bold"
-                    fill="var(--vibrant-coral)"
-                  >
-                    {scaleBadge}
-                  </text>
+                {/* Musical Engraving inside Node */}
+                {level.lane === 'both' ? (
+                  <g>
+                    <MiniStaff
+                      cx={x}
+                      cy={y - 7}
+                      clef="treble"
+                      intervalNotes={level.displayInterval.treble}
+                      accidentalSymbol={accidentalSymbol}
+                      isCompact={true}
+                    />
+                    <MiniStaff
+                      cx={x}
+                      cy={y + 7}
+                      clef="bass"
+                      intervalNotes={level.displayInterval.bass}
+                      accidentalSymbol={accidentalSymbol}
+                      isCompact={true}
+                    />
+                  </g>
+                ) : (
+                  <MiniStaff
+                    cx={x}
+                    cy={y}
+                    clef={level.lane as 'treble' | 'bass'}
+                    intervalNotes={
+                      level.lane === 'treble'
+                        ? level.displayInterval.treble
+                        : level.displayInterval.bass
+                    }
+                    accidentalSymbol={accidentalSymbol}
+                    isCompact={false}
+                  />
                 )}
               </g>
             );

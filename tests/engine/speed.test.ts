@@ -2,83 +2,83 @@ import { describe, it, expect } from 'vitest';
 import { SpeedController } from '../../src/engine/speed';
 
 describe('SpeedController physics & transitions', () => {
-  it('starts at 40 BPM actual and ramps to 60 BPM target over 4.0 seconds', () => {
+  it('starts at 15 BPM actual and ramps to 28 BPM target over 4.0 seconds', () => {
     const sc = new SpeedController();
-    expect(sc.actualBpm).toBe(40.0);
-    expect(sc.targetBpm).toBe(60.0);
+    expect(sc.actualBpm).toBe(15.0);
+    expect(sc.targetBpm).toBe(28.0);
     expect(sc.getSpeedStepIndex()).toBe(0);
 
     // Halfway through ramp (2.0s)
     sc.tick(2.0, false);
-    expect(sc.actualBpm).toBeCloseTo(50.0, 1);
-    expect(sc.targetBpm).toBe(60.0);
+    expect(sc.actualBpm).toBeCloseTo(21.5, 1);
+    expect(sc.targetBpm).toBe(28.0);
 
     // End of ramp (another 2.0s)
     sc.tick(2.0, false);
-    expect(sc.actualBpm).toBe(60.0);
-    expect(sc.targetBpm).toBe(60.0);
+    expect(sc.actualBpm).toBe(28.0);
+    expect(sc.targetBpm).toBe(28.0);
   });
 
-  it('increases targetBpm by 1.25 on each correct hit, reaching 90 BPM after 24 hits', () => {
+  it('increases targetBpm by 0.2 on each correct hit, reaching 52 BPM after 120 hits', () => {
     const sc = new SpeedController();
-    sc.tick(4.0, false); // Finish initial ramp to 60 BPM
+    sc.tick(4.0, false); // Finish initial ramp to 28 BPM
 
-    for (let i = 1; i <= 23; i++) {
+    for (let i = 1; i <= 119; i++) {
       const res = sc.onCorrectHit('SPEED_UP');
       expect(res.nextPhase).toBe('SPEED_UP');
-      expect(sc.targetBpm).toBeCloseTo(60 + i * 1.25, 2);
+      expect(sc.targetBpm).toBeCloseTo(28.0 + i * 0.2, 2);
     }
 
-    // 24th hit reaches 90 BPM and enters HOLD
+    // 120th hit reaches 52 BPM and enters HOLD
     const finalRes = sc.onCorrectHit('SPEED_UP');
-    expect(sc.targetBpm).toBe(90.0);
-    expect(sc.actualBpm).toBe(90.0);
+    expect(sc.targetBpm).toBe(52.0);
+    expect(sc.actualBpm).toBe(52.0);
     expect(finalRes.nextPhase).toBe('HOLD');
     expect(sc.getSpeedStepIndex()).toBe(24);
   });
 
-  it('reduces targetBpm by 8% on failure, drops to 40 BPM on recovery ramp', () => {
+  it('reduces targetBpm by 8% on failure, drops to 15 BPM on recovery ramp', () => {
     const sc = new SpeedController();
-    sc.tick(4.0, false); // At 60 BPM
+    sc.tick(4.0, false); // At 28 BPM
 
-    // Build up to 80 BPM (16 hits)
-    for (let i = 0; i < 16; i++) {
+    // Build up to 40 BPM (60 hits)
+    for (let i = 0; i < 60; i++) {
       sc.onCorrectHit('SPEED_UP');
     }
-    expect(sc.targetBpm).toBe(80.0);
+    expect(sc.targetBpm).toBeCloseTo(40.0, 1);
 
     // Trigger failure
     const failRes = sc.onFailure('SPEED_UP');
     expect(failRes.nextPhase).toBe('SPEED_UP');
 
-    // 80 * (1 - 0.08) = 73.6 BPM
-    expect(sc.targetBpm).toBeCloseTo(73.6, 1);
+    // 40 * (1 - 0.08) = 36.8 BPM
+    expect(sc.targetBpm).toBeCloseTo(36.8, 1);
 
     // Start recovery ramp
     sc.startRecoveryRamp();
-    expect(sc.actualBpm).toBe(40.0);
+    expect(sc.actualBpm).toBe(15.0);
 
-    // Ramps to 73.6 over 4 seconds
+    // Ramps to 36.8 over 4 seconds
     sc.tick(4.0, false);
-    expect(sc.actualBpm).toBeCloseTo(73.6, 1);
+    expect(sc.actualBpm).toBeCloseTo(36.8, 1);
   });
 
   it('applies dampened penalties for rapid subsequent misses', () => {
     const sc = new SpeedController();
     sc.tick(4.0, false);
 
-    // Build up speed
-    for (let i = 0; i < 20; i++) {
+    // Build up speed to 45 BPM
+    for (let i = 0; i < 85; i++) {
       sc.onCorrectHit('SPEED_UP');
     }
-    const bpmBeforeFirstFail = sc.targetBpm; // 85 BPM
+    const bpmBeforeFirstFail = sc.targetBpm; // 45 BPM
 
     // First miss: full 8% penalty
     sc.onFailure('SPEED_UP');
     const bpmAfterFirstFail = sc.targetBpm;
     expect(bpmAfterFirstFail).toBeCloseTo(bpmBeforeFirstFail * 0.92, 1);
 
-    // Immediate second miss without any intervening hits: 2% penalty (d = 0.25)
+    // Immediate second miss without intervening hits: 2% penalty (d = 0.25)
     sc.onFailure('SPEED_UP');
     const bpmAfterSecondFail = sc.targetBpm;
     expect(bpmAfterSecondFail).toBeCloseTo(bpmAfterFirstFail * (1 - 0.08 * 0.25), 1);
@@ -88,11 +88,11 @@ describe('SpeedController physics & transitions', () => {
     const sc = new SpeedController();
     sc.tick(4.0, false);
 
-    // Progress to HOLD
-    for (let i = 0; i < 24; i++) {
+    // Progress to HOLD (120 hits)
+    for (let i = 0; i < 120; i++) {
       sc.onCorrectHit('SPEED_UP');
     }
-    expect(sc.targetBpm).toBe(90.0);
+    expect(sc.targetBpm).toBe(52.0);
 
     // Hit 31 correct notes in HOLD
     for (let i = 0; i < 31; i++) {
@@ -102,11 +102,11 @@ describe('SpeedController physics & transitions', () => {
     }
     expect(sc.holdNotesRemaining).toBe(1);
 
-    // Mistake on the 32nd note!
+    // Mistake on the 32nd note
     const failRes = sc.onFailure('HOLD');
     expect(failRes.nextPhase).toBe('SPEED_UP');
-    // Target speed reduced by 8%: 90 * 0.92 = 82.8
-    expect(sc.targetBpm).toBeCloseTo(82.8, 1);
+    // Target speed reduced by 8%: 52 * 0.92 = 47.84
+    expect(sc.targetBpm).toBeCloseTo(47.84, 1);
     // Hold count reset to 32
     expect(sc.holdNotesRemaining).toBe(32);
   });
@@ -114,7 +114,7 @@ describe('SpeedController physics & transitions', () => {
   it('finishes level on 32 consecutive hits in HOLD', () => {
     const sc = new SpeedController();
     sc.tick(4.0, false);
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < 120; i++) {
       sc.onCorrectHit('SPEED_UP');
     }
 

@@ -1,10 +1,16 @@
 export class SpeedController {
-  public targetBpm = 60.0;          // 60..90
-  public actualBpm = 40.0;          // 40..90
-  public holdNotesRemaining = 32;   // 32..0
+  public static readonly V_MIN_START = 15.0;     // Initial very slow scroll speed after countdown
+  public static readonly V_TARGET_INIT = 28.0;   // Starting target speed
+  public static readonly V_TARGET_MAX = 52.0;    // Maximum target speed where Hold begins
+  public static readonly RAMP_DURATION_SEC = 4.0;
+  public static readonly DELTA_HIT = 0.2;        // 120 hits to go from 28 to 52 BPM
+
+  public targetBpm = SpeedController.V_TARGET_INIT;
+  public actualBpm = SpeedController.V_MIN_START;
+  public holdNotesRemaining = 32;
 
   private rampElapsedSec = 0.0;
-  private rampStartBpm = 40.0;
+  private rampStartBpm = SpeedController.V_MIN_START;
   private notesHitSinceLastFailure = Infinity;
 
   public tick(deltaSec: number, isPaused: boolean): void {
@@ -12,9 +18,9 @@ export class SpeedController {
       return;
     }
 
-    if (this.rampElapsedSec < 4.0) {
-      this.rampElapsedSec = Math.min(4.0, this.rampElapsedSec + deltaSec);
-      const alpha = this.rampElapsedSec / 4.0;
+    if (this.rampElapsedSec < SpeedController.RAMP_DURATION_SEC) {
+      this.rampElapsedSec = Math.min(SpeedController.RAMP_DURATION_SEC, this.rampElapsedSec + deltaSec);
+      const alpha = this.rampElapsedSec / SpeedController.RAMP_DURATION_SEC;
       this.actualBpm = this.rampStartBpm + (this.targetBpm - this.rampStartBpm) * alpha;
     } else {
       this.actualBpm = this.targetBpm;
@@ -27,11 +33,14 @@ export class SpeedController {
     this.notesHitSinceLastFailure++;
 
     if (currentPhase === 'SPEED_UP') {
-      this.targetBpm = Math.min(90.0, this.targetBpm + 1.25);
-      if (this.rampElapsedSec >= 4.0) {
+      this.targetBpm = Math.min(SpeedController.V_TARGET_MAX, this.targetBpm + SpeedController.DELTA_HIT);
+      if (this.rampElapsedSec >= SpeedController.RAMP_DURATION_SEC) {
         this.actualBpm = this.targetBpm;
       }
-      if (this.targetBpm >= 90.0 && this.actualBpm >= 90.0) {
+      if (
+        this.targetBpm >= SpeedController.V_TARGET_MAX &&
+        this.actualBpm >= SpeedController.V_TARGET_MAX
+      ) {
         return { nextPhase: 'HOLD' };
       }
       return { nextPhase: 'SPEED_UP' };
@@ -53,7 +62,10 @@ export class SpeedController {
       d = 0.25;
     }
 
-    this.targetBpm = Math.max(60.0, this.targetBpm * (1.0 - 0.08 * d));
+    this.targetBpm = Math.max(
+      SpeedController.V_TARGET_INIT,
+      this.targetBpm * (1.0 - 0.08 * d)
+    );
     this.notesHitSinceLastFailure = 0;
 
     if (currentPhase === 'HOLD') {
@@ -64,13 +76,14 @@ export class SpeedController {
   }
 
   public startRecoveryRamp(): void {
-    this.actualBpm = 40.0;
-    this.rampStartBpm = 40.0;
+    this.actualBpm = SpeedController.V_MIN_START;
+    this.rampStartBpm = SpeedController.V_MIN_START;
     this.rampElapsedSec = 0.0;
   }
 
   public getSpeedStepIndex(): number {
-    const raw = Math.round(((this.targetBpm - 60.0) / 30.0) * 24);
+    const span = SpeedController.V_TARGET_MAX - SpeedController.V_TARGET_INIT;
+    const raw = Math.round(((this.targetBpm - SpeedController.V_TARGET_INIT) / span) * 24);
     return Math.max(0, Math.min(24, raw));
   }
 }

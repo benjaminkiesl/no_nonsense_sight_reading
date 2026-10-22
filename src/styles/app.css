@@ -17,32 +17,60 @@ body {
 /* Header */
 .nnsr-header {
   height: var(--header-height);
-  background-color: var(--emerald);
-  color: var(--ink-primary);
+  background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 0 28px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  position: relative;
+  z-index: 10;
+}
+
+.nnsr-header-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.nnsr-header-left {
+  justify-content: flex-start;
+}
+
+.nnsr-header-right {
+  justify-content: flex-end;
+}
+
+.nnsr-header-center {
+  flex: 2;
+  text-align: center;
 }
 
 .nnsr-header-title {
   font-family: var(--font-serif);
-  font-weight: 700;
-  font-size: 1.35rem;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  font-size: 1.4rem;
+  letter-spacing: 0.015em;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
 .nnsr-header-midi {
-  font-size: 0.9rem;
-  background: rgba(255, 255, 255, 0.3);
-  padding: 4px 12px;
-  border-radius: 12px;
+  font-size: 0.88rem;
+  color: #f1f8f4;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  padding: 5px 14px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
 }
 
 .nnsr-header-midi em {
   font-style: italic;
   font-weight: 600;
+  color: var(--jasmine);
   margin-right: 4px;
 }
 
@@ -152,15 +180,19 @@ body {
 }
 
 /* Level Graph Sidebar */
+.nnsr-sidebar {
+  width: var(--level-graph-width);
+}
+
 .nnsr-level-graph-container {
   width: var(--level-graph-width);
+  height: calc(100vh - var(--header-height) - 48px);
   background-color: var(--surface-paper);
   border: 1px solid var(--border-warm);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
-  max-height: 520px;
   overflow: hidden;
 }
 
@@ -173,12 +205,25 @@ body {
   font-size: 0.8rem;
   color: var(--ink-secondary);
   border-bottom: 1px solid var(--border-warm);
+  flex-shrink: 0;
 }
 
 .nnsr-level-graph-scroll {
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
-  padding: 12px 0;
+  padding: 10px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-warm) transparent;
+}
+
+.nnsr-level-graph-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nnsr-level-graph-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--border-warm);
+  border-radius: 3px;
 }
 
 .nnsr-graph-node circle {

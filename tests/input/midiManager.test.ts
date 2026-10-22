@@ -80,4 +80,36 @@ describe('MidiManager', () => {
     manager.dispose();
     expect(mockInput.onmidimessage).toBeNull();
   });
+
+  it('filters out Linux virtual Midi Through ports', async () => {
+    const onConnectionChange = vi.fn();
+    const onNoteOn = vi.fn();
+
+    const mockThroughInput: Partial<WebMidi.MIDIInput> = {
+      id: 'input-through',
+      name: 'Midi Through Port-0',
+      state: 'connected',
+      onmidimessage: null,
+    };
+
+    const mockInputsMap = new Map<string, WebMidi.MIDIInput>();
+    mockInputsMap.set('input-through', mockThroughInput as WebMidi.MIDIInput);
+
+    const mockMidiAccess: Partial<WebMidi.MIDIAccess> = {
+      inputs: mockInputsMap as unknown as WebMidi.MIDIInputMap,
+      onstatechange: null,
+    };
+
+    // @ts-expect-error mocking navigator
+    globalThis.navigator = {
+      requestMIDIAccess: vi.fn().mockResolvedValue(mockMidiAccess),
+    };
+
+    const manager = new MidiManager({ onNoteOn, onConnectionChange });
+    await manager.init();
+
+    // Should report null (No device connected) because Midi Through was filtered out
+    expect(onConnectionChange).toHaveBeenCalledWith(null);
+    manager.dispose();
+  });
 });

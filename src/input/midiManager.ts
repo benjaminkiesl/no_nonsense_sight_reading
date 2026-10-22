@@ -4,6 +4,11 @@ export interface MidiManagerCallbacks {
   onConnectionChange: (deviceName: string | null) => void;
 }
 
+function isVirtualMidiDevice(name: string | null | undefined): boolean {
+  if (!name) return true;
+  return /midi through|through port|virtual|loopback|rtpmidi/i.test(name);
+}
+
 export class MidiManager {
   private readonly callbacks: MidiManagerCallbacks;
   private midiAccess: MIDIAccess | null = null;
@@ -58,7 +63,7 @@ export class MidiManager {
     let primaryDeviceName: string | null = null;
 
     for (const input of this.midiAccess.inputs.values()) {
-      if (input.state === 'connected') {
+      if (input.state === 'connected' && !isVirtualMidiDevice(input.name)) {
         inputs.push(input);
         if (!primaryDeviceName && input.name) {
           primaryDeviceName = input.name;
