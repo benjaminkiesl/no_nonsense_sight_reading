@@ -7,13 +7,13 @@ import { StaffNoteTarget } from '../types/music';
  * Computer keyboard input auto-adapts octave (matches pitch class modulo 12).
  */
 export function matchesTarget(input: UserNoteInput, target: StaffNoteTarget): boolean {
-  if (input.source === 'midi' || input.source === 'piano_click') {
-    return input.midi === target.pitch.midi;
+  if (input.source === 'computer_keyboard') {
+    const targetPitchClass = ((target.pitch.midi % 12) + 12) % 12;
+    return input.pitchClass === targetPitchClass;
   }
 
-  // Computer keyboard: pitch class modulo 12
-  const targetPitchClass = ((target.pitch.midi % 12) + 12) % 12;
-  return (input as { pitchClass: number }).pitchClass === targetPitchClass;
+  // ExactNoteInput (midi or piano_click)
+  return input.midi === target.pitch.midi;
 }
 
 /**
@@ -25,21 +25,20 @@ export function resolveVisualPianoMidi(
   input: UserNoteInput,
   currentReferenceTarget: StaffNoteTarget | null
 ): number {
-  if (input.source === 'midi' || input.source === 'piano_click') {
-    return input.midi;
+  if (input.source === 'computer_keyboard') {
+    const targetOctave = currentReferenceTarget ? currentReferenceTarget.pitch.octave : 4;
+    let midi = (targetOctave + 1) * 12 + input.pitchClass;
+
+    // Keep within visible 4-octave piano range (C2 = 36 to C6 = 84)
+    while (midi < 36) {
+      midi += 12;
+    }
+    while (midi > 84) {
+      midi -= 12;
+    }
+
+    return midi;
   }
 
-  const pitchInput = input as { pitchClass: number };
-  const targetOctave = currentReferenceTarget ? currentReferenceTarget.pitch.octave : 4;
-  let midi = (targetOctave + 1) * 12 + pitchInput.pitchClass;
-
-  // Keep within visible 4-octave piano range (C2 = 36 to C6 = 84)
-  while (midi < 36) {
-    midi += 12;
-  }
-  while (midi > 84) {
-    midi -= 12;
-  }
-
-  return midi;
+  return input.midi;
 }
