@@ -8,6 +8,7 @@ export interface ActiveKeyHighlight {
 export interface PianoKeyboardProps {
   onKeyPress?: (midi: number) => void;
   onKeyDragChange?: (midi: number, mode: 'select' | 'deselect') => void;
+  onKeyToggle?: (midi: number) => void;
   activeHighlights: readonly ActiveKeyHighlight[];
 }
 
@@ -75,19 +76,34 @@ const { whiteKeys: PIANO_WHITE_KEYS, blackKeys: PIANO_BLACK_KEYS } = generatePia
 export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
   onKeyPress,
   onKeyDragChange,
+  onKeyToggle,
   activeHighlights,
 }) => {
-  const dragModeRef = useRef<'select' | 'deselect' | null>(null);
+  const isDraggingRef = useRef(false);
+  const activeMidiRef = useRef<number | null>(null);
 
   useEffect(() => {
     const handlePointerUp = () => {
-      dragModeRef.current = null;
+      isDraggingRef.current = false;
+      activeMidiRef.current = null;
+    };
+    const handlePointerCancel = () => {
+      isDraggingRef.current = false;
+      activeMidiRef.current = null;
+    };
+    const handlePointerLeave = (e: PointerEvent) => {
+      if (e.buttons === 0) {
+        isDraggingRef.current = false;
+        activeMidiRef.current = null;
+      }
     };
     window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
+    window.addEventListener('pointerleave', handlePointerLeave);
     return () => {
       window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerCancel);
+      window.removeEventListener('pointerleave', handlePointerLeave);
     };
   }, []);
 
@@ -107,29 +123,70 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
   };
 
   const handleKeyDown = (midi: number) => {
-    if (onKeyDragChange) {
+    isDraggingRef.current = true;
+    activeMidiRef.current = midi;
+    if (onKeyToggle) {
+      onKeyToggle(midi);
+    } else if (onKeyDragChange) {
       const isSelected = highlightMap.get(midi) === 'correct';
       const mode: 'select' | 'deselect' = isSelected ? 'deselect' : 'select';
-      dragModeRef.current = mode;
       onKeyDragChange(midi, mode);
     } else if (onKeyPress) {
       onKeyPress(midi);
     }
   };
 
-  const handleKeyEnter = (midi: number) => {
-    if (dragModeRef.current && onKeyDragChange) {
-      onKeyDragChange(midi, dragModeRef.current);
+  const handleKeyEnter = (midi: number, e: React.PointerEvent) => {
+    const isPointerActive =
+      isDraggingRef.current || (e.buttons !== undefined && (e.buttons & 1) === 1);
+    if (!isPointerActive) return;
+
+    if (activeMidiRef.current !== midi) {
+      activeMidiRef.current = midi;
+      if (onKeyToggle) {
+        onKeyToggle(midi);
+      } else if (onKeyDragChange) {
+        const isSelected = highlightMap.get(midi) === 'correct';
+        const mode: 'select' | 'deselect' = isSelected ? 'deselect' : 'select';
+        onKeyDragChange(midi, mode);
+      }
+    }
+  };
+
+  const handleKeyLeave = (midi: number) => {
+    if (activeMidiRef.current === midi) {
+      activeMidiRef.current = null;
     }
   };
 
   return (
-    <div className="nnsr-piano-container" style={{ width: '840px', height: '170px' }}>
+    <div
+      className="nnsr-piano-container"
+      style={{ width: '840px', height: '170px' }}
+      onPointerDown={() => {
+        isDraggingRef.current = true;
+        activeMidiRef.current = null;
+      }}
+      onPointerUp={() => {
+        isDraggingRef.current = false;
+        activeMidiRef.current = null;
+      }}
+      onPointerLeave={(e) => {
+        if (e.buttons === 0) {
+          isDraggingRef.current = false;
+          activeMidiRef.current = null;
+        }
+      }}
+    >
       <svg
         viewBox="0 0 840 170"
         width="840"
         height="170"
         style={{ display: 'block', userSelect: 'none' }}
+        onPointerDown={() => {
+          isDraggingRef.current = true;
+          activeMidiRef.current = null;
+        }}
       >
         {/* Render White Keys */}
         {PIANO_WHITE_KEYS.map((key, index) => {
@@ -142,9 +199,11 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
               key={`white-${key.midi}`}
               onPointerDown={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 handleKeyDown(key.midi);
               }}
-              onPointerEnter={() => handleKeyEnter(key.midi)}
+              onPointerEnter={(e) => handleKeyEnter(key.midi, e)}
+              onPointerLeave={() => handleKeyLeave(key.midi)}
               style={{ cursor: 'pointer' }}
             >
               <rect
@@ -189,7 +248,8 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
                 e.stopPropagation();
                 handleKeyDown(key.midi);
               }}
-              onPointerEnter={() => handleKeyEnter(key.midi)}
+              onPointerEnter={(e) => handleKeyEnter(key.midi, e)}
+              onPointerLeave={() => handleKeyLeave(key.midi)}
               style={{ cursor: 'pointer' }}
             />
           );

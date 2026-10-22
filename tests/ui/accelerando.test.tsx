@@ -299,6 +299,121 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
       fireEvent.pointerUp(window);
     });
 
+    it('supports swish to toggle by holding mouse down outside notes and entering/re-entering', () => {
+      render(
+        <AccelerandoModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onStart={vi.fn()}
+          bestAccelerandoBpm={null}
+          initialLevelNotes={[createTarget('treble', 'C4')]}
+        />
+      );
+
+      // Initially 1 selected
+      expect(screen.getByText(/1 selected/)).toBeDefined();
+
+      const staffContainer = document.querySelector('.nnsr-modal-staff-container')!;
+      const d4Note = screen.getByLabelText('Toggle treble:D4');
+
+      // 1. Press mouse down OUTSIDE any note in the staff container
+      fireEvent.pointerDown(staffContainer);
+
+      // 2. Swish over D4 while mouse is held down -> selects D4
+      fireEvent.pointerEnter(d4Note);
+      expect(screen.getByText(/2 selected/)).toBeDefined();
+
+      // 3. Move off D4
+      fireEvent.pointerLeave(d4Note);
+      expect(screen.getByText(/2 selected/)).toBeDefined();
+
+      // 4. Move back over D4 while still holding mouse -> deselects D4
+      fireEvent.pointerEnter(d4Note);
+      expect(screen.getByText(/1 selected/)).toBeDefined();
+
+      // 5. Release mouse
+      fireEvent.pointerUp(window);
+
+      // 6. Moving over D4 when mouse is released does not toggle
+      fireEvent.pointerEnter(d4Note);
+      expect(screen.getByText(/1 selected/)).toBeDefined();
+    });
+
+    it('supports swish to toggle piano keys by holding mouse down outside keys and entering/re-entering', () => {
+      render(
+        <AccelerandoModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onStart={vi.fn()}
+          bestAccelerandoBpm={null}
+          initialLevelNotes={[createTarget('treble', 'D4')]}
+        />
+      );
+
+      // Initially 1 selected (D4)
+      expect(screen.getByText(/1 selected/)).toBeDefined();
+
+      const pianoContainer = document.querySelector('.nnsr-piano-container')!;
+      const pianoRects = pianoContainer.querySelectorAll('rect');
+      const middleCRect = pianoRects[14]!; // C4 (MIDI 60)
+
+      // 1. Press mouse down on piano container outside keys
+      fireEvent.pointerDown(pianoContainer);
+
+      // 2. Swish over Middle C -> toggles Middle C to selected (adds treble:C4 and bass:C4)
+      fireEvent.pointerEnter(middleCRect);
+      expect(screen.getByText(/3 selected/)).toBeDefined();
+
+      // 3. Move off Middle C
+      fireEvent.pointerLeave(middleCRect);
+      expect(screen.getByText(/3 selected/)).toBeDefined();
+
+      // 4. Swish back over Middle C while still holding mouse -> deselects Middle C
+      fireEvent.pointerEnter(middleCRect);
+      expect(screen.getByText(/1 selected/)).toBeDefined();
+
+      // 5. Release mouse
+      fireEvent.pointerUp(window);
+
+      // 6. Entering Middle C without mouse held does nothing
+      fireEvent.pointerEnter(middleCRect);
+      expect(screen.getByText(/1 selected/)).toBeDefined();
+    });
+
+    it('renders note stems with standard music engraving length (35px) connecting flush to rotated notehead', () => {
+      render(
+        <AccelerandoModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onStart={vi.fn()}
+          bestAccelerandoBpm={null}
+          initialLevelNotes={[createTarget('treble', 'C4'), createTarget('treble', 'C5')]}
+        />
+      );
+
+      // Check up-stem on C4: bottom line E4 is 95, C4 is stepOffset -2 -> ny = 105.
+      // Up-stem reaches ny - 35 = 70, starting at ny - 1 = 104.
+      const c4Group = screen.getByLabelText('Toggle treble:C4');
+      const c4Lines = c4Group.querySelectorAll('line');
+      const c4StemLine = c4Lines[c4Lines.length - 1]!;
+      expect(c4StemLine).toBeDefined();
+      expect(Number(c4StemLine.getAttribute('y2'))).toBe(105 - 35); // 70
+      expect(Number(c4StemLine.getAttribute('y1'))).toBe(105 - 1); // 104
+      expect(Number(c4StemLine.getAttribute('x1'))).toBeCloseTo(164 + 4.8, 1);
+      expect(Number(c4StemLine.getAttribute('x2'))).toBeCloseTo(164 + 4.8, 1);
+
+      // Check down-stem on C5: stepOffset is 5 -> ny = 95 - 25 = 70.
+      // Down-stem reaches ny + 35 = 105, starting at ny + 1 = 71.
+      const c5Group = screen.getByLabelText('Toggle treble:C5');
+      const c5Lines = c5Group.querySelectorAll('line');
+      const c5StemLine = c5Lines[c5Lines.length - 1]!;
+      expect(c5StemLine).toBeDefined();
+      expect(Number(c5StemLine.getAttribute('y2'))).toBe(70 + 35); // 105
+      expect(Number(c5StemLine.getAttribute('y1'))).toBe(70 + 1); // 71
+      expect(Number(c5StemLine.getAttribute('x1'))).toBeCloseTo(430 - 4.8, 1);
+      expect(Number(c5StemLine.getAttribute('x2'))).toBeCloseTo(430 - 4.8, 1);
+    });
+
     it('renders entire selected note in green with no black borders and slider down to 15 BPM', () => {
       render(
         <AccelerandoModal

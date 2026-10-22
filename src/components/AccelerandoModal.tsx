@@ -169,18 +169,32 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
     return getScaleTargets('C_MAJOR');
   });
 
-  const staffDragModeRef = useRef<'select' | 'deselect' | null>(null);
+  const isStaffDraggingRef = useRef(false);
+  const activeStaffSlotRef = useRef<string | null>(null);
   const handledByPointerRef = useRef(false);
 
   useEffect(() => {
     const handlePointerUp = () => {
-      staffDragModeRef.current = null;
+      isStaffDraggingRef.current = false;
+      activeStaffSlotRef.current = null;
+    };
+    const handlePointerCancel = () => {
+      isStaffDraggingRef.current = false;
+      activeStaffSlotRef.current = null;
+    };
+    const handlePointerLeave = (e: PointerEvent) => {
+      if (e.buttons === 0) {
+        isStaffDraggingRef.current = false;
+        activeStaffSlotRef.current = null;
+      }
     };
     window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
+    window.addEventListener('pointerleave', handlePointerLeave);
     return () => {
       window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerCancel);
+      window.removeEventListener('pointerleave', handlePointerLeave);
     };
   }, []);
 
@@ -203,74 +217,39 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
     setSelectedTargets(getScaleTargets(scale));
   }, []);
 
-  // Toggle a staff note slot (and keep overlapping clef slot in sync if toggled)
-  const toggleStaffSlot = useCallback(
-    (target: StaffNoteTarget, isCurrentlySelected: boolean) => {
-      if (isCurrentlySelected) {
-        setSelectedTargets((prev) =>
-          prev.filter(
-            (t) =>
-              !(
-                t.clef === target.clef &&
-                t.pitch.letter === target.pitch.letter &&
-                t.pitch.octave === target.pitch.octave
-              )
-          )
+  // Toggle a staff note slot
+  const toggleStaffSlot = useCallback((target: StaffNoteTarget) => {
+    setSelectedTargets((prev) => {
+      const exists = prev.some(
+        (t) =>
+          t.clef === target.clef &&
+          t.pitch.letter === target.pitch.letter &&
+          t.pitch.octave === target.pitch.octave
+      );
+      if (exists) {
+        return prev.filter(
+          (t) =>
+            !(
+              t.clef === target.clef &&
+              t.pitch.letter === target.pitch.letter &&
+              t.pitch.octave === target.pitch.octave
+            )
         );
       } else {
-        setSelectedTargets((prev) => [
-          ...prev.filter(
-            (t) =>
-              !(
-                t.clef === target.clef &&
-                t.pitch.letter === target.pitch.letter &&
-                t.pitch.octave === target.pitch.octave
-              )
-          ),
-          target,
-        ]);
+        return [...prev, target];
       }
-    },
-    []
-  );
-
-  const applyStaffSlotMode = useCallback(
-    (target: StaffNoteTarget, mode: 'select' | 'deselect') => {
-      setSelectedTargets((prev) => {
-        const exists = prev.some(
-          (t) =>
-            t.clef === target.clef &&
-            t.pitch.letter === target.pitch.letter &&
-            t.pitch.octave === target.pitch.octave
-        );
-        if (mode === 'select') {
-          if (exists) return prev;
-          return [...prev, target];
-        } else {
-          if (!exists) return prev;
-          return prev.filter(
-            (t) =>
-              !(
-                t.clef === target.clef &&
-                t.pitch.letter === target.pitch.letter &&
-                t.pitch.octave === target.pitch.octave
-              )
-          );
-        }
-      });
-    },
-    []
-  );
+    });
+  }, []);
 
   // Keyboard note toggle: keeps staff slots and keyboard keys derived from the exact same state
   const handlePianoKeyPress = useCallback(
     (midi: number) => {
-      const hasTargetWithMidi = selectedTargets.some((t) => t.pitch.midi === midi);
-      if (hasTargetWithMidi) {
-        setSelectedTargets((prev) => prev.filter((t) => t.pitch.midi !== midi));
-      } else {
-        const newTargets = getTargetsForMidi(midi, selectedScale);
-        setSelectedTargets((prev) => {
+      setSelectedTargets((prev) => {
+        const hasTargetWithMidi = prev.some((t) => t.pitch.midi === midi);
+        if (hasTargetWithMidi) {
+          return prev.filter((t) => t.pitch.midi !== midi);
+        } else {
+          const newTargets = getTargetsForMidi(midi, selectedScale);
           const filtered = prev.filter(
             (existing) =>
               !newTargets.some(
@@ -281,31 +260,8 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
               )
           );
           return [...filtered, ...newTargets];
-        });
-      }
-    },
-    [selectedTargets, selectedScale]
-  );
-
-  const handlePianoKeyDrag = useCallback(
-    (midi: number, mode: 'select' | 'deselect') => {
-      if (mode === 'deselect') {
-        setSelectedTargets((prev) => prev.filter((t) => t.pitch.midi !== midi));
-      } else {
-        const newTargets = getTargetsForMidi(midi, selectedScale);
-        setSelectedTargets((prev) => {
-          const filtered = prev.filter(
-            (existing) =>
-              !newTargets.some(
-                (nt) =>
-                  nt.clef === existing.clef &&
-                  nt.pitch.letter === existing.pitch.letter &&
-                  nt.pitch.octave === existing.pitch.octave
-              )
-          );
-          return [...filtered, ...newTargets];
-        });
-      }
+        }
+      });
     },
     [selectedScale]
   );
@@ -417,12 +373,32 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
         </div>
 
         {/* Interactive Grand Staff SVG */}
-        <div className="nnsr-modal-staff-container">
+        <div
+          className="nnsr-modal-staff-container"
+          onPointerDown={() => {
+            isStaffDraggingRef.current = true;
+            activeStaffSlotRef.current = null;
+          }}
+          onPointerUp={() => {
+            isStaffDraggingRef.current = false;
+            activeStaffSlotRef.current = null;
+          }}
+          onPointerLeave={(e) => {
+            if (e.buttons === 0) {
+              isStaffDraggingRef.current = false;
+              activeStaffSlotRef.current = null;
+            }
+          }}
+        >
           <svg
             viewBox="0 0 780 250"
             width="100%"
             height="250"
             style={{ display: 'block', userSelect: 'none' }}
+            onPointerDown={() => {
+              isStaffDraggingRef.current = true;
+              activeStaffSlotRef.current = null;
+            }}
           >
             {/* Grand Staff Lines */}
             {[55, 65, 75, 85, 95].map((y) => (
@@ -524,14 +500,24 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                   aria-label={`Toggle ${target.targetId}`}
                   onPointerDown={(e) => {
                     e.preventDefault();
-                    const mode = isSelected ? 'deselect' : 'select';
-                    staffDragModeRef.current = mode;
+                    e.stopPropagation();
+                    isStaffDraggingRef.current = true;
+                    activeStaffSlotRef.current = target.targetId;
                     handledByPointerRef.current = true;
-                    applyStaffSlotMode(target, mode);
+                    toggleStaffSlot(target);
                   }}
-                  onPointerEnter={() => {
-                    if (staffDragModeRef.current) {
-                      applyStaffSlotMode(target, staffDragModeRef.current);
+                  onPointerEnter={(e) => {
+                    const isPointerActive =
+                      isStaffDraggingRef.current ||
+                      (e.buttons !== undefined && (e.buttons & 1) === 1);
+                    if (isPointerActive && activeStaffSlotRef.current !== target.targetId) {
+                      activeStaffSlotRef.current = target.targetId;
+                      toggleStaffSlot(target);
+                    }
+                  }}
+                  onPointerLeave={() => {
+                    if (activeStaffSlotRef.current === target.targetId) {
+                      activeStaffSlotRef.current = null;
                     }
                   }}
                   onClick={() => {
@@ -539,16 +525,16 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                       handledByPointerRef.current = false;
                       return;
                     }
-                    toggleStaffSlot(target, isSelected);
+                    toggleStaffSlot(target);
                   }}
                   style={{ cursor: 'pointer' }}
                   className="nnsr-staff-clickable-note"
                 >
                   <rect
                     x={nx - 14}
-                    y={ny - 15}
+                    y={ny - 36}
                     width={28}
-                    height={30}
+                    height={72}
                     fill="transparent"
                   />
                   {ledgers.map((lOffset) => {
@@ -579,7 +565,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     x1={stemDir === 'up' ? nx + 4.8 : nx - 4.8}
                     y1={stemDir === 'up' ? ny - 1 : ny + 1}
                     x2={stemDir === 'up' ? nx + 4.8 : nx - 4.8}
-                    y2={stemDir === 'up' ? ny - 20 : ny + 20}
+                    y2={stemDir === 'up' ? ny - 35 : ny + 35}
                     stroke={noteColor}
                     strokeWidth={1.2}
                   />
@@ -620,14 +606,24 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                   aria-label={`Toggle ${target.targetId}`}
                   onPointerDown={(e) => {
                     e.preventDefault();
-                    const mode = isSelected ? 'deselect' : 'select';
-                    staffDragModeRef.current = mode;
+                    e.stopPropagation();
+                    isStaffDraggingRef.current = true;
+                    activeStaffSlotRef.current = target.targetId;
                     handledByPointerRef.current = true;
-                    applyStaffSlotMode(target, mode);
+                    toggleStaffSlot(target);
                   }}
-                  onPointerEnter={() => {
-                    if (staffDragModeRef.current) {
-                      applyStaffSlotMode(target, staffDragModeRef.current);
+                  onPointerEnter={(e) => {
+                    const isPointerActive =
+                      isStaffDraggingRef.current ||
+                      (e.buttons !== undefined && (e.buttons & 1) === 1);
+                    if (isPointerActive && activeStaffSlotRef.current !== target.targetId) {
+                      activeStaffSlotRef.current = target.targetId;
+                      toggleStaffSlot(target);
+                    }
+                  }}
+                  onPointerLeave={() => {
+                    if (activeStaffSlotRef.current === target.targetId) {
+                      activeStaffSlotRef.current = null;
                     }
                   }}
                   onClick={() => {
@@ -635,16 +631,16 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                       handledByPointerRef.current = false;
                       return;
                     }
-                    toggleStaffSlot(target, isSelected);
+                    toggleStaffSlot(target);
                   }}
                   style={{ cursor: 'pointer' }}
                   className="nnsr-staff-clickable-note"
                 >
                   <rect
                     x={nx - 14}
-                    y={ny - 15}
+                    y={ny - 36}
                     width={28}
-                    height={30}
+                    height={72}
                     fill="transparent"
                   />
                   {ledgers.map((lOffset) => {
@@ -675,7 +671,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     x1={stemDir === 'up' ? nx + 4.8 : nx - 4.8}
                     y1={stemDir === 'up' ? ny - 1 : ny + 1}
                     x2={stemDir === 'up' ? nx + 4.8 : nx - 4.8}
-                    y2={stemDir === 'up' ? ny - 20 : ny + 20}
+                    y2={stemDir === 'up' ? ny - 35 : ny + 35}
                     stroke={noteColor}
                     strokeWidth={1.2}
                   />
@@ -699,7 +695,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
         <div className="nnsr-modal-piano-wrap">
           <PianoKeyboard
             onKeyPress={handlePianoKeyPress}
-            onKeyDragChange={handlePianoKeyDrag}
+            onKeyToggle={handlePianoKeyPress}
             activeHighlights={activeHighlights}
           />
         </div>
