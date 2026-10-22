@@ -29,4 +29,6 @@ export interface EngineSnapshot {
   readonly activeNotes: readonly ActiveNote[];
   readonly emptyZonePulseRemainingMs: number;
   readonly levelCompleteGuardRemainingMs: number;
+  readonly isAccelerando?: boolean;
+  readonly accelerandoStartBpm?: number;
 }

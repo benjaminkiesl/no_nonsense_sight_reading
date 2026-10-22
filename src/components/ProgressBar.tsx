@@ -6,6 +6,55 @@ export interface ProgressBarProps {
 }
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({ snapshot }) => {
+  if (snapshot.isAccelerando) {
+    const startBpm = snapshot.accelerandoStartBpm ?? 40;
+    const maxBpm = 240;
+    const currentBpm = snapshot.targetBpm;
+    const fraction = Math.min(1, Math.max(0, (currentBpm - startBpm) / (maxBpm - startBpm)));
+    const percent = Math.round(fraction * 100);
+
+    // 24 discrete step indicators across the span
+    const steps = Array.from({ length: 24 }, (_, i) => i);
+    const filledStepCount = Math.round(fraction * 24);
+
+    return (
+      <div className="nnsr-progress-bar-container nnsr-progress-bar-accelerando" style={{ width: '840px' }}>
+        <div className="nnsr-accelerando-progress-wrap">
+          <div className="nnsr-accelerando-meta-row">
+            <div className="nnsr-accelerando-badge">⚡ ACCELERANDO PERPETUO</div>
+            <div className="nnsr-accelerando-tempo-display">
+              <span className="nnsr-accelerando-start-tag">{startBpm} BPM</span>
+              <span className="nnsr-accelerando-arrow">→</span>
+              <span className="nnsr-accelerando-current-tag">
+                <strong>{currentBpm.toFixed(1)}</strong> BPM
+                {snapshot.actualBpm < snapshot.targetBpm - 0.5 && (
+                  <em> (recovery: {snapshot.actualBpm.toFixed(0)})</em>
+                )}
+              </span>
+              <span className="nnsr-accelerando-arrow">→</span>
+              <span className="nnsr-accelerando-max-tag">{maxBpm} BPM</span>
+            </div>
+            <div className="nnsr-accelerando-percent">{percent}%</div>
+          </div>
+          <div className="nnsr-progress-track nnsr-accelerando-track">
+            {steps.map((idx) => {
+              const isFilled = idx < filledStepCount;
+              return (
+                <div
+                  key={`accel-step-${idx}`}
+                  className={`nnsr-progress-step ${isFilled ? 'filled pulse' : ''}`}
+                  style={{
+                    backgroundColor: isFilled ? 'var(--gold-champagne)' : 'var(--surface-subtle)',
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const {
     learnStepIndex,
     learnTotalSteps,

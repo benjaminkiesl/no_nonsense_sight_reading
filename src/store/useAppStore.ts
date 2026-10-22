@@ -7,6 +7,7 @@ export interface PersistedProgress {
   readonly version: 1;
   readonly currentLevelId: string;
   readonly directlyCompletedLevelIds: string[];
+  readonly bestAccelerandoBpm?: number | null;
 }
 
 export interface AppState {
@@ -14,14 +15,20 @@ export interface AppState {
   directlyCompletedLevelIds: string[];
   allFinishedLevelIds: Set<string>;
   midiDeviceName: string | null;
+  bestAccelerandoBpm: number | null;
   selectLevel: (levelId: string) => void;
   markLevelCompleted: (levelId: string) => void;
   setMidiDeviceName: (name: string | null) => void;
+  updateBestAccelerandoBpm: (bpm: number) => void;
 }
 
-function loadInitialProgress(): { currentLevelId: string; directlyCompletedLevelIds: string[] } {
+function loadInitialProgress(): {
+  currentLevelId: string;
+  directlyCompletedLevelIds: string[];
+  bestAccelerandoBpm: number | null;
+} {
   if (typeof window === 'undefined' || !window.localStorage) {
-    return { currentLevelId: 'treble-1', directlyCompletedLevelIds: [] };
+    return { currentLevelId: 'treble-1', directlyCompletedLevelIds: [], bestAccelerandoBpm: null };
   }
 
   try {
@@ -34,6 +41,10 @@ function loadInitialProgress(): { currentLevelId: string; directlyCompletedLevel
           directlyCompletedLevelIds: Array.isArray(parsed.directlyCompletedLevelIds)
             ? parsed.directlyCompletedLevelIds
             : [],
+          bestAccelerandoBpm:
+            typeof parsed.bestAccelerandoBpm === 'number' && parsed.bestAccelerandoBpm > 0
+              ? parsed.bestAccelerandoBpm
+              : null,
         };
       }
     }
@@ -41,16 +52,21 @@ function loadInitialProgress(): { currentLevelId: string; directlyCompletedLevel
     // Fall through to defaults
   }
 
-  return { currentLevelId: 'treble-1', directlyCompletedLevelIds: [] };
+  return { currentLevelId: 'treble-1', directlyCompletedLevelIds: [], bestAccelerandoBpm: null };
 }
 
-function saveProgress(currentLevelId: string, directlyCompletedLevelIds: string[]): void {
+function saveProgress(
+  currentLevelId: string,
+  directlyCompletedLevelIds: string[],
+  bestAccelerandoBpm: number | null
+): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     const data: PersistedProgress = {
       version: 1,
       currentLevelId,
       directlyCompletedLevelIds,
+      bestAccelerandoBpm: bestAccelerandoBpm ?? undefined,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch {
@@ -65,10 +81,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   directlyCompletedLevelIds: initialProgress.directlyCompletedLevelIds,
   allFinishedLevelIds: getTransitiveCompletedLevels(initialProgress.directlyCompletedLevelIds),
   midiDeviceName: null,
+  bestAccelerandoBpm: initialProgress.bestAccelerandoBpm,
 
   selectLevel: (levelId: string) => {
     set({ currentLevelId: levelId });
-    saveProgress(levelId, get().directlyCompletedLevelIds);
+    saveProgress(levelId, get().directlyCompletedLevelIds, get().bestAccelerandoBpm);
   },
 
   markLevelCompleted: (levelId: string) => {
@@ -83,10 +100,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       allFinishedLevelIds: finishedSet,
     });
 
-    saveProgress(get().currentLevelId, updated);
+    saveProgress(get().currentLevelId, updated, get().bestAccelerandoBpm);
   },
 
   setMidiDeviceName: (name: string | null) => {
     set({ midiDeviceName: name });
+  },
+
+  updateBestAccelerandoBpm: (bpm: number) => {
+    const currentBest = get().bestAccelerandoBpm ?? 0;
+    if (bpm > currentBest) {
+      const rounded = Math.round(bpm * 10) / 10;
+      set({ bestAccelerandoBpm: rounded });
+      saveProgress(get().currentLevelId, get().directlyCompletedLevelIds, rounded);
+    }
   },
 }));

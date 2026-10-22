@@ -9,11 +9,12 @@ export interface LevelGraphProps {
   currentLevelId: string;
   completedLevelIds: ReadonlySet<string>;
   onSelectLevel: (levelId: string) => void;
+  onOpenAccelerando?: () => void;
 }
 
 const ALL_LEVELS = getAllLevels();
 
-const PADDING_TOP = 50;
+const PADDING_TOP = 110;
 const TIER_HEIGHT = 96;
 const BOTH_Y_OFFSET = 36; // "both" is positioned 36px higher up than single clefs
 const SVG_WIDTH = 300;
@@ -32,6 +33,17 @@ function getNodePosition(level: LevelSpec): { x: number; y: number } {
   const baseY = PADDING_TOP + tierIndex * TIER_HEIGHT + BOTH_Y_OFFSET;
   const y = level.lane === 'both' ? baseY - BOTH_Y_OFFSET : baseY;
   return { x, y };
+}
+
+function getOctagonPoints(cx: number, cy: number, r: number): string {
+  const points: string[] = [];
+  for (let i = 0; i < 8; i++) {
+    const angle = (i * Math.PI) / 4 + Math.PI / 8;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    points.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+  return points.join(' ');
 }
 
 interface MiniStaffProps {
@@ -173,6 +185,7 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
   currentLevelId,
   completedLevelIds,
   onSelectLevel,
+  onOpenAccelerando,
 }) => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -196,8 +209,24 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
     }
   }, [currentLevelId]);
 
+  const isTrophyCompleted = completedLevelIds.has('both-12');
+
   // Generate directed arrows
   const arrows: React.JSX.Element[] = [];
+
+  // Arrow connecting both-12 (x=150, y=110) to Summit Trophy node (x=150, y=45)
+  arrows.push(
+    <line
+      key="arrow-both-trophy"
+      x1={150}
+      y1={110 - NODE_RADIUS}
+      x2={150}
+      y2={45 + NODE_RADIUS + 4}
+      stroke={isTrophyCompleted ? 'var(--emerald)' : '#b0aba2'}
+      strokeWidth={1.8}
+      markerEnd="url(#arrowhead)"
+    />
+  );
 
   for (let tier = 1; tier <= 12; tier++) {
     const tierIdx = 12 - tier;
@@ -322,7 +351,114 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
           {/* Render Edge Arrows */}
           <g className="nnsr-graph-arrows">{arrows}</g>
 
-          {/* Render Nodes */}
+          {/* Summit Trophy Node (X=150, Y=45) */}
+          <g
+            className={`nnsr-graph-trophy-node ${isTrophyCompleted ? 'completed' : ''}`}
+            aria-label="Grand Mastery Trophy"
+            data-testid="summit-trophy-node"
+          >
+            {isTrophyCompleted && (
+              <circle
+                cx={150}
+                cy={45}
+                r={NODE_RADIUS + 4}
+                fill="none"
+                stroke="var(--gold-champagne)"
+                strokeWidth={2}
+                strokeDasharray="3 3"
+              />
+            )}
+            <circle
+              cx={150}
+              cy={45}
+              r={NODE_RADIUS}
+              fill={isTrophyCompleted ? 'var(--gold-champagne)' : '#ffffff'}
+              stroke={isTrophyCompleted ? 'var(--gold-primary)' : '#8c948f'}
+              strokeWidth={isTrophyCompleted ? 2.5 : 1.8}
+            />
+            {/* Trophy Icon */}
+            <g
+              transform="translate(138, 33) scale(0.048)"
+              fill={isTrophyCompleted ? '#183324' : '#8c948f'}
+            >
+              <path d="M400 32H112C85.5 32 64 53.5 64 80v32c0 70.6 57.4 128 128 128h16.2c16.3 35.5 48.7 61.9 87.8 70.3V384h-48c-17.7 0-32 14.3-32 32v32c0 17.7 14.3 32 32 32h192c17.7 0 32-14.3 32-32v-32c0-17.7-14.3-32-32-32h-48v-73.7c39.1-8.4 71.5-34.8 87.8-70.3H320c70.6 0 128-57.4 128-128V80c0-26.5-21.5-48-48-48zM96 112V80c0-8.8 7.2-16 16-16h32v96c-26.5 0-48-21.5-48-48zm320 0c0 26.5-21.5 48-48 48V64h32c8.8 0 16 7.2 16 16v32z" />
+            </g>
+            <text
+              x={150}
+              y={79}
+              textAnchor="middle"
+              fontSize="8.5px"
+              fontWeight="700"
+              fill={isTrophyCompleted ? 'var(--gold-primary)' : 'var(--ink-secondary)'}
+              letterSpacing="0.05em"
+            >
+              SUMMIT
+            </text>
+          </g>
+
+          {/* Accelerando Perpetuo Octagon Node (X=65, Y=65) */}
+          <g
+            className="nnsr-graph-octagon-node"
+            role="button"
+            tabIndex={0}
+            aria-label="Accelerando Perpetuo"
+            data-testid="accelerando-octagon-node"
+            onClick={() => onOpenAccelerando?.()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onOpenAccelerando?.();
+              }
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <polygon
+              points={getOctagonPoints(65, 65, 23)}
+              fill="#ffffff"
+              stroke="#232b26"
+              strokeWidth={2}
+            />
+            {/* Speedometer SVG Icon */}
+            <g transform="translate(65, 65)">
+              {/* Dial Arc */}
+              <path
+                d="M -13 4 A 14 14 0 1 1 13 4"
+                fill="none"
+                stroke="#183324"
+                strokeWidth={2.4}
+                strokeLinecap="round"
+              />
+              {/* Gauge ticks */}
+              <line x1="-10" y1="0" x2="-7" y2="0" stroke="#d4af37" strokeWidth={1.5} />
+              <line x1="0" y1="-12" x2="0" y2="-9" stroke="#d4af37" strokeWidth={1.5} />
+              <line x1="10" y1="0" x2="7" y2="0" stroke="#d4af37" strokeWidth={1.5} />
+              {/* Speedometer Needle pointing up-right */}
+              <line
+                x1="0"
+                y1="3"
+                x2="8"
+                y2="-7"
+                stroke="var(--vibrant-coral)"
+                strokeWidth={2}
+                strokeLinecap="round"
+              />
+              {/* Center Hub */}
+              <circle cx="0" cy="3" r="2.5" fill="#183324" />
+            </g>
+            <text
+              x={65}
+              y={98}
+              textAnchor="middle"
+              fontSize="7.5px"
+              fontWeight="700"
+              fill="var(--ink-secondary)"
+              letterSpacing="0.04em"
+            >
+              PERPETUO
+            </text>
+          </g>
+
+          {/* Render Curriculum Level Nodes */}
           {ALL_LEVELS.map((level) => {
             const { x, y } = getNodePosition(level);
             const isCurrent = level.id === currentLevelId;

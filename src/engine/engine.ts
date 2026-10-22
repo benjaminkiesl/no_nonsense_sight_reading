@@ -17,11 +17,20 @@ export const ENGINE_GEOMETRY = {
   FIRST_NOTE_COUNTDOWN_X: 216,
 } as const;
 
+export interface EngineOptions {
+  mode?: 'standard' | 'accelerando';
+  accelerandoStartingBpm?: number;
+  customNotes?: readonly StaffNoteTarget[];
+}
+
 export class SightReadingEngine {
   public readonly level: LevelSpec;
+  public readonly isAccelerando: boolean;
+  public readonly accelerandoStartBpm: number;
+  public readonly speedController: SpeedController;
+
   private readonly learnSession: LearnSessionManager;
   private readonly distribution: AdaptiveDistribution;
-  private readonly speedController: SpeedController;
 
   private phase: EnginePhase = 'LEARN';
   private substate: EngineSubstate = 'NORMAL';
@@ -34,16 +43,40 @@ export class SightReadingEngine {
   private lastPrecedingTarget: StaffNoteTarget | null = null;
   private failedNote: ActiveNote | null = null;
 
-  constructor(level: LevelSpec, rng: () => number = Math.random) {
+  constructor(
+    level: LevelSpec,
+    rng: () => number = Math.random,
+    options?: EngineOptions
+  ) {
     this.level = level;
-    this.learnSession = new LearnSessionManager(level.newNotes, level.reviewNotes, rng);
-    this.distribution = new AdaptiveDistribution(level.allNotes, level.newNotes, rng);
-    this.speedController = new SpeedController();
+    this.isAccelerando = options?.mode === 'accelerando';
+    this.accelerandoStartBpm = options?.accelerandoStartingBpm ?? 40.0;
 
-    // Spawn first learn note
-    const firstLearnTarget = this.learnSession.getCurrentTarget();
-    if (firstLearnTarget) {
-      this.spawnLearnNote(firstLearnTarget);
+    if (this.isAccelerando) {
+      const notes =
+        options?.customNotes && options.customNotes.length > 0
+          ? options.customNotes
+          : level.allNotes;
+      this.learnSession = new LearnSessionManager([], [], rng);
+      this.distribution = new AdaptiveDistribution(notes, notes, rng);
+      this.speedController = new SpeedController({
+        mode: 'accelerando',
+        startingBpm: this.accelerandoStartBpm,
+        maxBpm: 240.0,
+      });
+
+      // In Accelerando mode, start with countdown
+      this.transitionToCountdown();
+    } else {
+      this.learnSession = new LearnSessionManager(level.newNotes, level.reviewNotes, rng);
+      this.distribution = new AdaptiveDistribution(level.allNotes, level.newNotes, rng);
+      this.speedController = new SpeedController();
+
+      // Spawn first learn note
+      const firstLearnTarget = this.learnSession.getCurrentTarget();
+      if (firstLearnTarget) {
+        this.spawnLearnNote(firstLearnTarget);
+      }
     }
   }
 
@@ -128,7 +161,7 @@ export class SightReadingEngine {
           this.failedNote = frontmost;
           this.substate = 'WAITING_FOR_CORRECTION';
           this.distribution.recordFailure(frontmost.target, this.lastPrecedingTarget);
-          this.speedController.onFailure(this.phase);
+          this.speedController.onFailure(this.phase as 'SPEED_UP' | 'HOLD');
           if (this.phase === 'HOLD') {
             this.phase = 'SPEED_UP';
           }
@@ -275,6 +308,8 @@ export class SightReadingEngine {
       activeNotes: [...this.activeNotes],
       emptyZonePulseRemainingMs: this.emptyZonePulseRemainingMs,
       levelCompleteGuardRemainingMs: this.levelCompleteGuardRemainingMs,
+      isAccelerando: this.isAccelerando,
+      accelerandoStartBpm: this.accelerandoStartBpm,
     };
   }
 

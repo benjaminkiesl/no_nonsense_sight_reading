@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { AccelerandoModal } from './components/AccelerandoModal';
 import { CelebrationOverlay } from './components/CelebrationOverlay';
 import { GrandStaffCanvas } from './components/GrandStaffCanvas';
 import { Header } from './components/Header';
@@ -13,27 +14,65 @@ import { resolveVisualPianoMidi } from './input/inputRouter';
 import { useAppStore } from './store/useAppStore';
 import { EngineSnapshot } from './types/engine';
 import { UserNoteInput } from './types/input';
+import { StaffNoteTarget } from './types/music';
 
 export default function App(): React.JSX.Element {
   const {
     currentLevelId,
     allFinishedLevelIds,
     midiDeviceName,
+    bestAccelerandoBpm,
     selectLevel,
     markLevelCompleted,
     setMidiDeviceName,
+    updateBestAccelerandoBpm,
   } = useAppStore();
 
   const currentLevel = getLevelById(currentLevelId);
   const engineRef = useRef<SightReadingEngine>(new SightReadingEngine(currentLevel));
   const [snapshot, setSnapshot] = useState<EngineSnapshot>(() => engineRef.current.getSnapshot());
   const [activeHighlights, setActiveHighlights] = useState<ActiveKeyHighlight[]>([]);
+  const [isAccelerandoModalOpen, setIsAccelerandoModalOpen] = useState(false);
+  const [isAccelerandoActive, setIsAccelerandoActive] = useState(false);
 
-  // Re-create engine whenever selected level changes
+  // Re-create engine whenever selected level changes (unless in accelerando run)
   useEffect(() => {
+    if (!isAccelerandoActive) {
+      engineRef.current = new SightReadingEngine(currentLevel);
+      setSnapshot(engineRef.current.getSnapshot());
+    }
+  }, [currentLevelId, isAccelerandoActive, currentLevel]);
+
+  // Launch Accelerando Perpetuo mode
+  const handleStartAccelerando = useCallback(
+    (notes: readonly StaffNoteTarget[], startingBpm: number) => {
+      setIsAccelerandoActive(true);
+      setIsAccelerandoModalOpen(false);
+      engineRef.current = new SightReadingEngine(currentLevel, Math.random, {
+        mode: 'accelerando',
+        accelerandoStartingBpm: startingBpm,
+        customNotes: notes,
+      });
+      setSnapshot(engineRef.current.getSnapshot());
+    },
+    [currentLevel]
+  );
+
+  // Exit Accelerando Perpetuo back to standard level
+  const handleExitAccelerando = useCallback(() => {
+    setIsAccelerandoActive(false);
     engineRef.current = new SightReadingEngine(currentLevel);
     setSnapshot(engineRef.current.getSnapshot());
-  }, [currentLevelId]);
+  }, [currentLevel]);
+
+  // Handle level selection from Graph
+  const handleSelectLevel = useCallback(
+    (id: string) => {
+      setIsAccelerandoActive(false);
+      selectLevel(id);
+    },
+    [selectLevel]
+  );
 
   // Handle note dispatch
   const handleNoteInput = useCallback(
@@ -52,6 +91,11 @@ export default function App(): React.JSX.Element {
         return;
       }
 
+      // Record best Accelerando BPM on hits
+      if (engine.isAccelerando && (result.outcome === 'correct_hit' || result.outcome === 'correction_complete')) {
+        updateBestAccelerandoBpm(engine.speedController.targetBpm);
+      }
+
       const activeTarget = result.matchedTarget ?? null;
       const midi = resolveVisualPianoMidi(input, activeTarget);
       const status: 'correct' | 'wrong' | 'neutral' =
@@ -66,7 +110,7 @@ export default function App(): React.JSX.Element {
         setActiveHighlights([]);
       }, 180);
     },
-    [currentLevelId, allFinishedLevelIds, markLevelCompleted, selectLevel]
+    [currentLevelId, allFinishedLevelIds, markLevelCompleted, selectLevel, updateBestAccelerandoBpm]
   );
 
   // Manual advance on celebration continue
@@ -75,6 +119,12 @@ export default function App(): React.JSX.Element {
     markLevelCompleted(currentLevelId);
     selectLevel(nextId);
   }, [currentLevelId, allFinishedLevelIds, markLevelCompleted, selectLevel]);
+
+  // Continue to Accelerando Perpetuo from celebration overlay
+  const handleCelebrationAccelerando = useCallback(() => {
+    // Current level finished tempo is 52 BPM
+    handleStartAccelerando(currentLevel.allNotes, 52);
+  }, [currentLevel.allNotes, handleStartAccelerando]);
 
   // Main 60fps Animation Loop
   useEffect(() => {
@@ -113,6 +163,8 @@ export default function App(): React.JSX.Element {
   // Computer Keyboard Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isAccelerandoModalOpen) return;
+
       if (engineRef.current.getSnapshot().phase === 'LEVEL_COMPLETE') {
         handleCelebrationContinue();
         return;
@@ -129,7 +181,7 @@ export default function App(): React.JSX.Element {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNoteInput, handleCelebrationContinue]);
+  }, [handleNoteInput, handleCelebrationContinue, isAccelerandoModalOpen]);
 
   return (
     <div className="nnsr-app">
@@ -137,6 +189,23 @@ export default function App(): React.JSX.Element {
 
       <main className="nnsr-workspace">
         <section className="nnsr-main-column">
+          {isAccelerandoActive && (
+            <div className="nnsr-accelerando-banner">
+              <div className="nnsr-accelerando-banner-left">
+                <span className="nnsr-banner-bolt">⚡</span>
+                <span className="nnsr-banner-title">Accelerando Perpetuo Mode</span>
+                <span className="nnsr-banner-badge">Max 240 BPM</span>
+              </div>
+              <button
+                type="button"
+                className="nnsr-banner-exit-btn"
+                onClick={handleExitAccelerando}
+              >
+                Exit to Curriculum Level
+              </button>
+            </div>
+          )}
+
           <GrandStaffCanvas snapshot={snapshot} level={currentLevel} />
           <ProgressBar snapshot={snapshot} />
           <PianoKeyboard
@@ -149,14 +218,27 @@ export default function App(): React.JSX.Element {
           <LevelGraph
             currentLevelId={currentLevelId}
             completedLevelIds={allFinishedLevelIds}
-            onSelectLevel={(id) => selectLevel(id)}
+            onSelectLevel={handleSelectLevel}
+            onOpenAccelerando={() => setIsAccelerandoModalOpen(true)}
           />
         </aside>
       </main>
 
       {snapshot.phase === 'LEVEL_COMPLETE' && (
-        <CelebrationOverlay level={currentLevel} onContinue={handleCelebrationContinue} />
+        <CelebrationOverlay
+          level={currentLevel}
+          onContinue={handleCelebrationContinue}
+          onAccelerandoContinue={handleCelebrationAccelerando}
+        />
       )}
+
+      <AccelerandoModal
+        isOpen={isAccelerandoModalOpen}
+        onClose={() => setIsAccelerandoModalOpen(false)}
+        onStart={handleStartAccelerando}
+        bestAccelerandoBpm={bestAccelerandoBpm}
+        initialLevelNotes={currentLevel.allNotes}
+      />
     </div>
   );
 }
