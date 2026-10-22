@@ -194,7 +194,7 @@ export default function App(): React.JSX.Element {
             <div className="nnsr-accelerando-banner">
               <div className="nnsr-accelerando-banner-left">
                 <span className="nnsr-banner-bolt">⚡</span>
-                <span className="nnsr-banner-title">Accelerando Perpetuo Mode</span>
+                <span className="nnsr-banner-title">Infinite Speed-Up</span>
                 <span className="nnsr-banner-badge">Max 240 BPM</span>
               </div>
               <button

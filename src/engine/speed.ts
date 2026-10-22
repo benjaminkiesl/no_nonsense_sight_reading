@@ -6,11 +6,12 @@ export interface SpeedControllerOptions {
 
 export class SpeedController {
   public static readonly V_MIN_START = 15.0;     // Initial very slow scroll speed after countdown
-  public static readonly V_TARGET_INIT = 28.0;   // Starting target speed in standard mode
-  public static readonly V_TARGET_MAX = 64.0;    // Maximum target speed where Hold begins in standard mode
+  public static readonly V_TARGET_INIT = 30.0;   // Starting target speed in standard mode
+  public static readonly V_TARGET_MAX = 90.0;    // Maximum target speed where Hold begins in standard mode
   public static readonly V_ACCELERANDO_MAX = 240.0; // Maximum target speed in Accelerando mode
   public static readonly RAMP_DURATION_SEC = 4.0;
-  public static readonly DELTA_HIT = 0.2;        // +0.2 BPM per correct hit
+  public static readonly DELTA_HIT = 0.3;        // +0.3 BPM per correct hit in standard mode (200 hits from 30 to 90)
+  public static readonly DELTA_ACCELERANDO_HIT = 0.2; // +0.2 BPM per correct hit in Accelerando mode
 
   public readonly isAccelerando: boolean;
   public readonly maxBpm: number;
@@ -60,7 +61,7 @@ export class SpeedController {
     this.notesHitSinceLastFailure++;
 
     if (this.isAccelerando) {
-      const nextBpm = Math.round((this.targetBpm + SpeedController.DELTA_HIT) * 10) / 10;
+      const nextBpm = Math.round((this.targetBpm + SpeedController.DELTA_ACCELERANDO_HIT) * 10) / 10;
       this.targetBpm = Math.min(this.maxBpm, nextBpm);
       if (this.rampElapsedSec >= SpeedController.RAMP_DURATION_SEC) {
         this.actualBpm = this.targetBpm;

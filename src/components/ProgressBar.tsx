@@ -21,7 +21,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ snapshot }) => {
       <div className="nnsr-progress-bar-container nnsr-progress-bar-accelerando" style={{ width: '840px' }}>
         <div className="nnsr-accelerando-progress-wrap">
           <div className="nnsr-accelerando-meta-row">
-            <div className="nnsr-accelerando-badge">⚡ ACCELERANDO PERPETUO</div>
+            <div className="nnsr-accelerando-badge">⚡ INFINITE SPEED-UP</div>
             <div className="nnsr-accelerando-tempo-display">
               <span className="nnsr-accelerando-start-tag">{startBpm} BPM</span>
               <span className="nnsr-accelerando-arrow">→</span>

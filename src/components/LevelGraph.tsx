@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getAllLevels } from '../curriculum/graph';
 import { getLedgerLines, getStemDirection } from '../music/notation';
 import { getStaffStepOffset } from '../music/pitch';
@@ -188,6 +188,7 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
   onOpenAccelerando,
 }) => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [isTrophyCelebrating, setIsTrophyCelebrating] = useState(false);
 
   // Auto-scroll to center the current level node on mount and when level changes
   useEffect(() => {
@@ -211,18 +212,26 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
 
   const isTrophyCompleted = completedLevelIds.has('both-12');
 
+  const handleTrophyClick = () => {
+    if (isTrophyCompleted) {
+      setIsTrophyCelebrating(true);
+      setTimeout(() => setIsTrophyCelebrating(false), 800);
+    }
+    onSelectLevel('both-12');
+  };
+
   // Generate directed arrows
   const arrows: React.JSX.Element[] = [];
 
-  // Arrow connecting both-12 (x=150, y=110) to Summit Trophy node (x=150, y=45)
+  // Clean upward arrow connecting both-12 (x=150, y=110) to the base of the standalone Trophy (base at y=62)
   arrows.push(
     <line
       key="arrow-both-trophy"
       x1={150}
       y1={110 - NODE_RADIUS}
       x2={150}
-      y2={45 + NODE_RADIUS + 4}
-      stroke={isTrophyCompleted ? 'var(--emerald)' : '#b0aba2'}
+      y2={68}
+      stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
       strokeWidth={1.8}
       markerEnd="url(#arrowhead)"
     />
@@ -351,46 +360,109 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
           {/* Render Edge Arrows */}
           <g className="nnsr-graph-arrows">{arrows}</g>
 
-          {/* Summit Trophy Node (X=150, Y=45) */}
+          {/* Summit Trophy Node: Standalone Vector Shape at Peak (No Circle) */}
           <g
-            className={`nnsr-graph-trophy-node ${isTrophyCompleted ? 'completed' : ''}`}
+            className={`nnsr-graph-trophy-node ${isTrophyCompleted ? 'completed' : ''} ${
+              isTrophyCelebrating ? 'celebrating' : ''
+            }`}
             aria-label="Grand Mastery Trophy"
             data-testid="summit-trophy-node"
+            role="button"
+            tabIndex={0}
+            onClick={handleTrophyClick}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleTrophyClick();
+              }
+            }}
+            style={{ cursor: 'pointer' }}
           >
-            {isTrophyCompleted && (
-              <circle
-                cx={150}
-                cy={45}
-                r={NODE_RADIUS + 4}
-                fill="none"
-                stroke="var(--gold-champagne)"
-                strokeWidth={2}
-                strokeDasharray="3 3"
-              />
-            )}
-            <circle
-              cx={150}
-              cy={45}
-              r={NODE_RADIUS}
-              fill={isTrophyCompleted ? 'var(--gold-champagne)' : '#ffffff'}
-              stroke={isTrophyCompleted ? 'var(--gold-primary)' : '#8c948f'}
-              strokeWidth={isTrophyCompleted ? 2.5 : 1.8}
+            {/* Left Handle */}
+            <path
+              d="M 136 21 C 122 21 122 34 136 36"
+              fill="none"
+              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+              strokeWidth={2.2}
+              strokeLinecap="round"
             />
-            {/* Trophy Icon */}
-            <g
-              transform="translate(138, 33) scale(0.048)"
-              fill={isTrophyCompleted ? '#183324' : '#8c948f'}
-            >
-              <path d="M400 32H112C85.5 32 64 53.5 64 80v32c0 70.6 57.4 128 128 128h16.2c16.3 35.5 48.7 61.9 87.8 70.3V384h-48c-17.7 0-32 14.3-32 32v32c0 17.7 14.3 32 32 32h192c17.7 0 32-14.3 32-32v-32c0-17.7-14.3-32-32-32h-48v-73.7c39.1-8.4 71.5-34.8 87.8-70.3H320c70.6 0 128-57.4 128-128V80c0-26.5-21.5-48-48-48zM96 112V80c0-8.8 7.2-16 16-16h32v96c-26.5 0-48-21.5-48-48zm320 0c0 26.5-21.5 48-48 48V64h32c8.8 0 16 7.2 16 16v32z" />
-            </g>
+            {/* Right Handle */}
+            <path
+              d="M 164 21 C 178 21 178 34 164 36"
+              fill="none"
+              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+              strokeWidth={2.2}
+              strokeLinecap="round"
+            />
+
+            {/* Cup Body */}
+            <path
+              d="M 135 18 L 135 27 C 135 37 143 43 150 43 C 157 43 165 37 165 27 L 165 18 Z"
+              fill={isTrophyCompleted ? '#e5c158' : '#ffffff'}
+              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+              strokeWidth={1.5}
+            />
+
+            {/* Top Rim */}
+            <rect
+              x={133}
+              y={15}
+              width={34}
+              height={3.5}
+              rx={1.5}
+              fill={isTrophyCompleted ? '#d4af37' : '#ffffff'}
+              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+              strokeWidth={1.2}
+            />
+
+            {/* Stem */}
+            <path
+              d="M 147 43 L 145 49 L 155 49 L 153 43 Z"
+              fill={isTrophyCompleted ? '#d4af37' : '#ffffff'}
+              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+              strokeWidth={1.2}
+            />
+
+            {/* Pedestal Plinth with SUMMIT engraving */}
+            <rect
+              x={131}
+              y={49}
+              width={38}
+              height={10}
+              rx={1.5}
+              fill={isTrophyCompleted ? '#d4af37' : '#ffffff'}
+              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+              strokeWidth={1.4}
+            />
+
+            {/* Base Foot */}
+            <rect
+              x={127}
+              y={59}
+              width={46}
+              height={3}
+              rx={1}
+              fill={isTrophyCompleted ? '#e5c158' : '#ffffff'}
+              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+              strokeWidth={1.2}
+            />
+
+            {/* Star Icon in Cup */}
+            <polygon
+              points="150,23 151.8,27.5 156.5,27.8 153,30.8 154.2,35.5 150,32.8 145.8,35.5 147,30.8 143.5,27.8 148.2,27.5"
+              fill={isTrophyCompleted ? '#ffffff' : '#8c948f'}
+            />
+
+            {/* SUMMIT Label */}
             <text
               x={150}
-              y={79}
+              y={56.5}
               textAnchor="middle"
-              fontSize="8.5px"
-              fontWeight="700"
-              fill={isTrophyCompleted ? 'var(--gold-primary)' : 'var(--ink-secondary)'}
-              letterSpacing="0.05em"
+              dominantBaseline="central"
+              fontSize="6.5px"
+              fontWeight="800"
+              letterSpacing="0.08em"
+              fill={isTrophyCompleted ? '#ffffff' : '#8c948f'}
             >
               SUMMIT
             </text>

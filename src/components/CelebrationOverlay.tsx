@@ -34,7 +34,7 @@ export const CelebrationOverlay: React.FC<CelebrationOverlayProps> = ({
                 onAccelerandoContinue();
               }}
             >
-              Continue in Accelerando Perpetuo →
+              Infinite Speed-Up →
             </button>
           )}
         </div>

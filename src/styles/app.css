@@ -14,69 +14,75 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Classical Concert Hall Header (Option A) */
+/* Modern Minimalist Classical Header */
 .nnsr-header {
   height: var(--header-height);
   background: var(--header-bg);
-  border-bottom: 2px solid var(--gold-primary);
+  border-bottom: 1px solid var(--border-warm);
   color: var(--header-text);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32px;
-  box-shadow: 0 4px 16px rgba(24, 51, 36, 0.3), 0 1px 0 rgba(212, 175, 55, 0.4);
+  padding: 0 28px;
   position: relative;
   z-index: 10;
 }
 
-.nnsr-header-side {
-  flex: 1;
+.nnsr-header-brand {
   display: flex;
   align-items: center;
+  gap: 12px;
 }
 
-.nnsr-header-left {
-  justify-content: flex-start;
-}
-
-.nnsr-header-right {
-  justify-content: flex-end;
-}
-
-.nnsr-header-center {
-  flex: 2;
-  text-align: center;
+.nnsr-header-logo {
+  display: block;
+  flex-shrink: 0;
 }
 
 .nnsr-header-title {
   font-family: var(--font-serif);
   font-weight: 600;
-  font-size: 1.48rem;
-  letter-spacing: 0.035em;
+  font-size: 1.35rem;
+  letter-spacing: 0.025em;
   color: var(--header-text);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  margin: 0;
+  line-height: 1;
 }
 
-/* Frosted Glass MIDI Badge - High Contrast Crisp Text (No Black Text) */
+/* Clean, flat MIDI Status Badge */
 .nnsr-header-midi {
-  font-size: 0.88rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
   font-weight: 500;
   color: var(--header-text);
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(229, 193, 88, 0.45);
-  padding: 6px 16px;
-  border-radius: 20px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 5px 14px;
+  border-radius: 9999px;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }
 
-.nnsr-header-midi em {
-  font-style: italic;
+.nnsr-midi-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.nnsr-midi-dot.connected {
+  background-color: var(--emerald);
+}
+
+.nnsr-midi-dot.disconnected {
+  background-color: #8c948f;
+}
+
+.nnsr-midi-prefix {
   font-weight: 700;
   color: var(--gold-champagne);
-  margin-right: 6px;
+  margin-right: 4px;
 }
 
 /* Main Workspace */
@@ -97,17 +103,16 @@ body {
   gap: 12px;
 }
 
-/* Accelerando Perpetuo Active Banner */
+/* Infinite Speed-Up Active Banner */
 .nnsr-accelerando-banner {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(90deg, #183324 0%, #234732 100%);
+  background: #183324;
   border: 1px solid var(--gold-primary);
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 8px 16px;
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(24, 51, 36, 0.2);
 }
 
 .nnsr-accelerando-banner-left {
@@ -155,14 +160,13 @@ body {
   border-color: #ffffff;
 }
 
-/* Grand Staff Container - Obsidian/Charcoal Borders */
+/* Grand Staff Container - Clean Hairline Border */
 .nnsr-staff-container {
   width: var(--main-column-width);
   height: 280px;
   background-color: var(--surface-paper);
-  border: 1.5px solid var(--border-charcoal);
-  border-radius: 8px;
-  box-shadow: 0 3px 10px rgba(35, 43, 38, 0.06);
+  border: 1px solid var(--border-warm);
+  border-radius: 6px;
   overflow: hidden;
   position: relative;
 }
@@ -173,15 +177,14 @@ body {
   display: block;
 }
 
-/* Progress Bar - Obsidian/Charcoal Borders */
+/* Progress Bar - Clean Hairline Border */
 .nnsr-progress-bar-container {
   display: flex;
   height: 32px;
   background-color: var(--surface-paper);
-  border: 1.5px solid var(--border-charcoal);
+  border: 1px solid var(--border-warm);
   border-radius: 6px;
   overflow: hidden;
-  box-shadow: 0 2px 6px rgba(35, 43, 38, 0.04);
 }
 
 .nnsr-progress-section {
@@ -309,13 +312,12 @@ body {
   height: 9px;
 }
 
-/* Piano Keyboard - Obsidian/Charcoal Borders */
+/* Piano Keyboard - Clean Hairline Border */
 .nnsr-piano-container {
-  border: 1.5px solid var(--border-charcoal);
-  border-radius: 8px;
+  border: 1px solid var(--border-warm);
+  border-radius: 6px;
   overflow: hidden;
   background-color: var(--surface-paper);
-  box-shadow: 0 3px 10px rgba(35, 43, 38, 0.06);
 }
 
 /* Level Graph Sidebar */
@@ -327,9 +329,8 @@ body {
   width: var(--level-graph-width);
   height: calc(100vh - var(--header-height) - 48px);
   background-color: var(--surface-paper);
-  border: 1.5px solid var(--border-charcoal);
-  border-radius: 8px;
-  box-shadow: 0 3px 10px rgba(35, 43, 38, 0.06);
+  border: 1px solid var(--border-warm);
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -343,7 +344,7 @@ body {
   font-weight: 700;
   font-size: 0.82rem;
   color: var(--ink-primary);
-  border-bottom: 1.5px solid var(--border-charcoal);
+  border-bottom: 1px solid var(--border-warm);
   flex-shrink: 0;
   letter-spacing: 0.04em;
 }
@@ -374,13 +375,23 @@ body {
   stroke: var(--emerald);
 }
 
-/* Special Graph Nodes (Trophy & Octagon) */
-.nnsr-graph-trophy-node circle {
-  transition: all 0.2s ease;
+/* Special Graph Nodes: Standalone Summit Trophy & Octagon */
+.nnsr-graph-trophy-node {
+  transition: transform 0.2s ease;
 }
 
-.nnsr-graph-trophy-node.completed circle {
-  filter: drop-shadow(0 2px 8px rgba(212, 175, 55, 0.35));
+.nnsr-graph-trophy-node:hover {
+  transform: translateY(-2px);
+}
+
+.nnsr-graph-trophy-node.celebrating {
+  animation: trophyBounce 0.4s ease-in-out;
+}
+
+@keyframes trophyBounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08) translateY(-3px); }
+  100% { transform: scale(1); }
 }
 
 .nnsr-graph-octagon-node polygon {
@@ -390,30 +401,26 @@ body {
 .nnsr-graph-octagon-node:hover polygon {
   stroke: var(--gold-primary);
   fill: #fdfbf7;
-  filter: drop-shadow(0 2px 8px rgba(212, 175, 55, 0.3));
 }
 
 /* Celebration Overlay */
 .nnsr-celebration-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(24, 51, 36, 0.72);
+  background-color: rgba(24, 51, 36, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 .nnsr-celebration-card {
   background-color: var(--surface-paper);
-  padding: 38px 48px;
-  border-radius: 16px;
-  border: 2px solid var(--gold-primary);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(212, 175, 55, 0.3);
+  padding: 36px 44px;
+  border-radius: 12px;
+  border: 1px solid var(--gold-primary);
   text-align: center;
-  max-width: 520px;
+  max-width: 500px;
   width: 90%;
 }
 
@@ -456,97 +463,74 @@ body {
 .nnsr-celebration-button {
   background-color: var(--emerald);
   color: #ffffff;
-  border: none;
+  border: 1px solid var(--emerald);
   font-weight: 700;
-  font-size: 0.96rem;
-  padding: 11px 22px;
-  border-radius: 8px;
+  font-size: 0.95rem;
+  padding: 10px 22px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: transform 0.1s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 2px 6px rgba(82, 183, 136, 0.3);
+  transition: background-color 0.15s ease;
 }
 
 .nnsr-celebration-button:hover {
   background-color: #40916c;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(82, 183, 136, 0.4);
 }
 
 .nnsr-celebration-button-accelerando {
-  background: linear-gradient(135deg, #183324 0%, #254a34 100%);
+  background: #183324;
   color: var(--gold-champagne);
-  border: 1.5px solid var(--gold-primary);
-  box-shadow: 0 2px 8px rgba(24, 51, 36, 0.25);
+  border: 1px solid var(--gold-primary);
 }
 
 .nnsr-celebration-button-accelerando:hover {
-  background: #183324;
+  background: #254a34;
   color: #ffffff;
-  border-color: var(--gold-champagne);
-  transform: translateY(-1px);
 }
 
-/* Accelerando Setup Modal */
+/* Streamlined Infinite Speed-Up Modal */
 .nnsr-modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(24, 51, 36, 0.72);
+  background-color: rgba(24, 51, 36, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 .nnsr-modal-card {
   background-color: var(--surface-paper);
-  border-radius: 14px;
-  border: 2px solid var(--border-charcoal);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--gold-primary);
+  border-radius: 10px;
+  border: 1px solid var(--border-warm);
   max-width: 820px;
   width: 95%;
   max-height: 90vh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: 24px 28px;
-  gap: 20px;
+  padding: 20px 24px;
+  gap: 16px;
 }
 
 .nnsr-modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   border-bottom: 1px solid var(--surface-subtle);
-  padding-bottom: 12px;
-}
-
-.nnsr-modal-badge {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: var(--gold-primary);
-  margin-bottom: 4px;
-  display: inline-block;
+  padding-bottom: 10px;
 }
 
 .nnsr-modal-title {
   font-family: var(--font-serif);
-  font-size: 1.55rem;
+  font-size: 1.4rem;
+  font-weight: 600;
   color: var(--ink-primary);
-  margin-bottom: 4px;
-}
-
-.nnsr-modal-desc {
-  font-size: 0.88rem;
-  color: var(--ink-secondary);
 }
 
 .nnsr-modal-close {
   background: none;
   border: none;
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   color: var(--ink-secondary);
   cursor: pointer;
   padding: 4px 8px;
@@ -559,69 +543,47 @@ body {
   background: var(--surface-subtle);
 }
 
-.nnsr-modal-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.nnsr-section-header-row {
+/* Minimal Toolbar: Scale Picker & Note Count */
+.nnsr-modal-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.nnsr-scale-picker {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.nnsr-section-title {
-  font-size: 0.95rem;
+.nnsr-scale-label {
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--ink-primary);
-  letter-spacing: 0.02em;
 }
 
-.nnsr-instruction-subtext {
-  font-size: 0.8rem;
-  color: var(--ink-secondary);
-  font-style: italic;
-}
-
-.nnsr-preset-buttons {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.nnsr-preset-btn {
-  background: var(--surface-subtle);
-  border: 1px solid rgba(35, 43, 38, 0.2);
-  color: var(--ink-primary);
-  font-size: 0.76rem;
+.nnsr-scale-select {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
   font-weight: 600;
-  padding: 4px 10px;
+  color: var(--ink-primary);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-warm);
   border-radius: 4px;
+  padding: 4px 10px;
   cursor: pointer;
-  transition: all 0.12s ease;
 }
 
-.nnsr-preset-btn:hover {
-  background: #ffffff;
-  border-color: var(--emerald);
-  color: var(--emerald);
-}
-
-.nnsr-preset-clear {
-  color: var(--vibrant-coral);
-}
-
-.nnsr-preset-clear:hover {
-  border-color: var(--vibrant-coral);
-  color: var(--vibrant-coral);
+.nnsr-modal-note-count {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-secondary);
 }
 
 .nnsr-modal-staff-container {
   background: var(--surface-paper);
-  border: 1px solid rgba(35, 43, 38, 0.18);
+  border: 1px solid rgba(35, 43, 38, 0.2);
   border-radius: 6px;
   padding: 6px;
 }
@@ -630,34 +592,28 @@ body {
   width: 100%;
   overflow-x: auto;
   border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .nnsr-modal-piano-wrap .nnsr-piano-container {
   margin: 0 auto;
 }
 
-.nnsr-best-bpm-tag {
-  font-size: 0.82rem;
-  color: var(--ink-secondary);
+/* Simple Tempo Controls */
+.nnsr-tempo-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
   background: var(--surface-subtle);
-  padding: 4px 10px;
+  padding: 10px 16px;
   border-radius: 6px;
   border: 1px solid rgba(35, 43, 38, 0.15);
 }
 
-.nnsr-best-bpm-tag strong {
-  color: var(--gold-primary);
-}
-
-.nnsr-tempo-controls {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background: var(--surface-subtle);
-  padding: 14px 18px;
-  border-radius: 8px;
-  border: 1px solid rgba(35, 43, 38, 0.15);
+.nnsr-tempo-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+  white-space: nowrap;
 }
 
 .nnsr-tempo-slider-wrap {
@@ -677,29 +633,30 @@ body {
 }
 
 .nnsr-tempo-number-input {
-  width: 76px;
-  font-size: 1.15rem;
+  width: 64px;
+  font-size: 1rem;
   font-weight: 700;
   text-align: center;
   color: var(--ink-primary);
-  padding: 6px 8px;
-  border: 1.5px solid var(--border-charcoal);
-  border-radius: 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--border-warm);
+  border-radius: 4px;
   background: #ffffff;
 }
 
 .nnsr-tempo-unit {
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   color: var(--ink-secondary);
 }
 
+/* Modal Footer Actions */
 .nnsr-modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 10px;
   border-top: 1px solid var(--surface-subtle);
-  padding-top: 14px;
+  padding-top: 12px;
 }
 
 .nnsr-modal-cancel-btn {
@@ -707,8 +664,8 @@ body {
   border: 1px solid rgba(35, 43, 38, 0.25);
   color: var(--ink-secondary);
   font-weight: 600;
-  font-size: 0.9rem;
-  padding: 9px 18px;
+  font-size: 0.88rem;
+  padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
 }
@@ -719,23 +676,20 @@ body {
 }
 
 .nnsr-modal-start-btn {
-  background: linear-gradient(135deg, #183324 0%, #254a34 100%);
+  background: #183324;
   color: var(--gold-champagne);
-  border: 1.5px solid var(--gold-primary);
+  border: 1px solid var(--gold-primary);
   font-weight: 700;
-  font-size: 0.95rem;
-  padding: 10px 24px;
+  font-size: 0.9rem;
+  padding: 8px 22px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
-  box-shadow: 0 2px 8px rgba(24, 51, 36, 0.25);
 }
 
 .nnsr-modal-start-btn:hover:not(:disabled) {
-  background: #183324;
+  background: #254a34;
   color: #ffffff;
-  border-color: var(--gold-champagne);
-  transform: translateY(-1px);
 }
 
 .nnsr-modal-start-btn:disabled {

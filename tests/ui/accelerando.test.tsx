@@ -9,7 +9,7 @@ import { useAppStore, STORAGE_KEY } from '../../src/store/useAppStore';
 import { EngineSnapshot } from '../../src/types/engine';
 import { createTarget } from '../../src/music/pitch';
 
-describe('Accelerando Perpetuo UI Components & Flow', () => {
+describe('Infinite Speed-Up UI Components & Flow', () => {
   beforeEach(() => {
     window.localStorage.clear();
     useAppStore.setState({
@@ -21,8 +21,8 @@ describe('Accelerando Perpetuo UI Components & Flow', () => {
     });
   });
 
-  describe('CelebrationOverlay Accelerando Option', () => {
-    it('renders "Continue in Accelerando Perpetuo →" next to "Next Level →"', () => {
+  describe('CelebrationOverlay Infinite Speed-Up Option', () => {
+    it('renders "Infinite Speed-Up →" next to "Next Level →"', () => {
       const level = getLevelById('treble-1');
       const onContinue = vi.fn();
       const onAccelerando = vi.fn();
@@ -38,7 +38,7 @@ describe('Accelerando Perpetuo UI Components & Flow', () => {
       const nextBtn = screen.getByText('Next Level →');
       expect(nextBtn).toBeDefined();
 
-      const accelBtn = screen.getByText('Continue in Accelerando Perpetuo →');
+      const accelBtn = screen.getByText('Infinite Speed-Up →');
       expect(accelBtn).toBeDefined();
 
       fireEvent.click(accelBtn);
@@ -110,7 +110,7 @@ describe('Accelerando Perpetuo UI Components & Flow', () => {
     });
   });
 
-  describe('ProgressBar in Accelerando Mode', () => {
+  describe('ProgressBar in Infinite Speed-Up Mode', () => {
     it('displays tempo progression from starting tempo to 240 BPM', () => {
       const mockSnapshot: EngineSnapshot = {
         levelId: 'treble-1',
@@ -133,7 +133,7 @@ describe('Accelerando Perpetuo UI Components & Flow', () => {
       };
 
       render(<ProgressBar snapshot={mockSnapshot} />);
-      expect(screen.getByText('⚡ ACCELERANDO PERPETUO')).toBeDefined();
+      expect(screen.getByText('⚡ INFINITE SPEED-UP')).toBeDefined();
       expect(screen.getByText('40 BPM')).toBeDefined();
       expect(screen.getByText('240 BPM')).toBeDefined();
       expect(screen.getByText('60.0')).toBeDefined();
@@ -194,7 +194,7 @@ describe('Accelerando Perpetuo UI Components & Flow', () => {
       expect(screen.getByText(/2 selected/)).toBeDefined();
 
       // Click Start button
-      const startBtn = screen.getByText(/Start Accelerando Perpetuo/);
+      const startBtn = screen.getByRole('button', { name: 'Start' });
       fireEvent.click(startBtn);
 
       expect(onStart).toHaveBeenCalledWith(
@@ -204,6 +204,28 @@ describe('Accelerando Perpetuo UI Components & Flow', () => {
         ]),
         45 // 10% below 50 BPM = 45 BPM
       );
+    });
+
+    it('populates scale notes when selecting a scale from the scale picker', () => {
+      render(
+        <AccelerandoModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onStart={vi.fn()}
+          bestAccelerandoBpm={null}
+        />
+      );
+
+      const scaleSelect = screen.getByLabelText('Scale Selector') as HTMLSelectElement;
+      expect(scaleSelect.value).toBe('C_MAJOR');
+
+      // Change scale to G Major (1♯)
+      fireEvent.change(scaleSelect, { target: { value: 'G_MAJOR' } });
+      expect(scaleSelect.value).toBe('G_MAJOR');
+
+      // G Major includes F#4
+      const toggleFSharp = screen.getByLabelText('Toggle treble:F#4');
+      expect(toggleFSharp).toBeDefined();
     });
   });
 
