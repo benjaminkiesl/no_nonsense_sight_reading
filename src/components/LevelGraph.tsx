@@ -452,20 +452,6 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
               points="150,23 151.8,27.5 156.5,27.8 153,30.8 154.2,35.5 150,32.8 145.8,35.5 147,30.8 143.5,27.8 148.2,27.5"
               fill={isTrophyCompleted ? '#1f2421' : '#8c948f'}
             />
-
-            {/* SUMMIT Label */}
-            <text
-              x={150}
-              y={56.5}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize="6.5px"
-              fontWeight="800"
-              letterSpacing="0.08em"
-              fill={isTrophyCompleted ? '#1f2421' : '#8c948f'}
-            >
-              SUMMIT
-            </text>
           </g>
 
           {/* Accelerando Perpetuo Octagon Node (X=65, Y=65) */}
@@ -517,17 +503,6 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
               {/* Center Hub */}
               <circle cx="0" cy="3" r="2.5" fill="#1f2421" />
             </g>
-            <text
-              x={65}
-              y={98}
-              textAnchor="middle"
-              fontSize="7.5px"
-              fontWeight="700"
-              fill="var(--ink-secondary)"
-              letterSpacing="0.04em"
-            >
-              PERPETUO
-            </text>
           </g>
 
           {/* Render Curriculum Level Nodes */}

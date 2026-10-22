@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 
 export interface ActiveKeyHighlight {
   midi: number;
@@ -6,7 +6,8 @@ export interface ActiveKeyHighlight {
 }
 
 export interface PianoKeyboardProps {
-  onKeyPress: (midi: number) => void;
+  onKeyPress?: (midi: number) => void;
+  onKeyDragChange?: (midi: number, mode: 'select' | 'deselect') => void;
   activeHighlights: readonly ActiveKeyHighlight[];
 }
 
@@ -71,7 +72,25 @@ function generatePianoKeys(): {
 
 const { whiteKeys: PIANO_WHITE_KEYS, blackKeys: PIANO_BLACK_KEYS } = generatePianoKeys();
 
-export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onKeyPress, activeHighlights }) => {
+export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
+  onKeyPress,
+  onKeyDragChange,
+  activeHighlights,
+}) => {
+  const dragModeRef = useRef<'select' | 'deselect' | null>(null);
+
+  useEffect(() => {
+    const handlePointerUp = () => {
+      dragModeRef.current = null;
+    };
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, []);
+
   const highlightMap = new Map<number, 'correct' | 'wrong' | 'neutral'>();
   for (const h of activeHighlights) {
     highlightMap.set(h.midi, h.status);
@@ -85,6 +104,23 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onKeyPress, active
     if (status === 'wrong') return 'var(--vibrant-coral)';
     if (status === 'neutral') return 'var(--jasmine)';
     return isBlack ? '#1f2421' : '#ffffff';
+  };
+
+  const handleKeyDown = (midi: number) => {
+    if (onKeyDragChange) {
+      const isSelected = highlightMap.get(midi) === 'correct';
+      const mode: 'select' | 'deselect' = isSelected ? 'deselect' : 'select';
+      dragModeRef.current = mode;
+      onKeyDragChange(midi, mode);
+    } else if (onKeyPress) {
+      onKeyPress(midi);
+    }
+  };
+
+  const handleKeyEnter = (midi: number) => {
+    if (dragModeRef.current && onKeyDragChange) {
+      onKeyDragChange(midi, dragModeRef.current);
+    }
   };
 
   return (
@@ -106,8 +142,9 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onKeyPress, active
               key={`white-${key.midi}`}
               onPointerDown={(e) => {
                 e.preventDefault();
-                onKeyPress(key.midi);
+                handleKeyDown(key.midi);
               }}
+              onPointerEnter={() => handleKeyEnter(key.midi)}
               style={{ cursor: 'pointer' }}
             >
               <rect
@@ -150,8 +187,9 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onKeyPress, active
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onKeyPress(key.midi);
+                handleKeyDown(key.midi);
               }}
+              onPointerEnter={() => handleKeyEnter(key.midi)}
               style={{ cursor: 'pointer' }}
             />
           );

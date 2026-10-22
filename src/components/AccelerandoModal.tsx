@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { getLedgerLines, getStemDirection } from '../music/notation';
 import { createTarget, getStaffStepOffset } from '../music/pitch';
 import { KEY_SIGNATURES, KeySignatureId } from '../music/scales';
 import { Clef, LetterName, Octave, StaffNoteTarget } from '../types/music';
 import { ActiveKeyHighlight, PianoKeyboard } from './PianoKeyboard';
+import { useAppStore } from '../store/useAppStore';
 
 export interface AccelerandoModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ export interface AccelerandoModalProps {
   onStart: (selectedNotes: StaffNoteTarget[], startingBpm: number) => void;
   bestAccelerandoBpm: number | null;
   initialLevelNotes?: readonly StaffNoteTarget[];
+  lastCustomNotes?: readonly StaffNoteTarget[] | null;
 }
 
 // Full Treble range from A3 below Middle C up to C6
@@ -140,35 +142,61 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
   onStart,
   bestAccelerandoBpm,
   initialLevelNotes,
+  lastCustomNotes,
 }) => {
-  // Default starting tempo: 10% below previous best BPM, or 40 BPM if no best recorded
+  const storedLastCustomNotes = useAppStore((state) => state.lastCustomAccelerandoNotes);
+  const setLastCustomAccelerandoNotes = useAppStore((state) => state.setLastCustomAccelerandoNotes);
+  const effectiveLastCustomNotes =
+    lastCustomNotes !== undefined ? lastCustomNotes : storedLastCustomNotes;
+
+  // Default starting tempo: 10% below previous best BPM, or 20 BPM if no best recorded
   const computedDefaultBpm = useMemo(() => {
     if (bestAccelerandoBpm && bestAccelerandoBpm > 0) {
       return Math.max(15, Math.min(240, Math.round(bestAccelerandoBpm * 0.9)));
     }
-    return 40;
+    return 20;
   }, [bestAccelerandoBpm]);
 
   const [startingBpm, setStartingBpm] = useState<number>(computedDefaultBpm);
   const [selectedScale, setSelectedScale] = useState<KeySignatureId>('C_MAJOR');
   const [selectedTargets, setSelectedTargets] = useState<StaffNoteTarget[]>(() => {
+    if (effectiveLastCustomNotes && effectiveLastCustomNotes.length > 0) {
+      return [...effectiveLastCustomNotes];
+    }
     if (initialLevelNotes && initialLevelNotes.length > 0) {
       return [...initialLevelNotes];
     }
     return getScaleTargets('C_MAJOR');
   });
 
+  const staffDragModeRef = useRef<'select' | 'deselect' | null>(null);
+  const handledByPointerRef = useRef(false);
+
+  useEffect(() => {
+    const handlePointerUp = () => {
+      staffDragModeRef.current = null;
+    };
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, []);
+
   // Re-sync startingBpm and notes whenever modal opens
   useEffect(() => {
     if (isOpen) {
       setStartingBpm(computedDefaultBpm);
-      if (initialLevelNotes && initialLevelNotes.length > 0) {
+      if (effectiveLastCustomNotes && effectiveLastCustomNotes.length > 0) {
+        setSelectedTargets([...effectiveLastCustomNotes]);
+      } else if (initialLevelNotes && initialLevelNotes.length > 0) {
         setSelectedTargets([...initialLevelNotes]);
       } else {
         setSelectedTargets(getScaleTargets(selectedScale));
       }
     }
-  }, [isOpen, computedDefaultBpm, initialLevelNotes]);
+  }, [isOpen, computedDefaultBpm, effectiveLastCustomNotes, initialLevelNotes]);
 
   const handleScaleChange = useCallback((scale: KeySignatureId) => {
     setSelectedScale(scale);
@@ -206,6 +234,34 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
     []
   );
 
+  const applyStaffSlotMode = useCallback(
+    (target: StaffNoteTarget, mode: 'select' | 'deselect') => {
+      setSelectedTargets((prev) => {
+        const exists = prev.some(
+          (t) =>
+            t.clef === target.clef &&
+            t.pitch.letter === target.pitch.letter &&
+            t.pitch.octave === target.pitch.octave
+        );
+        if (mode === 'select') {
+          if (exists) return prev;
+          return [...prev, target];
+        } else {
+          if (!exists) return prev;
+          return prev.filter(
+            (t) =>
+              !(
+                t.clef === target.clef &&
+                t.pitch.letter === target.pitch.letter &&
+                t.pitch.octave === target.pitch.octave
+              )
+          );
+        }
+      });
+    },
+    []
+  );
+
   // Keyboard note toggle: keeps staff slots and keyboard keys derived from the exact same state
   const handlePianoKeyPress = useCallback(
     (midi: number) => {
@@ -229,6 +285,29 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
       }
     },
     [selectedTargets, selectedScale]
+  );
+
+  const handlePianoKeyDrag = useCallback(
+    (midi: number, mode: 'select' | 'deselect') => {
+      if (mode === 'deselect') {
+        setSelectedTargets((prev) => prev.filter((t) => t.pitch.midi !== midi));
+      } else {
+        const newTargets = getTargetsForMidi(midi, selectedScale);
+        setSelectedTargets((prev) => {
+          const filtered = prev.filter(
+            (existing) =>
+              !newTargets.some(
+                (nt) =>
+                  nt.clef === existing.clef &&
+                  nt.pitch.letter === existing.pitch.letter &&
+                  nt.pitch.octave === existing.pitch.octave
+              )
+          );
+          return [...filtered, ...newTargets];
+        });
+      }
+    },
+    [selectedScale]
   );
 
   // Build displayed staff slots directly from selectedTargets + selectedScale fallback
@@ -280,6 +359,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
 
   const handleStart = () => {
     if (selectedTargets.length === 0) return;
+    setLastCustomAccelerandoNotes([...selectedTargets]);
     onStart(selectedTargets, startingBpm);
   };
 
@@ -339,27 +419,43 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
         {/* Interactive Grand Staff SVG */}
         <div className="nnsr-modal-staff-container">
           <svg
-            viewBox="0 0 780 230"
+            viewBox="0 0 780 250"
             width="100%"
-            height="230"
+            height="250"
             style={{ display: 'block', userSelect: 'none' }}
           >
             {/* Grand Staff Lines */}
-            {[35, 45, 55, 65, 75].map((y) => (
+            {[55, 65, 75, 85, 95].map((y) => (
               <line key={`t-line-${y}`} x1={30} y1={y} x2={760} y2={y} stroke="#2c332f" strokeWidth={1} />
             ))}
-            {[145, 155, 165, 175, 185].map((y) => (
+            {[165, 175, 185, 195, 205].map((y) => (
               <line key={`b-line-${y}`} x1={30} y1={y} x2={760} y2={y} stroke="#2c332f" strokeWidth={1} />
             ))}
 
             {/* Vertical connector bar */}
-            <line x1={30} y1={35} x2={30} y2={185} stroke="#2c332f" strokeWidth={1.5} />
+            <line x1={30} y1={55} x2={30} y2={205} stroke="#2c332f" strokeWidth={1.5} />
 
-            {/* Clef symbols */}
-            <text x={45} y={58} fontSize="34px" fontFamily="serif" textAnchor="middle" fill="#1f2421">
+            {/* Clef symbols accurately centered on their defining lines */}
+            <text
+              x={45}
+              y={87}
+              fontSize="44px"
+              fontFamily="serif"
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="#1f2421"
+            >
               𝄞
             </text>
-            <text x={45} y={155} fontSize="26px" fontFamily="serif" textAnchor="middle" fill="#1f2421">
+            <text
+              x={45}
+              y={175}
+              fontSize="32px"
+              fontFamily="serif"
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="#1f2421"
+            >
               𝄢
             </text>
 
@@ -368,7 +464,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
               <>
                 {keySigSpec.trebleStepOffsets.map((offset, idx) => {
                   const x = 58 + idx * 10;
-                  const ny = 75 - offset * 5;
+                  const ny = 95 - offset * 5;
                   return (
                     <text
                       key={`t-ks-${idx}`}
@@ -386,7 +482,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                 })}
                 {keySigSpec.bassStepOffsets.map((offset, idx) => {
                   const x = 58 + idx * 10;
-                  const ny = 185 - offset * 5;
+                  const ny = 205 - offset * 5;
                   return (
                     <text
                       key={`b-ks-${idx}`}
@@ -408,7 +504,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
             {/* Treble Staff Notes (A3 to C6 across top staff) */}
             {trebleStaffSlots.map(({ target, isSelected }, i) => {
               const stepOffset = getStaffStepOffset(target.pitch, 'treble');
-              const bottomY = 75;
+              const bottomY = 95;
               const stepScale = 5;
               const ny = bottomY - stepOffset * stepScale;
               const nx = 88 + i * 38;
@@ -418,13 +514,33 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                 target.pitch.letter +
                 (target.pitch.accidental === 1 ? '♯' : target.pitch.accidental === -1 ? '♭' : '');
 
+              const noteColor = isSelected ? 'var(--emerald)' : '#8c948f';
+
               return (
                 <g
                   key={`treble-slot-${target.pitch.letter}-${target.pitch.octave}`}
                   role="button"
                   tabIndex={0}
                   aria-label={`Toggle ${target.targetId}`}
-                  onClick={() => toggleStaffSlot(target, isSelected)}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    const mode = isSelected ? 'deselect' : 'select';
+                    staffDragModeRef.current = mode;
+                    handledByPointerRef.current = true;
+                    applyStaffSlotMode(target, mode);
+                  }}
+                  onPointerEnter={() => {
+                    if (staffDragModeRef.current) {
+                      applyStaffSlotMode(target, staffDragModeRef.current);
+                    }
+                  }}
+                  onClick={() => {
+                    if (handledByPointerRef.current) {
+                      handledByPointerRef.current = false;
+                      return;
+                    }
+                    toggleStaffSlot(target, isSelected);
+                  }}
                   style={{ cursor: 'pointer' }}
                   className="nnsr-staff-clickable-note"
                 >
@@ -444,7 +560,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                         y1={ly}
                         x2={nx + 9}
                         y2={ly}
-                        stroke={isSelected ? 'var(--emerald)' : '#8c948f'}
+                        stroke={noteColor}
                         strokeWidth={1.2}
                       />
                     );
@@ -456,15 +572,15 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     ry={3.8}
                     transform={`rotate(-20 ${nx} ${ny})`}
                     fill={isSelected ? 'var(--emerald)' : 'rgba(44, 51, 47, 0.12)'}
-                    stroke={isSelected ? '#1f2421' : '#8c948f'}
-                    strokeWidth={isSelected ? 1.5 : 1}
+                    stroke={noteColor}
+                    strokeWidth={1.5}
                   />
                   <line
-                    x1={stemDir === 'up' ? nx + 4.5 : nx - 4.5}
-                    y1={ny}
-                    x2={stemDir === 'up' ? nx + 4.5 : nx - 4.5}
+                    x1={stemDir === 'up' ? nx + 4.8 : nx - 4.8}
+                    y1={stemDir === 'up' ? ny - 1 : ny + 1}
+                    x2={stemDir === 'up' ? nx + 4.8 : nx - 4.8}
                     y2={stemDir === 'up' ? ny - 20 : ny + 20}
-                    stroke={isSelected ? '#1f2421' : '#8c948f'}
+                    stroke={noteColor}
                     strokeWidth={1.2}
                   />
                   <text
@@ -473,7 +589,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     textAnchor="middle"
                     fontSize="9.5px"
                     fontWeight={isSelected ? '700' : '500'}
-                    fill={isSelected ? '#1f2421' : '#8c948f'}
+                    fill={noteColor}
                   >
                     {displayLetter}
                   </text>
@@ -484,7 +600,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
             {/* Bass Staff Notes (C2 to E4 across bottom staff) */}
             {bassStaffSlots.map(({ target, isSelected }, i) => {
               const stepOffset = getStaffStepOffset(target.pitch, 'bass');
-              const bottomY = 185;
+              const bottomY = 205;
               const stepScale = 5;
               const ny = bottomY - stepOffset * stepScale;
               const nx = 88 + i * 38;
@@ -494,13 +610,33 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                 target.pitch.letter +
                 (target.pitch.accidental === 1 ? '♯' : target.pitch.accidental === -1 ? '♭' : '');
 
+              const noteColor = isSelected ? 'var(--emerald)' : '#8c948f';
+
               return (
                 <g
                   key={`bass-slot-${target.pitch.letter}-${target.pitch.octave}`}
                   role="button"
                   tabIndex={0}
                   aria-label={`Toggle ${target.targetId}`}
-                  onClick={() => toggleStaffSlot(target, isSelected)}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    const mode = isSelected ? 'deselect' : 'select';
+                    staffDragModeRef.current = mode;
+                    handledByPointerRef.current = true;
+                    applyStaffSlotMode(target, mode);
+                  }}
+                  onPointerEnter={() => {
+                    if (staffDragModeRef.current) {
+                      applyStaffSlotMode(target, staffDragModeRef.current);
+                    }
+                  }}
+                  onClick={() => {
+                    if (handledByPointerRef.current) {
+                      handledByPointerRef.current = false;
+                      return;
+                    }
+                    toggleStaffSlot(target, isSelected);
+                  }}
                   style={{ cursor: 'pointer' }}
                   className="nnsr-staff-clickable-note"
                 >
@@ -520,7 +656,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                         y1={ly}
                         x2={nx + 9}
                         y2={ly}
-                        stroke={isSelected ? 'var(--emerald)' : '#8c948f'}
+                        stroke={noteColor}
                         strokeWidth={1.2}
                       />
                     );
@@ -532,15 +668,15 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     ry={3.8}
                     transform={`rotate(-20 ${nx} ${ny})`}
                     fill={isSelected ? 'var(--emerald)' : 'rgba(44, 51, 47, 0.12)'}
-                    stroke={isSelected ? '#1f2421' : '#8c948f'}
-                    strokeWidth={isSelected ? 1.5 : 1}
+                    stroke={noteColor}
+                    strokeWidth={1.5}
                   />
                   <line
-                    x1={stemDir === 'up' ? nx + 4.5 : nx - 4.5}
-                    y1={ny}
-                    x2={stemDir === 'up' ? nx + 4.5 : nx - 4.5}
+                    x1={stemDir === 'up' ? nx + 4.8 : nx - 4.8}
+                    y1={stemDir === 'up' ? ny - 1 : ny + 1}
+                    x2={stemDir === 'up' ? nx + 4.8 : nx - 4.8}
                     y2={stemDir === 'up' ? ny - 20 : ny + 20}
-                    stroke={isSelected ? '#1f2421' : '#8c948f'}
+                    stroke={noteColor}
                     strokeWidth={1.2}
                   />
                   <text
@@ -549,7 +685,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     textAnchor="middle"
                     fontSize="9.5px"
                     fontWeight={isSelected ? '700' : '500'}
-                    fill={isSelected ? '#1f2421' : '#8c948f'}
+                    fill={noteColor}
                   >
                     {displayLetter}
                   </text>
@@ -563,6 +699,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
         <div className="nnsr-modal-piano-wrap">
           <PianoKeyboard
             onKeyPress={handlePianoKeyPress}
+            onKeyDragChange={handlePianoKeyDrag}
             activeHighlights={activeHighlights}
           />
         </div>
@@ -576,9 +713,9 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
             <input
               id="nnsr-start-bpm-slider"
               type="range"
-              min={20}
-              max={200}
-              step={5}
+              min={15}
+              max={240}
+              step={1}
               value={startingBpm}
               onChange={(e) => setStartingBpm(Number(e.target.value))}
               className="nnsr-tempo-range"

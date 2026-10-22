@@ -18,6 +18,7 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
       allFinishedLevelIds: new Set(),
       midiDeviceName: null,
       bestAccelerandoBpm: null,
+      lastCustomAccelerandoNotes: null,
     });
   });
 
@@ -59,7 +60,7 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
       // Trophy node exists at summit
       const trophyNode = screen.getByTestId('summit-trophy-node');
       expect(trophyNode).toBeDefined();
-      expect(screen.getByText('SUMMIT')).toBeDefined();
+      expect(screen.queryByText('SUMMIT')).toBeNull();
 
       // Directed arrow connecting both-12 to Trophy
       const trophyArrow = container.querySelector('line[marker-end="url(#arrowhead)"]');
@@ -103,7 +104,7 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
 
       const octagon = screen.getByTestId('accelerando-octagon-node');
       expect(octagon).toBeDefined();
-      expect(screen.getByText('PERPETUO')).toBeDefined();
+      expect(screen.queryByText('PERPETUO')).toBeNull();
 
       fireEvent.click(octagon);
       expect(onOpen).toHaveBeenCalledTimes(1);
@@ -111,7 +112,7 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
   });
 
   describe('ProgressBar in Infinite Speed-Up Mode', () => {
-    it('displays tempo progression from starting tempo to 240 BPM', () => {
+    it('displays only the current tempo in BPM with discrete steps', () => {
       const mockSnapshot: EngineSnapshot = {
         levelId: 'treble-1',
         phase: 'SPEED_UP',
@@ -129,22 +130,21 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
         emptyZonePulseRemainingMs: 0,
         levelCompleteGuardRemainingMs: 0,
         isAccelerando: true,
-        accelerandoStartBpm: 40,
+        accelerandoStartBpm: 20,
       };
 
       render(<ProgressBar snapshot={mockSnapshot} />);
-      expect(screen.getByText('⚡ INFINITE SPEED-UP')).toBeDefined();
-      expect(screen.getByText('40 BPM')).toBeDefined();
-      expect(screen.getByText('240 BPM')).toBeDefined();
-      expect(screen.getByText('60.0')).toBeDefined();
+      expect(screen.getByText('60.0 BPM')).toBeDefined();
+      expect(screen.queryByText('⚡ INFINITE SPEED-UP')).toBeNull();
+      expect(screen.queryByText('240 BPM')).toBeNull();
     });
   });
 
   describe('AccelerandoModal Setup', () => {
-    it('defaults to 40 BPM when no best recorded, or 10% below best BPM when recorded', () => {
+    it('defaults to 20 BPM when no best recorded, or 10% below best BPM when recorded', () => {
       const onStart = vi.fn();
 
-      // Case 1: No previous best recorded -> 40 BPM
+      // Case 1: No previous best recorded -> 20 BPM
       const { unmount } = render(
         <AccelerandoModal
           isOpen={true}
@@ -155,7 +155,7 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
       );
 
       const inputNoBest = screen.getByLabelText('Starting BPM Input') as HTMLInputElement;
-      expect(Number(inputNoBest.value)).toBe(40);
+      expect(Number(inputNoBest.value)).toBe(20);
       unmount();
 
       // Case 2: Best recorded 100 BPM -> 10% below = 90 BPM
@@ -254,9 +254,101 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
       fireEvent.pointerDown(middleCRect);
       expect(screen.getByText(/34 selected/)).toBeDefined();
     });
+
+    it('supports mouse drag to select and deselect notes on the grand staff', () => {
+      render(
+        <AccelerandoModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onStart={vi.fn()}
+          bestAccelerandoBpm={null}
+          initialLevelNotes={[createTarget('treble', 'C4')]}
+        />
+      );
+
+      // Initially 1 note selected (C4)
+      expect(screen.getByText(/1 selected/)).toBeDefined();
+
+      const d4Note = screen.getByLabelText('Toggle treble:D4');
+      const e4Note = screen.getByLabelText('Toggle treble:E4');
+
+      // 1. Drag to SELECT: PointerDown on D4 (unselected -> select mode)
+      fireEvent.pointerDown(d4Note);
+      expect(screen.getByText(/2 selected/)).toBeDefined();
+
+      // Drag over E4 while mouse is held
+      fireEvent.pointerEnter(e4Note);
+      expect(screen.getByText(/3 selected/)).toBeDefined();
+
+      // PointerUp ends drag
+      fireEvent.pointerUp(window);
+
+      // Hovering without pointerdown does not change selection
+      const f4Note = screen.getByLabelText('Toggle treble:F4');
+      fireEvent.pointerEnter(f4Note);
+      expect(screen.getByText(/3 selected/)).toBeDefined();
+
+      // 2. Drag to DESELECT: PointerDown on E4 (selected -> deselect mode)
+      fireEvent.pointerDown(e4Note);
+      expect(screen.getByText(/2 selected/)).toBeDefined();
+
+      // Drag back over D4
+      fireEvent.pointerEnter(d4Note);
+      expect(screen.getByText(/1 selected/)).toBeDefined();
+
+      fireEvent.pointerUp(window);
+    });
+
+    it('renders entire selected note in green with no black borders and slider down to 15 BPM', () => {
+      render(
+        <AccelerandoModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onStart={vi.fn()}
+          bestAccelerandoBpm={null}
+          initialLevelNotes={[createTarget('treble', 'C4')]}
+        />
+      );
+
+      const slider = screen.getByLabelText('Starting BPM Slider') as HTMLInputElement;
+      expect(slider.min).toBe('15');
+      expect(slider.max).toBe('240');
+
+      // Check selected note (C4)
+      const c4Group = screen.getByLabelText('Toggle treble:C4');
+      const ellipse = c4Group.querySelector('ellipse')!;
+      expect(ellipse.getAttribute('fill')).toBe('var(--emerald)');
+      expect(ellipse.getAttribute('stroke')).toBe('var(--emerald)');
+
+      const lines = c4Group.querySelectorAll('line');
+      for (const line of lines) {
+        expect(line.getAttribute('stroke')).toBe('var(--emerald)');
+      }
+
+      const text = c4Group.querySelector('text')!;
+      expect(text.getAttribute('fill')).toBe('var(--emerald)');
+    });
+
+    it('initializes from lastCustomAccelerandoNotes when present in store', () => {
+      const customNotes = [createTarget('treble', 'E4'), createTarget('treble', 'G4')];
+      useAppStore.getState().setLastCustomAccelerandoNotes(customNotes);
+
+      render(
+        <AccelerandoModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onStart={vi.fn()}
+          bestAccelerandoBpm={null}
+        />
+      );
+
+      expect(screen.getByText(/2 selected/)).toBeDefined();
+      expect(screen.getByLabelText('Toggle treble:E4')).toBeDefined();
+      expect(screen.getByLabelText('Toggle treble:G4')).toBeDefined();
+    });
   });
 
-  describe('AppStore Best Accelerando BPM Persistence', () => {
+  describe('AppStore Best Accelerando BPM and Custom Notes Persistence', () => {
     it('records and persists new best BPM to localStorage', () => {
       useAppStore.getState().updateBestAccelerandoBpm(72.4);
       expect(useAppStore.getState().bestAccelerandoBpm).toBe(72.4);
@@ -272,6 +364,17 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
       // A higher BPM updates
       useAppStore.getState().updateBestAccelerandoBpm(85.8);
       expect(useAppStore.getState().bestAccelerandoBpm).toBe(85.8);
+    });
+
+    it('persists lastCustomAccelerandoNotes to localStorage and restores them', () => {
+      const testNotes = [createTarget('treble', 'C4'), createTarget('bass', 'C3')];
+      useAppStore.getState().setLastCustomAccelerandoNotes(testNotes);
+
+      expect(useAppStore.getState().lastCustomAccelerandoNotes).toHaveLength(2);
+      const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY)!);
+      expect(saved.lastCustomAccelerandoNotes).toHaveLength(2);
+      expect(saved.lastCustomAccelerandoNotes[0].targetId).toBe('treble:C4');
+      expect(saved.lastCustomAccelerandoNotes[1].targetId).toBe('bass:C3');
     });
   });
 });

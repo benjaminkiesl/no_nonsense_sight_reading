@@ -4,14 +4,17 @@ export interface SpeedControllerOptions {
   maxBpm?: number;
 }
 
+export const COOLDOWN_REDUCTION_FACTOR = 0.90;
+
 export class SpeedController {
   public static readonly V_MIN_START = 15.0;     // Initial very slow scroll speed after countdown
-  public static readonly V_TARGET_INIT = 30.0;   // Starting target speed in standard mode
+  public static readonly V_TARGET_INIT = 20.0;   // Starting target speed in standard mode
   public static readonly V_TARGET_MAX = 90.0;    // Maximum target speed where Hold begins in standard mode
   public static readonly V_ACCELERANDO_MAX = 240.0; // Maximum target speed in Accelerando mode
   public static readonly RAMP_DURATION_SEC = 4.0;
-  public static readonly DELTA_HIT = 0.3;        // +0.3 BPM per correct hit in standard mode (200 hits from 30 to 90)
+  public static readonly DELTA_HIT = 0.3;        // +0.3 BPM per correct hit in standard mode
   public static readonly DELTA_ACCELERANDO_HIT = 0.2; // +0.2 BPM per correct hit in Accelerando mode
+  public static readonly COOLDOWN_REDUCTION_FACTOR = COOLDOWN_REDUCTION_FACTOR; // 10% mistake slowdown penalty
 
   public readonly isAccelerando: boolean;
   public readonly maxBpm: number;
@@ -27,7 +30,7 @@ export class SpeedController {
     this.isAccelerando = options?.mode === 'accelerando';
 
     if (this.isAccelerando) {
-      const startBpm = options?.startingBpm ?? 40.0;
+      const startBpm = options?.startingBpm ?? 20.0;
       this.maxBpm = options?.maxBpm ?? SpeedController.V_ACCELERANDO_MAX;
       this.targetBpm = Math.min(this.maxBpm, Math.max(SpeedController.V_MIN_START, startBpm));
       this.actualBpm = this.targetBpm;
@@ -100,10 +103,11 @@ export class SpeedController {
       d = 0.25;
     }
 
+    const penalty = (1.0 - SpeedController.COOLDOWN_REDUCTION_FACTOR) * d;
     const minFloor = this.isAccelerando ? SpeedController.V_MIN_START : SpeedController.V_TARGET_INIT;
     this.targetBpm = Math.max(
       minFloor,
-      this.targetBpm * (1.0 - 0.08 * d)
+      this.targetBpm * (1.0 - penalty)
     );
     this.notesHitSinceLastFailure = 0;
 

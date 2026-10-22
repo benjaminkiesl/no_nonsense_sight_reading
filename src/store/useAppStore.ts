@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getTransitiveCompletedLevels } from '../curriculum/graph';
+import { StaffNoteTarget } from '../types/music';
 
 export const STORAGE_KEY = 'nnsr_progress_v1';
 
@@ -8,6 +9,7 @@ export interface PersistedProgress {
   readonly currentLevelId: string;
   readonly directlyCompletedLevelIds: string[];
   readonly bestAccelerandoBpm?: number | null;
+  readonly lastCustomAccelerandoNotes?: StaffNoteTarget[] | null;
 }
 
 export interface AppState {
@@ -16,19 +18,27 @@ export interface AppState {
   allFinishedLevelIds: Set<string>;
   midiDeviceName: string | null;
   bestAccelerandoBpm: number | null;
+  lastCustomAccelerandoNotes: StaffNoteTarget[] | null;
   selectLevel: (levelId: string) => void;
   markLevelCompleted: (levelId: string) => void;
   setMidiDeviceName: (name: string | null) => void;
   updateBestAccelerandoBpm: (bpm: number) => void;
+  setLastCustomAccelerandoNotes: (notes: StaffNoteTarget[] | null) => void;
 }
 
 function loadInitialProgress(): {
   currentLevelId: string;
   directlyCompletedLevelIds: string[];
   bestAccelerandoBpm: number | null;
+  lastCustomAccelerandoNotes: StaffNoteTarget[] | null;
 } {
   if (typeof window === 'undefined' || !window.localStorage) {
-    return { currentLevelId: 'treble-1', directlyCompletedLevelIds: [], bestAccelerandoBpm: null };
+    return {
+      currentLevelId: 'treble-1',
+      directlyCompletedLevelIds: [],
+      bestAccelerandoBpm: null,
+      lastCustomAccelerandoNotes: null,
+    };
   }
 
   try {
@@ -45,6 +55,10 @@ function loadInitialProgress(): {
             typeof parsed.bestAccelerandoBpm === 'number' && parsed.bestAccelerandoBpm > 0
               ? parsed.bestAccelerandoBpm
               : null,
+          lastCustomAccelerandoNotes:
+            Array.isArray(parsed.lastCustomAccelerandoNotes) && parsed.lastCustomAccelerandoNotes.length > 0
+              ? parsed.lastCustomAccelerandoNotes
+              : null,
         };
       }
     }
@@ -52,13 +66,19 @@ function loadInitialProgress(): {
     // Fall through to defaults
   }
 
-  return { currentLevelId: 'treble-1', directlyCompletedLevelIds: [], bestAccelerandoBpm: null };
+  return {
+    currentLevelId: 'treble-1',
+    directlyCompletedLevelIds: [],
+    bestAccelerandoBpm: null,
+    lastCustomAccelerandoNotes: null,
+  };
 }
 
 function saveProgress(
   currentLevelId: string,
   directlyCompletedLevelIds: string[],
-  bestAccelerandoBpm: number | null
+  bestAccelerandoBpm: number | null,
+  lastCustomAccelerandoNotes: StaffNoteTarget[] | null
 ): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
@@ -67,6 +87,7 @@ function saveProgress(
       currentLevelId,
       directlyCompletedLevelIds,
       bestAccelerandoBpm: bestAccelerandoBpm ?? undefined,
+      lastCustomAccelerandoNotes: lastCustomAccelerandoNotes ?? undefined,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch {
@@ -82,10 +103,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   allFinishedLevelIds: getTransitiveCompletedLevels(initialProgress.directlyCompletedLevelIds),
   midiDeviceName: null,
   bestAccelerandoBpm: initialProgress.bestAccelerandoBpm,
+  lastCustomAccelerandoNotes: initialProgress.lastCustomAccelerandoNotes,
 
   selectLevel: (levelId: string) => {
     set({ currentLevelId: levelId });
-    saveProgress(levelId, get().directlyCompletedLevelIds, get().bestAccelerandoBpm);
+    saveProgress(
+      levelId,
+      get().directlyCompletedLevelIds,
+      get().bestAccelerandoBpm,
+      get().lastCustomAccelerandoNotes
+    );
   },
 
   markLevelCompleted: (levelId: string) => {
@@ -100,7 +127,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       allFinishedLevelIds: finishedSet,
     });
 
-    saveProgress(get().currentLevelId, updated, get().bestAccelerandoBpm);
+    saveProgress(
+      get().currentLevelId,
+      updated,
+      get().bestAccelerandoBpm,
+      get().lastCustomAccelerandoNotes
+    );
   },
 
   setMidiDeviceName: (name: string | null) => {
@@ -112,7 +144,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (bpm > currentBest) {
       const rounded = Math.round(bpm * 10) / 10;
       set({ bestAccelerandoBpm: rounded });
-      saveProgress(get().currentLevelId, get().directlyCompletedLevelIds, rounded);
+      saveProgress(
+        get().currentLevelId,
+        get().directlyCompletedLevelIds,
+        rounded,
+        get().lastCustomAccelerandoNotes
+      );
     }
+  },
+
+  setLastCustomAccelerandoNotes: (notes: StaffNoteTarget[] | null) => {
+    set({ lastCustomAccelerandoNotes: notes });
+    saveProgress(
+      get().currentLevelId,
+      get().directlyCompletedLevelIds,
+      get().bestAccelerandoBpm,
+      notes
+    );
   },
 }));

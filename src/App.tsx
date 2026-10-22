@@ -23,10 +23,12 @@ export default function App(): React.JSX.Element {
     allFinishedLevelIds,
     midiDeviceName,
     bestAccelerandoBpm,
+    lastCustomAccelerandoNotes,
     selectLevel,
     markLevelCompleted,
     setMidiDeviceName,
     updateBestAccelerandoBpm,
+    setLastCustomAccelerandoNotes,
   } = useAppStore();
 
   const currentLevel = getLevelById(currentLevelId);
@@ -59,12 +61,14 @@ export default function App(): React.JSX.Element {
     [currentLevel]
   );
 
-  // Exit Accelerando Perpetuo back to standard level
-  const handleExitAccelerando = useCallback(() => {
-    setIsAccelerandoActive(false);
-    engineRef.current = new SightReadingEngine(currentLevel);
-    setSnapshot(engineRef.current.getSnapshot());
-  }, [currentLevel]);
+  // Launch custom Infinite Speed-Up mode from modal
+  const handleStartCustomAccelerando = useCallback(
+    (notes: readonly StaffNoteTarget[], startingBpm: number) => {
+      setLastCustomAccelerandoNotes([...notes]);
+      handleStartAccelerando(notes, startingBpm);
+    },
+    [handleStartAccelerando, setLastCustomAccelerandoNotes]
+  );
 
   // Handle level selection from Graph
   const handleSelectLevel = useCallback(
@@ -190,23 +194,6 @@ export default function App(): React.JSX.Element {
 
       <main className="nnsr-workspace">
         <section className="nnsr-main-column">
-          {isAccelerandoActive && (
-            <div className="nnsr-accelerando-banner">
-              <div className="nnsr-accelerando-banner-left">
-                <span className="nnsr-banner-bolt">⚡</span>
-                <span className="nnsr-banner-title">Infinite Speed-Up</span>
-                <span className="nnsr-banner-badge">Max 240 BPM</span>
-              </div>
-              <button
-                type="button"
-                className="nnsr-banner-exit-btn"
-                onClick={handleExitAccelerando}
-              >
-                Exit to Curriculum Level
-              </button>
-            </div>
-          )}
-
           <GrandStaffCanvas snapshot={snapshot} level={currentLevel} />
           <ProgressBar snapshot={snapshot} />
           <PianoKeyboard
@@ -236,8 +223,9 @@ export default function App(): React.JSX.Element {
       <AccelerandoModal
         isOpen={isAccelerandoModalOpen}
         onClose={() => setIsAccelerandoModalOpen(false)}
-        onStart={handleStartAccelerando}
+        onStart={handleStartCustomAccelerando}
         bestAccelerandoBpm={bestAccelerandoBpm}
+        lastCustomNotes={lastCustomAccelerandoNotes}
       />
     </div>
   );

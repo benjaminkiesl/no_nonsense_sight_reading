@@ -33,7 +33,7 @@ describe('Accelerando Perpetuo Engine & SpeedController', () => {
       expect(sc.targetBpm).toBe(240);
     });
 
-    it('implements standard failure mechanics (8% slowdown, cooldown dampening, 4s ramp from 15 BPM)', () => {
+    it('implements standard failure mechanics (10% slowdown, cooldown dampening, 4s ramp from 15 BPM)', () => {
       const sc = new SpeedController({ mode: 'accelerando', startingBpm: 100 });
       // Build up consecutive hits
       for (let i = 0; i < 10; i++) {
@@ -41,23 +41,23 @@ describe('Accelerando Perpetuo Engine & SpeedController', () => {
       }
       expect(sc.targetBpm).toBeCloseTo(102, 1);
 
-      // Miss 1: full 8% penalty
+      // Miss 1: full 10% penalty
       const fail1 = sc.onFailure('SPEED_UP');
       expect(fail1.nextPhase).toBe('SPEED_UP');
-      // 102 * 0.92 = 93.84
-      expect(sc.targetBpm).toBeCloseTo(93.84, 1);
+      // 102 * 0.90 = 91.8
+      expect(sc.targetBpm).toBeCloseTo(91.8, 1);
 
-      // Recovery ramp drops actual to 15 BPM and ramps to 93.84 over 4s
+      // Recovery ramp drops actual to 15 BPM and ramps to 91.8 over 4s
       sc.startRecoveryRamp();
       expect(sc.actualBpm).toBe(15.0);
       sc.tick(2.0, false);
-      expect(sc.actualBpm).toBeCloseTo(15.0 + (93.84 - 15.0) * 0.5, 1);
+      expect(sc.actualBpm).toBeCloseTo(15.0 + (91.8 - 15.0) * 0.5, 1);
       sc.tick(2.0, false);
-      expect(sc.actualBpm).toBeCloseTo(93.84, 1);
+      expect(sc.actualBpm).toBeCloseTo(91.8, 1);
 
-      // Subsequent immediate miss without intervening hits: dampened penalty (d = 0.25 => 2% penalty)
+      // Subsequent immediate miss without intervening hits: dampened penalty (d = 0.25 => 2.5% penalty)
       sc.onFailure('SPEED_UP');
-      expect(sc.targetBpm).toBeCloseTo(93.84 * (1 - 0.08 * 0.25), 1);
+      expect(sc.targetBpm).toBeCloseTo(91.8 * (1 - 0.10 * 0.25), 1);
     });
   });
 
