@@ -227,6 +227,33 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
       const toggleFSharp = screen.getByLabelText('Toggle treble:F#4');
       expect(toggleFSharp).toBeDefined();
     });
+
+    it('synchronizes staff note view and piano keyboard when toggling overlap or chromatic keys', () => {
+      render(
+        <AccelerandoModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onStart={vi.fn()}
+          bestAccelerandoBpm={null}
+        />
+      );
+
+      // Initially C Major has all 34 staff slots selected (17 treble + 17 bass)
+      expect(screen.getByText(/34 selected/)).toBeDefined();
+
+      // Click Middle C (MIDI 60, 15th white key -> index 14 in piano keyboard rects)
+      const pianoContainer = document.querySelector('.nnsr-piano-container')!;
+      const pianoRects = pianoContainer.querySelectorAll('rect');
+      const middleCRect = pianoRects[14]!;
+
+      // Unselect Middle C via piano key -> removes both treble:C4 and bass:C4 (32 selected)
+      fireEvent.pointerDown(middleCRect);
+      expect(screen.getByText(/32 selected/)).toBeDefined();
+
+      // Re-select Middle C via piano key -> selects both treble:C4 and bass:C4 (34 selected)
+      fireEvent.pointerDown(middleCRect);
+      expect(screen.getByText(/34 selected/)).toBeDefined();
+    });
   });
 
   describe('AppStore Best Accelerando BPM Persistence', () => {

@@ -44,7 +44,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ snapshot }) => {
                   key={`accel-step-${idx}`}
                   className={`nnsr-progress-step ${isFilled ? 'filled pulse' : ''}`}
                   style={{
-                    backgroundColor: isFilled ? 'var(--gold-champagne)' : 'var(--surface-subtle)',
+                    backgroundColor: isFilled ? 'var(--emerald)' : 'var(--surface-subtle)',
                   }}
                 />
               );

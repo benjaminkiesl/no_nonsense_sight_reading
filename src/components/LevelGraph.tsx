@@ -231,7 +231,7 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
       y1={110 - NODE_RADIUS}
       x2={150}
       y2={68}
-      stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+      stroke={isTrophyCompleted ? 'var(--emerald)' : '#b0aba2'}
       strokeWidth={1.8}
       markerEnd="url(#arrowhead)"
     />
@@ -382,24 +382,24 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
             <path
               d="M 136 21 C 122 21 122 34 136 36"
               fill="none"
-              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
-              strokeWidth={2.2}
+              stroke={isTrophyCompleted ? '#1f2421' : '#8c948f'}
+              strokeWidth={2}
               strokeLinecap="round"
             />
             {/* Right Handle */}
             <path
               d="M 164 21 C 178 21 178 34 164 36"
               fill="none"
-              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
-              strokeWidth={2.2}
+              stroke={isTrophyCompleted ? '#1f2421' : '#8c948f'}
+              strokeWidth={2}
               strokeLinecap="round"
             />
 
             {/* Cup Body */}
             <path
               d="M 135 18 L 135 27 C 135 37 143 43 150 43 C 157 43 165 37 165 27 L 165 18 Z"
-              fill={isTrophyCompleted ? '#e5c158' : '#ffffff'}
-              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+              fill={isTrophyCompleted ? 'var(--jasmine)' : '#ffffff'}
+              stroke={isTrophyCompleted ? '#1f2421' : '#8c948f'}
               strokeWidth={1.5}
             />
 
@@ -410,16 +410,16 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
               width={34}
               height={3.5}
               rx={1.5}
-              fill={isTrophyCompleted ? '#d4af37' : '#ffffff'}
-              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+              fill={isTrophyCompleted ? 'var(--jasmine)' : '#ffffff'}
+              stroke={isTrophyCompleted ? '#1f2421' : '#8c948f'}
               strokeWidth={1.2}
             />
 
             {/* Stem */}
             <path
               d="M 147 43 L 145 49 L 155 49 L 153 43 Z"
-              fill={isTrophyCompleted ? '#d4af37' : '#ffffff'}
-              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+              fill={isTrophyCompleted ? 'var(--jasmine)' : '#ffffff'}
+              stroke={isTrophyCompleted ? '#1f2421' : '#8c948f'}
               strokeWidth={1.2}
             />
 
@@ -430,8 +430,8 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
               width={38}
               height={10}
               rx={1.5}
-              fill={isTrophyCompleted ? '#d4af37' : '#ffffff'}
-              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+              fill={isTrophyCompleted ? 'var(--emerald)' : '#ffffff'}
+              stroke={isTrophyCompleted ? '#1f2421' : '#8c948f'}
               strokeWidth={1.4}
             />
 
@@ -442,15 +442,15 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
               width={46}
               height={3}
               rx={1}
-              fill={isTrophyCompleted ? '#e5c158' : '#ffffff'}
-              stroke={isTrophyCompleted ? '#d4af37' : '#8c948f'}
+              fill={isTrophyCompleted ? 'var(--jasmine)' : '#ffffff'}
+              stroke={isTrophyCompleted ? '#1f2421' : '#8c948f'}
               strokeWidth={1.2}
             />
 
             {/* Star Icon in Cup */}
             <polygon
               points="150,23 151.8,27.5 156.5,27.8 153,30.8 154.2,35.5 150,32.8 145.8,35.5 147,30.8 143.5,27.8 148.2,27.5"
-              fill={isTrophyCompleted ? '#ffffff' : '#8c948f'}
+              fill={isTrophyCompleted ? '#1f2421' : '#8c948f'}
             />
 
             {/* SUMMIT Label */}
@@ -462,7 +462,7 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
               fontSize="6.5px"
               fontWeight="800"
               letterSpacing="0.08em"
-              fill={isTrophyCompleted ? '#ffffff' : '#8c948f'}
+              fill={isTrophyCompleted ? '#1f2421' : '#8c948f'}
             >
               SUMMIT
             </text>
@@ -487,8 +487,8 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
             <polygon
               points={getOctagonPoints(65, 65, 23)}
               fill="#ffffff"
-              stroke="#232b26"
-              strokeWidth={2}
+              stroke="var(--emerald)"
+              strokeWidth={2.2}
             />
             {/* Speedometer SVG Icon */}
             <g transform="translate(65, 65)">
@@ -496,14 +496,14 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
               <path
                 d="M -13 4 A 14 14 0 1 1 13 4"
                 fill="none"
-                stroke="#183324"
-                strokeWidth={2.4}
+                stroke="#1f2421"
+                strokeWidth={2.2}
                 strokeLinecap="round"
               />
               {/* Gauge ticks */}
-              <line x1="-10" y1="0" x2="-7" y2="0" stroke="#d4af37" strokeWidth={1.5} />
-              <line x1="0" y1="-12" x2="0" y2="-9" stroke="#d4af37" strokeWidth={1.5} />
-              <line x1="10" y1="0" x2="7" y2="0" stroke="#d4af37" strokeWidth={1.5} />
+              <line x1="-10" y1="0" x2="-7" y2="0" stroke="var(--emerald)" strokeWidth={1.6} />
+              <line x1="0" y1="-12" x2="0" y2="-9" stroke="var(--emerald)" strokeWidth={1.6} />
+              <line x1="10" y1="0" x2="7" y2="0" stroke="var(--emerald)" strokeWidth={1.6} />
               {/* Speedometer Needle pointing up-right */}
               <line
                 x1="0"
@@ -515,7 +515,7 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
                 strokeLinecap="round"
               />
               {/* Center Hub */}
-              <circle cx="0" cy="3" r="2.5" fill="#183324" />
+              <circle cx="0" cy="3" r="2.5" fill="#1f2421" />
             </g>
             <text
               x={65}

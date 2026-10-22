@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getLedgerLines, getStemDirection } from '../music/notation';
 import { createTarget, getStaffStepOffset } from '../music/pitch';
 import { KEY_SIGNATURES, KeySignatureId } from '../music/scales';
-import { LetterName, Octave, StaffNoteTarget } from '../types/music';
+import { Clef, LetterName, Octave, StaffNoteTarget } from '../types/music';
 import { ActiveKeyHighlight, PianoKeyboard } from './PianoKeyboard';
 
 export interface AccelerandoModalProps {
@@ -55,27 +55,68 @@ const BASE_BASS_NOTES: { letter: LetterName; octave: Octave }[] = [
   { letter: 'E', octave: 4 },
 ];
 
-const SEMITONE_MAP: Record<number, string> = {
-  0: 'C',
-  1: 'C#',
-  2: 'D',
-  3: 'Eb',
-  4: 'E',
-  5: 'F',
-  6: 'F#',
-  7: 'G',
-  8: 'Ab',
-  9: 'A',
-  10: 'Bb',
-  11: 'B',
+const SHARP_SEMITONE_MAP: Record<number, { letter: LetterName; accStr: '' | '#' }> = {
+  0: { letter: 'C', accStr: '' },
+  1: { letter: 'C', accStr: '#' },
+  2: { letter: 'D', accStr: '' },
+  3: { letter: 'D', accStr: '#' },
+  4: { letter: 'E', accStr: '' },
+  5: { letter: 'F', accStr: '' },
+  6: { letter: 'F', accStr: '#' },
+  7: { letter: 'G', accStr: '' },
+  8: { letter: 'G', accStr: '#' },
+  9: { letter: 'A', accStr: '' },
+  10: { letter: 'A', accStr: '#' },
+  11: { letter: 'B', accStr: '' },
 };
 
-function midiToTarget(midi: number): StaffNoteTarget {
+const FLAT_SEMITONE_MAP: Record<number, { letter: LetterName; accStr: '' | 'b' }> = {
+  0: { letter: 'C', accStr: '' },
+  1: { letter: 'D', accStr: 'b' },
+  2: { letter: 'D', accStr: '' },
+  3: { letter: 'E', accStr: 'b' },
+  4: { letter: 'E', accStr: '' },
+  5: { letter: 'F', accStr: '' },
+  6: { letter: 'G', accStr: 'b' },
+  7: { letter: 'G', accStr: '' },
+  8: { letter: 'A', accStr: 'b' },
+  9: { letter: 'A', accStr: '' },
+  10: { letter: 'B', accStr: 'b' },
+  11: { letter: 'B', accStr: '' },
+};
+
+function isSlotInClef(clef: Clef, letter: LetterName, octave: Octave): boolean {
+  const list = clef === 'treble' ? BASE_TREBLE_NOTES : BASE_BASS_NOTES;
+  return list.some((n) => n.letter === letter && n.octave === octave);
+}
+
+function getTargetsForMidi(midi: number, scale: KeySignatureId): StaffNoteTarget[] {
+  // First check if the active scale already defines targets for this MIDI pitch
+  const scaleTargets = getScaleTargets(scale).filter((t) => t.pitch.midi === midi);
+  if (scaleTargets.length > 0) {
+    return scaleTargets;
+  }
+
+  // Otherwise spell the chromatic pitch according to the scale's sharp/flat orientation
   const octave = (Math.floor(midi / 12) - 1) as Octave;
-  const semitone = midi % 12;
-  const name = SEMITONE_MAP[semitone] ?? 'C';
-  const clef = midi >= 60 ? 'treble' : 'bass';
-  return createTarget(clef, `${name}${octave}`);
+  const semitone = ((midi % 12) + 12) % 12;
+  const useFlats = KEY_SIGNATURES[scale].accidentalType === 'flat';
+  const { letter, accStr } = useFlats
+    ? FLAT_SEMITONE_MAP[semitone]!
+    : SHARP_SEMITONE_MAP[semitone]!;
+  const pitchId = `${letter}${accStr}${octave}`;
+
+  const result: StaffNoteTarget[] = [];
+  if (isSlotInClef('bass', letter, octave)) {
+    result.push(createTarget('bass', pitchId));
+  }
+  if (isSlotInClef('treble', letter, octave)) {
+    result.push(createTarget('treble', pitchId));
+  }
+  if (result.length === 0) {
+    result.push(createTarget(midi >= 60 ? 'treble' : 'bass', pitchId));
+  }
+  return result;
 }
 
 function getScaleTargets(keySigId: KeySignatureId): StaffNoteTarget[] {
@@ -134,48 +175,100 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
     setSelectedTargets(getScaleTargets(scale));
   }, []);
 
-  const isTargetSelected = useCallback(
-    (targetId: string) => {
-      return selectedTargets.some((t) => t.targetId === targetId);
-    },
-    [selectedTargets]
-  );
-
-  const toggleTarget = useCallback(
-    (target: StaffNoteTarget) => {
-      if (isTargetSelected(target.targetId)) {
-        setSelectedTargets((prev) => prev.filter((t) => t.targetId !== target.targetId));
+  // Toggle a staff note slot (and keep overlapping clef slot in sync if toggled)
+  const toggleStaffSlot = useCallback(
+    (target: StaffNoteTarget, isCurrentlySelected: boolean) => {
+      if (isCurrentlySelected) {
+        setSelectedTargets((prev) =>
+          prev.filter(
+            (t) =>
+              !(
+                t.clef === target.clef &&
+                t.pitch.letter === target.pitch.letter &&
+                t.pitch.octave === target.pitch.octave
+              )
+          )
+        );
       } else {
-        setSelectedTargets((prev) => [...prev, target]);
+        setSelectedTargets((prev) => [
+          ...prev.filter(
+            (t) =>
+              !(
+                t.clef === target.clef &&
+                t.pitch.letter === target.pitch.letter &&
+                t.pitch.octave === target.pitch.octave
+              )
+          ),
+          target,
+        ]);
       }
     },
-    [isTargetSelected]
+    []
   );
 
-  // Keyboard note toggle
+  // Keyboard note toggle: keeps staff slots and keyboard keys derived from the exact same state
   const handlePianoKeyPress = useCallback(
     (midi: number) => {
       const hasTargetWithMidi = selectedTargets.some((t) => t.pitch.midi === midi);
       if (hasTargetWithMidi) {
         setSelectedTargets((prev) => prev.filter((t) => t.pitch.midi !== midi));
       } else {
-        const currentScaleNotes = getScaleTargets(selectedScale);
-        const matchesInScale = currentScaleNotes.filter((t) => t.pitch.midi === midi);
-        if (matchesInScale.length > 0) {
-          const preferred =
-            midi >= 60
-              ? matchesInScale.find((t) => t.clef === 'treble') ?? matchesInScale[0]!
-              : matchesInScale.find((t) => t.clef === 'bass') ?? matchesInScale[0]!;
-          setSelectedTargets((prev) => [...prev, preferred]);
-        } else {
-          setSelectedTargets((prev) => [...prev, midiToTarget(midi)]);
-        }
+        const newTargets = getTargetsForMidi(midi, selectedScale);
+        setSelectedTargets((prev) => {
+          const filtered = prev.filter(
+            (existing) =>
+              !newTargets.some(
+                (nt) =>
+                  nt.clef === existing.clef &&
+                  nt.pitch.letter === existing.pitch.letter &&
+                  nt.pitch.octave === existing.pitch.octave
+              )
+          );
+          return [...filtered, ...newTargets];
+        });
       }
     },
     [selectedTargets, selectedScale]
   );
 
-  // Highlights for PianoKeyboard
+  // Build displayed staff slots directly from selectedTargets + selectedScale fallback
+  const trebleStaffSlots = useMemo(() => {
+    const altered = KEY_SIGNATURES[selectedScale].alteredLetters;
+    return BASE_TREBLE_NOTES.map(({ letter, octave }) => {
+      const activeTarget = selectedTargets.find(
+        (t) => t.clef === 'treble' && t.pitch.letter === letter && t.pitch.octave === octave
+      );
+      if (activeTarget) {
+        return { target: activeTarget, isSelected: true };
+      }
+      const acc = altered[letter] ?? 0;
+      const accStr = acc === 1 ? '#' : acc === -1 ? 'b' : '';
+      return {
+        target: createTarget('treble', `${letter}${accStr}${octave}`),
+        isSelected: false,
+      };
+    });
+  }, [selectedTargets, selectedScale]);
+
+  const bassStaffSlots = useMemo(() => {
+    const altered = KEY_SIGNATURES[selectedScale].alteredLetters;
+    return BASE_BASS_NOTES.map(({ letter, octave }) => {
+      const activeTarget = selectedTargets.find(
+        (t) => t.clef === 'bass' && t.pitch.letter === letter && t.pitch.octave === octave
+      );
+      if (activeTarget) {
+        return { target: activeTarget, isSelected: true };
+      }
+      const acc = altered[letter] ?? 0;
+      const accStr = acc === 1 ? '#' : acc === -1 ? 'b' : '';
+      return {
+        target: createTarget('bass', `${letter}${accStr}${octave}`),
+        isSelected: false,
+      };
+    });
+  }, [selectedTargets, selectedScale]);
+
+  // Highlights for PianoKeyboard derived from the exact same selectedTargets
   const activeHighlights: ActiveKeyHighlight[] = useMemo(
     () =>
       selectedTargets.map((t) => ({
@@ -189,24 +282,6 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
     if (selectedTargets.length === 0) return;
     onStart(selectedTargets, startingBpm);
   };
-
-  const currentTrebleNotes = useMemo(() => {
-    const altered = KEY_SIGNATURES[selectedScale].alteredLetters;
-    return BASE_TREBLE_NOTES.map(({ letter, octave }) => {
-      const acc = altered[letter] ?? 0;
-      const accStr = acc === 1 ? '#' : acc === -1 ? 'b' : '';
-      return createTarget('treble', `${letter}${accStr}${octave}`);
-    });
-  }, [selectedScale]);
-
-  const currentBassNotes = useMemo(() => {
-    const altered = KEY_SIGNATURES[selectedScale].alteredLetters;
-    return BASE_BASS_NOTES.map(({ letter, octave }) => {
-      const acc = altered[letter] ?? 0;
-      const accStr = acc === 1 ? '#' : acc === -1 ? 'b' : '';
-      return createTarget('bass', `${letter}${accStr}${octave}`);
-    });
-  }, [selectedScale]);
 
   const keySigSpec = KEY_SIGNATURES[selectedScale];
   const accSymbol = keySigSpec.accidentalType === 'sharp' ? '♯' : '♭';
@@ -271,14 +346,14 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
           >
             {/* Grand Staff Lines */}
             {[35, 45, 55, 65, 75].map((y) => (
-              <line key={`t-line-${y}`} x1={30} y1={y} x2={760} y2={y} stroke="#232b26" strokeWidth={1} />
+              <line key={`t-line-${y}`} x1={30} y1={y} x2={760} y2={y} stroke="#2c332f" strokeWidth={1} />
             ))}
             {[145, 155, 165, 175, 185].map((y) => (
-              <line key={`b-line-${y}`} x1={30} y1={y} x2={760} y2={y} stroke="#232b26" strokeWidth={1} />
+              <line key={`b-line-${y}`} x1={30} y1={y} x2={760} y2={y} stroke="#2c332f" strokeWidth={1} />
             ))}
 
             {/* Vertical connector bar */}
-            <line x1={30} y1={35} x2={30} y2={185} stroke="#232b26" strokeWidth={1.5} />
+            <line x1={30} y1={35} x2={30} y2={185} stroke="#2c332f" strokeWidth={1.5} />
 
             {/* Clef symbols */}
             <text x={45} y={58} fontSize="34px" fontFamily="serif" textAnchor="middle" fill="#1f2421">
@@ -331,8 +406,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
             )}
 
             {/* Treble Staff Notes (A3 to C6 across top staff) */}
-            {currentTrebleNotes.map((target, i) => {
-              const isSelected = isTargetSelected(target.targetId);
+            {trebleStaffSlots.map(({ target, isSelected }, i) => {
               const stepOffset = getStaffStepOffset(target.pitch, 'treble');
               const bottomY = 75;
               const stepScale = 5;
@@ -346,11 +420,11 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
 
               return (
                 <g
-                  key={target.targetId}
+                  key={`treble-slot-${target.pitch.letter}-${target.pitch.octave}`}
                   role="button"
                   tabIndex={0}
                   aria-label={`Toggle ${target.targetId}`}
-                  onClick={() => toggleTarget(target)}
+                  onClick={() => toggleStaffSlot(target, isSelected)}
                   style={{ cursor: 'pointer' }}
                   className="nnsr-staff-clickable-note"
                 >
@@ -370,8 +444,8 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                         y1={ly}
                         x2={nx + 9}
                         y2={ly}
-                        stroke={isSelected ? '#52b788' : '#232b26'}
-                        strokeWidth={1}
+                        stroke={isSelected ? 'var(--emerald)' : '#8c948f'}
+                        strokeWidth={1.2}
                       />
                     );
                   })}
@@ -381,8 +455,8 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     rx={5.5}
                     ry={3.8}
                     transform={`rotate(-20 ${nx} ${ny})`}
-                    fill={isSelected ? 'var(--emerald)' : 'rgba(35, 43, 38, 0.08)'}
-                    stroke={isSelected ? '#183324' : '#8c948f'}
+                    fill={isSelected ? 'var(--emerald)' : 'rgba(44, 51, 47, 0.12)'}
+                    stroke={isSelected ? '#1f2421' : '#8c948f'}
                     strokeWidth={isSelected ? 1.5 : 1}
                   />
                   <line
@@ -390,7 +464,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     y1={ny}
                     x2={stemDir === 'up' ? nx + 4.5 : nx - 4.5}
                     y2={stemDir === 'up' ? ny - 20 : ny + 20}
-                    stroke={isSelected ? '#183324' : '#8c948f'}
+                    stroke={isSelected ? '#1f2421' : '#8c948f'}
                     strokeWidth={1.2}
                   />
                   <text
@@ -399,7 +473,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     textAnchor="middle"
                     fontSize="9.5px"
                     fontWeight={isSelected ? '700' : '500'}
-                    fill={isSelected ? '#183324' : '#8c948f'}
+                    fill={isSelected ? '#1f2421' : '#8c948f'}
                   >
                     {displayLetter}
                   </text>
@@ -408,8 +482,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
             })}
 
             {/* Bass Staff Notes (C2 to E4 across bottom staff) */}
-            {currentBassNotes.map((target, i) => {
-              const isSelected = isTargetSelected(target.targetId);
+            {bassStaffSlots.map(({ target, isSelected }, i) => {
               const stepOffset = getStaffStepOffset(target.pitch, 'bass');
               const bottomY = 185;
               const stepScale = 5;
@@ -423,11 +496,11 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
 
               return (
                 <g
-                  key={target.targetId}
+                  key={`bass-slot-${target.pitch.letter}-${target.pitch.octave}`}
                   role="button"
                   tabIndex={0}
                   aria-label={`Toggle ${target.targetId}`}
-                  onClick={() => toggleTarget(target)}
+                  onClick={() => toggleStaffSlot(target, isSelected)}
                   style={{ cursor: 'pointer' }}
                   className="nnsr-staff-clickable-note"
                 >
@@ -447,8 +520,8 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                         y1={ly}
                         x2={nx + 9}
                         y2={ly}
-                        stroke={isSelected ? '#52b788' : '#232b26'}
-                        strokeWidth={1}
+                        stroke={isSelected ? 'var(--emerald)' : '#8c948f'}
+                        strokeWidth={1.2}
                       />
                     );
                   })}
@@ -458,8 +531,8 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     rx={5.5}
                     ry={3.8}
                     transform={`rotate(-20 ${nx} ${ny})`}
-                    fill={isSelected ? 'var(--emerald)' : 'rgba(35, 43, 38, 0.08)'}
-                    stroke={isSelected ? '#183324' : '#8c948f'}
+                    fill={isSelected ? 'var(--emerald)' : 'rgba(44, 51, 47, 0.12)'}
+                    stroke={isSelected ? '#1f2421' : '#8c948f'}
                     strokeWidth={isSelected ? 1.5 : 1}
                   />
                   <line
@@ -467,7 +540,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     y1={ny}
                     x2={stemDir === 'up' ? nx + 4.5 : nx - 4.5}
                     y2={stemDir === 'up' ? ny - 20 : ny + 20}
-                    stroke={isSelected ? '#183324' : '#8c948f'}
+                    stroke={isSelected ? '#1f2421' : '#8c948f'}
                     strokeWidth={1.2}
                   />
                   <text
@@ -476,7 +549,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     textAnchor="middle"
                     fontSize="9.5px"
                     fontWeight={isSelected ? '700' : '500'}
-                    fill={isSelected ? '#183324' : '#8c948f'}
+                    fill={isSelected ? '#1f2421' : '#8c948f'}
                   >
                     {displayLetter}
                   </text>
@@ -494,12 +567,12 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
           />
         </div>
 
-        {/* Tempo Picker & Start Button */}
-        <div className="nnsr-modal-footer">
-          <div className="nnsr-modal-bpm-control">
-            <label htmlFor="nnsr-start-bpm-slider" className="nnsr-modal-bpm-label">
-              Start Tempo:
-            </label>
+        {/* Start Tempo Control & Start Button */}
+        <div className="nnsr-tempo-controls">
+          <label htmlFor="nnsr-start-bpm-slider" className="nnsr-tempo-label">
+            Start Tempo
+          </label>
+          <div className="nnsr-tempo-slider-wrap">
             <input
               id="nnsr-start-bpm-slider"
               type="range"
@@ -508,28 +581,27 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
               step={5}
               value={startingBpm}
               onChange={(e) => setStartingBpm(Number(e.target.value))}
-              className="nnsr-modal-bpm-slider"
+              className="nnsr-tempo-range"
               aria-label="Starting BPM Slider"
             />
-            <div className="nnsr-modal-bpm-input-wrap">
-              <input
-                type="number"
-                min={20}
-                max={240}
-                value={startingBpm}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  if (!isNaN(val)) {
-                    setStartingBpm(Math.max(15, Math.min(240, val)));
-                  }
-                }}
-                className="nnsr-modal-bpm-number"
-                aria-label="Starting BPM Input"
-              />
-              <span className="nnsr-modal-bpm-unit">BPM</span>
-            </div>
           </div>
-
+          <div className="nnsr-tempo-input-wrap">
+            <input
+              type="number"
+              min={15}
+              max={240}
+              value={startingBpm}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                if (!isNaN(val)) {
+                  setStartingBpm(Math.max(15, Math.min(240, val)));
+                }
+              }}
+              className="nnsr-tempo-number-input"
+              aria-label="Starting BPM Input"
+            />
+            <span className="nnsr-tempo-unit">BPM</span>
+          </div>
           <button
             className="nnsr-modal-start-btn"
             onClick={handleStart}

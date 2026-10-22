@@ -1,33 +1,27 @@
 :root {
-  /* Core Spec Palette - Refined Concert Hall Hit States */
+  /* Original Spec Color Palette */
   --vibrant-coral: #ee6055;
-  --emerald: #52b788;
-  --light-green: #95d5b2;
+  --emerald: #60d394;
+  --light-green: #aaf683;
   --jasmine: #ffd97d;
   --sweet-salmon: #ff9b85;
 
-  /* Warm Classic Concert Hall Surfaces & Ink (Option A) */
-  --bg-warm-ivory: #fcf9f2;
+  /* Warm, Clean Surfaces & Typography */
+  --bg-warm-ivory: #faf8f5;
   --surface-paper: #ffffff;
-  --surface-subtle: #f6f1e7;
+  --surface-subtle: #f2efe9;
   --ink-primary: #1f2421;
   --ink-secondary: #5a625e;
-  --staff-line-color: #232b26;
-  --border-charcoal: #232b26;
-  --border-warm: #232b26;
-
-  /* Classical Concert Hall Header & Gold/Champagne Accents */
-  --header-bg: #183324;
-  --gold-primary: #d4af37;
-  --gold-champagne: #e5c158;
-  --header-text: #fdfbf7;
+  --staff-line-color: #2c332f;
+  --border-subtle: #dcd8d0;
+  --border-strong: #b8b3a8;
 
   /* Layout Dimensions */
   --main-column-width: 840px;
   --level-graph-width: 300px;
-  --header-height: 58px;
+  --header-height: 54px;
 
   /* Typography */
-  --font-serif: 'Playfair Display', 'Baskerville', 'Georgia', 'Times New Roman', serif;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Georgia', 'Baskerville', 'Times New Roman', serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }

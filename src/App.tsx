@@ -238,7 +238,6 @@ export default function App(): React.JSX.Element {
         onClose={() => setIsAccelerandoModalOpen(false)}
         onStart={handleStartAccelerando}
         bestAccelerandoBpm={bestAccelerandoBpm}
-        initialLevelNotes={currentLevel.allNotes}
       />
     </div>
   );
