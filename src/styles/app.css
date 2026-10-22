@@ -50,6 +50,7 @@ body {
 .nnsr-workspace {
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   gap: 32px;
   padding: 24px 20px;
   max-width: 1240px;
@@ -148,6 +149,44 @@ body {
   overflow: hidden;
   background-color: var(--surface-paper);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Level Graph Sidebar */
+.nnsr-level-graph-container {
+  width: var(--level-graph-width);
+  background-color: var(--surface-paper);
+  border: 1px solid var(--border-warm);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  max-height: 520px;
+  overflow: hidden;
+}
+
+.nnsr-level-graph-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background-color: var(--surface-subtle);
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--ink-secondary);
+  border-bottom: 1px solid var(--border-warm);
+}
+
+.nnsr-level-graph-scroll {
+  overflow-y: auto;
+  flex: 1;
+  padding: 12px 0;
+}
+
+.nnsr-graph-node circle {
+  transition: transform 0.15s ease, stroke-width 0.15s ease;
+}
+
+.nnsr-graph-node:hover circle {
+  stroke: var(--emerald);
 }
 
 /* Celebration Overlay */
