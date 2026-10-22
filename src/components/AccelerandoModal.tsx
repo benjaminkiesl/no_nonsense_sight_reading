@@ -13,7 +13,10 @@ export interface AccelerandoModalProps {
   initialLevelNotes?: readonly StaffNoteTarget[];
 }
 
+// Full Treble range from A3 below Middle C up to C6
 const BASE_TREBLE_NOTES: { letter: LetterName; octave: Octave }[] = [
+  { letter: 'A', octave: 3 },
+  { letter: 'B', octave: 3 },
   { letter: 'C', octave: 4 },
   { letter: 'D', octave: 4 },
   { letter: 'E', octave: 4 },
@@ -31,6 +34,7 @@ const BASE_TREBLE_NOTES: { letter: LetterName; octave: Octave }[] = [
   { letter: 'C', octave: 6 },
 ];
 
+// Full Bass range from C2 up to E4 above Middle C
 const BASE_BASS_NOTES: { letter: LetterName; octave: Octave }[] = [
   { letter: 'C', octave: 2 },
   { letter: 'D', octave: 2 },
@@ -47,6 +51,8 @@ const BASE_BASS_NOTES: { letter: LetterName; octave: Octave }[] = [
   { letter: 'A', octave: 3 },
   { letter: 'B', octave: 3 },
   { letter: 'C', octave: 4 },
+  { letter: 'D', octave: 4 },
+  { letter: 'E', octave: 4 },
 ];
 
 const SEMITONE_MAP: Record<number, string> = {
@@ -65,7 +71,7 @@ const SEMITONE_MAP: Record<number, string> = {
 };
 
 function midiToTarget(midi: number): StaffNoteTarget {
-  const octave = Math.floor(midi / 12) - 1;
+  const octave = (Math.floor(midi / 12) - 1) as Octave;
   const semitone = midi % 12;
   const name = SEMITONE_MAP[semitone] ?? 'C';
   const clef = midi >= 60 ? 'treble' : 'bass';
@@ -154,9 +160,16 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
         setSelectedTargets((prev) => prev.filter((t) => t.pitch.midi !== midi));
       } else {
         const currentScaleNotes = getScaleTargets(selectedScale);
-        const matchInScale = currentScaleNotes.find((t) => t.pitch.midi === midi);
-        const newTarget = matchInScale ?? midiToTarget(midi);
-        setSelectedTargets((prev) => [...prev, newTarget]);
+        const matchesInScale = currentScaleNotes.filter((t) => t.pitch.midi === midi);
+        if (matchesInScale.length > 0) {
+          const preferred =
+            midi >= 60
+              ? matchesInScale.find((t) => t.clef === 'treble') ?? matchesInScale[0]!
+              : matchesInScale.find((t) => t.clef === 'bass') ?? matchesInScale[0]!;
+          setSelectedTargets((prev) => [...prev, preferred]);
+        } else {
+          setSelectedTargets((prev) => [...prev, midiToTarget(midi)]);
+        }
       }
     },
     [selectedTargets, selectedScale]
@@ -251,27 +264,27 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
         {/* Interactive Grand Staff SVG */}
         <div className="nnsr-modal-staff-container">
           <svg
-            viewBox="0 0 780 200"
+            viewBox="0 0 780 230"
             width="100%"
-            height="200"
+            height="230"
             style={{ display: 'block', userSelect: 'none' }}
           >
             {/* Grand Staff Lines */}
-            {[40, 50, 60, 70, 80].map((y) => (
+            {[35, 45, 55, 65, 75].map((y) => (
               <line key={`t-line-${y}`} x1={30} y1={y} x2={760} y2={y} stroke="#232b26" strokeWidth={1} />
             ))}
-            {[120, 130, 140, 150, 160].map((y) => (
+            {[145, 155, 165, 175, 185].map((y) => (
               <line key={`b-line-${y}`} x1={30} y1={y} x2={760} y2={y} stroke="#232b26" strokeWidth={1} />
             ))}
 
             {/* Vertical connector bar */}
-            <line x1={30} y1={40} x2={30} y2={160} stroke="#232b26" strokeWidth={1.5} />
+            <line x1={30} y1={35} x2={30} y2={185} stroke="#232b26" strokeWidth={1.5} />
 
             {/* Clef symbols */}
-            <text x={44} y={65} fontSize="34px" fontFamily="serif" textAnchor="middle" fill="#1f2421">
+            <text x={45} y={58} fontSize="34px" fontFamily="serif" textAnchor="middle" fill="#1f2421">
               𝄞
             </text>
-            <text x={44} y={135} fontSize="26px" fontFamily="serif" textAnchor="middle" fill="#1f2421">
+            <text x={45} y={155} fontSize="26px" fontFamily="serif" textAnchor="middle" fill="#1f2421">
               𝄢
             </text>
 
@@ -280,7 +293,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
               <>
                 {keySigSpec.trebleStepOffsets.map((offset, idx) => {
                   const x = 58 + idx * 10;
-                  const ny = 80 - offset * 5;
+                  const ny = 75 - offset * 5;
                   return (
                     <text
                       key={`t-ks-${idx}`}
@@ -298,7 +311,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                 })}
                 {keySigSpec.bassStepOffsets.map((offset, idx) => {
                   const x = 58 + idx * 10;
-                  const ny = 160 - offset * 5;
+                  const ny = 185 - offset * 5;
                   return (
                     <text
                       key={`b-ks-${idx}`}
@@ -317,14 +330,14 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
               </>
             )}
 
-            {/* Treble Staff Notes */}
+            {/* Treble Staff Notes (A3 to C6 across top staff) */}
             {currentTrebleNotes.map((target, i) => {
               const isSelected = isTargetSelected(target.targetId);
               const stepOffset = getStaffStepOffset(target.pitch, 'treble');
-              const bottomY = 80;
+              const bottomY = 75;
               const stepScale = 5;
               const ny = bottomY - stepOffset * stepScale;
-              const nx = 80 + i * 21;
+              const nx = 88 + i * 38;
               const ledgers = getLedgerLines(stepOffset);
               const stemDir = getStemDirection(stepOffset);
               const displayLetter =
@@ -342,9 +355,9 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                   className="nnsr-staff-clickable-note"
                 >
                   <rect
-                    x={nx - 10}
+                    x={nx - 14}
                     y={ny - 15}
-                    width={20}
+                    width={28}
                     height={30}
                     fill="transparent"
                   />
@@ -353,9 +366,9 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     return (
                       <line
                         key={`l-${lOffset}`}
-                        x1={nx - 8}
+                        x1={nx - 9}
                         y1={ly}
-                        x2={nx + 8}
+                        x2={nx + 9}
                         y2={ly}
                         stroke={isSelected ? '#52b788' : '#232b26'}
                         strokeWidth={1}
@@ -376,7 +389,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     x1={stemDir === 'up' ? nx + 4.5 : nx - 4.5}
                     y1={ny}
                     x2={stemDir === 'up' ? nx + 4.5 : nx - 4.5}
-                    y2={stemDir === 'up' ? ny - 22 : ny + 22}
+                    y2={stemDir === 'up' ? ny - 20 : ny + 20}
                     stroke={isSelected ? '#183324' : '#8c948f'}
                     strokeWidth={1.2}
                   />
@@ -384,7 +397,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     x={nx}
                     y={ny + (stemDir === 'up' ? 14 : -12)}
                     textAnchor="middle"
-                    fontSize="9px"
+                    fontSize="9.5px"
                     fontWeight={isSelected ? '700' : '500'}
                     fill={isSelected ? '#183324' : '#8c948f'}
                   >
@@ -394,14 +407,14 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
               );
             })}
 
-            {/* Bass Staff Notes */}
+            {/* Bass Staff Notes (C2 to E4 across bottom staff) */}
             {currentBassNotes.map((target, i) => {
               const isSelected = isTargetSelected(target.targetId);
               const stepOffset = getStaffStepOffset(target.pitch, 'bass');
-              const bottomY = 160;
+              const bottomY = 185;
               const stepScale = 5;
               const ny = bottomY - stepOffset * stepScale;
-              const nx = 420 + i * 21;
+              const nx = 88 + i * 38;
               const ledgers = getLedgerLines(stepOffset);
               const stemDir = getStemDirection(stepOffset);
               const displayLetter =
@@ -419,9 +432,9 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                   className="nnsr-staff-clickable-note"
                 >
                   <rect
-                    x={nx - 10}
+                    x={nx - 14}
                     y={ny - 15}
-                    width={20}
+                    width={28}
                     height={30}
                     fill="transparent"
                   />
@@ -430,9 +443,9 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     return (
                       <line
                         key={`b-l-${lOffset}`}
-                        x1={nx - 8}
+                        x1={nx - 9}
                         y1={ly}
-                        x2={nx + 8}
+                        x2={nx + 9}
                         y2={ly}
                         stroke={isSelected ? '#52b788' : '#232b26'}
                         strokeWidth={1}
@@ -453,7 +466,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     x1={stemDir === 'up' ? nx + 4.5 : nx - 4.5}
                     y1={ny}
                     x2={stemDir === 'up' ? nx + 4.5 : nx - 4.5}
-                    y2={stemDir === 'up' ? ny - 22 : ny + 22}
+                    y2={stemDir === 'up' ? ny - 20 : ny + 20}
                     stroke={isSelected ? '#183324' : '#8c948f'}
                     strokeWidth={1.2}
                   />
@@ -461,7 +474,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                     x={nx}
                     y={ny + (stemDir === 'up' ? 14 : -12)}
                     textAnchor="middle"
-                    fontSize="9px"
+                    fontSize="9.5px"
                     fontWeight={isSelected ? '700' : '500'}
                     fill={isSelected ? '#183324' : '#8c948f'}
                   >
@@ -481,48 +494,43 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
           />
         </div>
 
-        {/* Simple Tempo Control Row */}
-        <div className="nnsr-tempo-controls">
-          <span className="nnsr-tempo-label">Start Tempo</span>
-          <div className="nnsr-tempo-slider-wrap">
+        {/* Tempo Picker & Start Button */}
+        <div className="nnsr-modal-footer">
+          <div className="nnsr-modal-bpm-control">
+            <label htmlFor="nnsr-start-bpm-slider" className="nnsr-modal-bpm-label">
+              Start Tempo:
+            </label>
             <input
+              id="nnsr-start-bpm-slider"
               type="range"
-              min={15}
-              max={240}
-              step={1}
+              min={20}
+              max={200}
+              step={5}
               value={startingBpm}
               onChange={(e) => setStartingBpm(Number(e.target.value))}
-              className="nnsr-tempo-range"
+              className="nnsr-modal-bpm-slider"
               aria-label="Starting BPM Slider"
             />
+            <div className="nnsr-modal-bpm-input-wrap">
+              <input
+                type="number"
+                min={20}
+                max={240}
+                value={startingBpm}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  if (!isNaN(val)) {
+                    setStartingBpm(Math.max(15, Math.min(240, val)));
+                  }
+                }}
+                className="nnsr-modal-bpm-number"
+                aria-label="Starting BPM Input"
+              />
+              <span className="nnsr-modal-bpm-unit">BPM</span>
+            </div>
           </div>
-          <div className="nnsr-tempo-input-wrap">
-            <input
-              type="number"
-              min={15}
-              max={240}
-              step={1}
-              value={startingBpm}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                if (!isNaN(val)) {
-                  setStartingBpm(Math.max(15, Math.min(240, val)));
-                }
-              }}
-              className="nnsr-tempo-number-input"
-              aria-label="Starting BPM Input"
-            />
-            <span className="nnsr-tempo-unit">BPM</span>
-          </div>
-        </div>
 
-        {/* Footer with Minimal Start Button */}
-        <div className="nnsr-modal-footer">
-          <button type="button" className="nnsr-modal-cancel-btn" onClick={onClose}>
-            Cancel
-          </button>
           <button
-            type="button"
             className="nnsr-modal-start-btn"
             onClick={handleStart}
             disabled={selectedTargets.length === 0}
