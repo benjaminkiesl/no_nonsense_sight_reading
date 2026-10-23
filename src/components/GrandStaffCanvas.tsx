@@ -75,16 +75,16 @@ export const GrandStaffCanvas: React.FC<GrandStaffCanvasProps> = ({ snapshot, le
     ctx.bezierCurveTo(8, 158, 8, 188, 16, 220);
     ctx.stroke();
 
-    // Clefs
+    // Clefs (standard music engraving sizing & positioning)
     ctx.fillStyle = '#1f2421';
-    ctx.font = '54px serif';
+    ctx.font = '44px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    // Treble clef glyph
-    ctx.fillText('𝄞', 42, 92);
-    // Bass clef glyph
-    ctx.font = '42px serif';
-    ctx.fillText('𝄢', 42, 188);
+    // Treble clef glyph centered on G line (y=94)
+    ctx.fillText('𝄞', 42, 86);
+    // Bass clef glyph positioned so dots straddle F line (y=184)
+    ctx.font = '32px serif';
+    ctx.fillText('𝄢', 42, 196);
 
     // Key Signature
     const keySigSpec = KEY_SIGNATURES[level.keySignature];

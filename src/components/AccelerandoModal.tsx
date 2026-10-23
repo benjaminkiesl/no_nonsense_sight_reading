@@ -411,11 +411,11 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
             {/* Vertical connector bar */}
             <line x1={30} y1={55} x2={30} y2={205} stroke="#2c332f" strokeWidth={1.5} />
 
-            {/* Clef symbols accurately centered on their defining lines */}
+            {/* Clef symbols: standard music engraving sizing & positioning */}
             <text
               x={45}
-              y={87}
-              fontSize="44px"
+              y={78}
+              fontSize="34px"
               fontFamily="serif"
               textAnchor="middle"
               dominantBaseline="central"
@@ -425,8 +425,8 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
             </text>
             <text
               x={45}
-              y={175}
-              fontSize="32px"
+              y={184}
+              fontSize="26px"
               fontFamily="serif"
               textAnchor="middle"
               dominantBaseline="central"
