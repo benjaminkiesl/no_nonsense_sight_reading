@@ -334,3 +334,37 @@ In an fMRI study published in *PNAS*, **Nakano et al. (2013)** discovered that s
 | **Dopamine / Wit** | Cheng & Wang (2015); Ashby, Isen, & Turken (1999) | **Warm, dryly witty one-liners** on late `HOLD` misses (e.g., *"Mozart missed that F♯ once too. Shake out your hands."*) to replenish anterior cingulate dopamine and persistence (+30–40%). |
 | **Eye-Hand Span Training** | Furneaux & Land (1999) *Proc. R. Soc. B*; Truitt et al. (1997) | **Gaze-Ahead Cueing**: Subtly highlight the upcoming note ($n+1$) to the right of the hit zone so users train a 1-second Eye-Hand Span instead of tunnel-vision staring at the hit zone. |
 | **Auditory-Motor Loop** | Zatorre et al. (2007) *Nat. Rev. Neurosci.*; Fujioka et al. (2012) *J. Neurosci.* | **Web Audio Felt-Piano Synthesizer**: Optional zero-latency acoustic piano tone on key hits so laptop/MIDI-controller users engage dorsal auditory-motor binding and $\beta$ entrainment. |
+
+
+---
+
+# Part 3: The Scientific Debate over "10-Second Micro-Offline Consolidation" (Bönstrup et al., 2019 vs. Gupta & Rickard, 2022–2026; Das et al., PNAS 2025/2026)
+
+### 1. The Controversy & Core Criticisms
+The original claim by **Bönstrup et al. (2019, *Current Biology*)**—that ~95% of early motor sequence learning occurs not during active practice, but during brief 10-second rest intervals ("micro-offline consolidation")—has been heavily challenged and re-interpreted in peer-reviewed literature between 2022 and 2026:
+
+1. **The Mathematical Calculation Flaw (Fatigued Finish vs. Fresh Start)**:
+   * Critics (**Gupta & Rickard, 2022, 2024, 2026**; **Das et al., PNAS 2025/2026**) showed that Bönstrup et al.'s formula compared performance at the fatigued end of trial $n$ against the fresh start of trial $n+1$:
+     $$\text{Micro-Offline Gain} = \text{Speed}(\text{Trial } [n+1]_{\text{first}}) - \text{Speed}(\text{Trial } n_{\text{last}})$$
+   * Because repetitive motor execution induces acute neuromuscular and cognitive micro-fatigue by the end of a 10-second bout, performance slows down.
+   * During the 10-second rest, this micro-fatigue rapidly dissipates. Comparing a refreshed performer at the start of trial $n+1$ against a fatigued performer at the end of trial $n$ creates an **automatic positive jump** that mimics "consolidation" even in the absence of any true learning.
+
+2. **Dissipation of Reactive Inhibition (Hull's $I_R$)**:
+   * **Gupta & Rickard (2022, *npj Science of Learning*; 2024, 2026, *Scientific Reports*)** demonstrated that Clark Hull's classical concept of **Reactive Inhibition ($I_R$)**—a transient negative drive/fatigue state that accumulates during continuous work and dissipates during rest—fully accounts for the post-rest performance jumps across 10-second breaks without requiring an offline consolidation parameter.
+
+3. **The Random Sequence Disproof**:
+   * **Das, Karagiorgis, Diedrichsen, Stenner, & Azañón (PNAS, 2025/2026; DOI: 10.1073/pnas.2509233122)** tested participants on completely **random, unpredictable sequences** that could never be consolidated into a sequence memory representation.
+   * Participants showed the **exact same micro-offline performance jumps across 10-second rests on random sequences**, disproving sequence-specific memory consolidation as the primary behavioral driver.
+   * Furthermore, Das et al. showed that the jump is driven partly by **motor pre-planning** (participants plan the initial movements during the pause) and that the advantage of the spaced group over continuous practice is **transient**, dissipating within seconds under uniform testing.
+
+### 2. Current Scientific Consensus
+| Phenomenon | Status in Consensus | Neurobiological Reality |
+| :--- | :--- | :--- |
+| **Waking Neural Replay** | **CONFIRMED** | 20-fold compressed hippocampo-neocortical replay (Buch et al., 2021) is a legitimate neural phenomenon during quiet rest. |
+| **"95% of Learning Happens in 10s Rest"** | **DEBUNKED** | An artifact of comparing fatigued trial ends with fresh trial starts. True skill acquisition occurs during active execution. |
+| **Micro-Offline Jumps** | **CONFIRMED (REINTERPRETED)** | Driven by **(1) Dissipation of reactive inhibition (micro-fatigue)**, and **(2) Motor pre-planning during rest**. |
+
+### 3. Practical Implications for *No-Nonsense Sight-Reading*
+1. **Avoid Neuro-Mythology in UI Copy**: Never tell users *"Your brain consolidates 95% of the skill while you rest!"* Instead, frame pauses honestly and effectively: *"Take a breath: short pauses clear neural fatigue, reset your working memory, and give your eyes time to preview the next passage."*
+2. **Preventing "Garbage In, Garbage Out"**: As Branscheidt et al. (*eLife*, 2019) demonstrated, practicing motor tasks in a fatigued state degrades execution quality and impairs retention. The true purpose of 10-second breaks in sight-reading is to **prevent reactive inhibition from accumulating to the point where technique collapses and bad motor habits are reinforced**.
+3. **Pre-Reading & Gaze Preview Window**: Use the 8–10 second pause as an explicit lookahead phase (scanning key signature, meter, and opening hand position).
