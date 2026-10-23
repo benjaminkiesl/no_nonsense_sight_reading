@@ -48,7 +48,7 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
   });
 
   describe('LevelGraph Summit & Octagon Nodes', () => {
-    it('renders Trophy icon node at summit and connects both wings to Trophy', () => {
+    it('renders Trophy icon node at summit and connects both-12 to Trophy', () => {
       const { container } = render(
         <LevelGraph
           currentLevelId="both-12"
@@ -62,12 +62,12 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
       expect(trophyNode).toBeDefined();
       expect(screen.queryByText('SUMMIT')).toBeNull();
 
-      // Directed arrow connecting wings to Trophy
+      // Directed arrow connecting both-12 to Trophy
       const trophyArrow = container.querySelector('line[marker-end="url(#arrowhead)"]');
       expect(trophyArrow).toBeDefined();
     });
 
-    it('highlights Trophy node when both-12 and both-11 are completed', () => {
+    it('highlights Trophy node when both-12 is completed', () => {
       const { rerender } = render(
         <LevelGraph
           currentLevelId="treble-1"
@@ -82,7 +82,7 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
       rerender(
         <LevelGraph
           currentLevelId="treble-1"
-          completedLevelIds={new Set(['both-12', 'both-11'])}
+          completedLevelIds={new Set(['both-12'])}
           onSelectLevel={vi.fn()}
         />
       );

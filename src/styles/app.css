@@ -111,8 +111,9 @@ body {
   max-width: 900px;
 }
 
+.nnsr-level-map-container,
 .nnsr-map-workspace {
-  max-width: 840px;
+  max-width: 600px;
 }
 
 .nnsr-map-view {
@@ -222,8 +223,7 @@ body {
 }
 
 .nnsr-level-graph-container {
-  width: 100%;
-  max-width: 760px;
+  width: var(--level-graph-width);
   height: calc(100vh - var(--header-height) - 44px);
   background-color: var(--surface-paper);
   border: 1px solid var(--border-subtle);
@@ -238,7 +238,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 24px;
+  padding: 10px 16px;
   background-color: var(--surface-subtle);
   font-weight: 700;
   font-size: 0.82rem;
@@ -246,23 +246,6 @@ body {
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
   letter-spacing: 0.03em;
-}
-
-.nnsr-header-wing {
-  font-size: 0.78rem;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 4px;
-  background: rgba(31, 36, 33, 0.06);
-  color: var(--ink-secondary);
-}
-
-.nnsr-header-trunk {
-  display: flex;
-  gap: 60px;
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--ink-primary);
 }
 
 .nnsr-level-graph-scroll {
@@ -345,7 +328,7 @@ body {
 /* Celebration Overlay / Top Banner on Level Map */
 .nnsr-celebration-overlay {
   width: 100%;
-  max-width: 760px;
+  max-width: 440px;
   display: flex;
   justify-content: center;
   animation: bannerFadeIn 0.3s ease-out;

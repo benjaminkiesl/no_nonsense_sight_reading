@@ -31,7 +31,7 @@ export default function App(): React.JSX.Element {
     setLastCustomAccelerandoNotes,
   } = useAppStore();
 
-  const [activeView, setActiveView] = useState<'practice' | 'map'>('practice');
+  const [activeView, setActiveView] = useState<'practice' | 'levels'>('practice');
   const currentLevel = getLevelById(currentLevelId);
   const engineRef = useRef<SightReadingEngine>(new SightReadingEngine(currentLevel));
   const [snapshot, setSnapshot] = useState<EngineSnapshot>(() => engineRef.current.getSnapshot());
@@ -39,11 +39,11 @@ export default function App(): React.JSX.Element {
   const [isAccelerandoModalOpen, setIsAccelerandoModalOpen] = useState(false);
   const [isAccelerandoActive, setIsAccelerandoActive] = useState(false);
 
-  // Transition to Map view and mark level completed upon LEVEL_COMPLETE phase
+  // Transition to Levels view and mark level completed upon LEVEL_COMPLETE phase
   useEffect(() => {
     if (snapshot.phase === 'LEVEL_COMPLETE') {
       markLevelCompleted(currentLevelId);
-      setActiveView('map');
+      setActiveView('levels');
     }
   }, [snapshot.phase, currentLevelId, markLevelCompleted]);
 
@@ -192,7 +192,7 @@ export default function App(): React.JSX.Element {
         return;
       }
 
-      if (activeView === 'map') {
+      if (activeView === 'levels') {
         return;
       }
 
@@ -214,7 +214,7 @@ export default function App(): React.JSX.Element {
       <Header
         midiDeviceName={midiDeviceName}
         activeView={activeView}
-        onToggleView={() => setActiveView((v) => (v === 'practice' ? 'map' : 'practice'))}
+        onToggleView={() => setActiveView((v) => (v === 'practice' ? 'levels' : 'practice'))}
       />
 
       {activeView === 'practice' ? (
@@ -229,7 +229,7 @@ export default function App(): React.JSX.Element {
           </section>
         </main>
       ) : (
-        <main className="nnsr-workspace nnsr-map-workspace">
+        <main className="nnsr-workspace nnsr-level-map-container">
           <div className="nnsr-map-view">
             {snapshot.phase === 'LEVEL_COMPLETE' && (
               <CelebrationOverlay

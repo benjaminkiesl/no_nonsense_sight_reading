@@ -2,7 +2,7 @@ import React from 'react';
 
 export interface HeaderProps {
   midiDeviceName: string | null;
-  activeView?: 'practice' | 'map';
+  activeView?: 'practice' | 'levels';
   onToggleView?: () => void;
 }
 
@@ -22,9 +22,9 @@ export const Header: React.FC<HeaderProps> = ({
             className="nnsr-view-toggle-btn"
             onClick={onToggleView}
             data-testid="view-toggle-button"
-            aria-label={activeView === 'practice' ? 'Switch to Level Map' : 'Return to Practice Arena'}
+            aria-label={activeView === 'practice' ? 'Switch to Levels' : 'Return to Practice Arena'}
           >
-            {activeView === 'practice' ? 'Map' : '← Back to Practice'}
+            {activeView === 'practice' ? 'Levels' : '← Practice'}
           </button>
         )}
 

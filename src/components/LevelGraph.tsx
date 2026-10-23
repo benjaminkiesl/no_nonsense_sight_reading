@@ -15,47 +15,24 @@ export interface LevelGraphProps {
 
 const ALL_LEVELS = getAllLevels();
 
-const PADDING_TOP = 104;
-const TIER_HEIGHT = 92;
-const BOTH_Y_OFFSET = 32; // "both" is positioned 32px higher up than single clefs
-const SVG_WIDTH = 680;
-const SVG_HEIGHT = PADDING_TOP + 9 * TIER_HEIGHT + BOTH_Y_OFFSET + 60; // 1024
+const PADDING_TOP = 110;
+const TIER_HEIGHT = 96;
+const BOTH_Y_OFFSET = 36; // "both" is positioned 36px higher up than single clefs
+const SVG_WIDTH = 300;
+const SVG_HEIGHT = PADDING_TOP + 11 * TIER_HEIGHT + BOTH_Y_OFFSET + 70;
 const NODE_RADIUS = 25;
 
+const LANE_X: Record<string, number> = {
+  treble: 55,
+  both: 150,
+  bass: 245,
+};
+
 export function getNodePosition(level: LevelSpec): { x: number; y: number } {
-  const { tier, lane } = level;
-
-  // Row Y positions
-  // row 1: tiers 12 (Flat) and 11 (Sharp)
-  // row 2: tiers 10 (Flat) and 9 (Sharp)
-  // row 3: tier 8
-  // ...
-  // row 10: tier 1
-  let rowIndex: number;
-  if (tier === 12 || tier === 11) {
-    rowIndex = 1;
-  } else if (tier === 10 || tier === 9) {
-    rowIndex = 2;
-  } else {
-    // tier 8 -> row 3, tier 1 -> row 10
-    rowIndex = 3 + (8 - tier);
-  }
-
-  const baseY = PADDING_TOP + (rowIndex - 1) * TIER_HEIGHT + BOTH_Y_OFFSET;
-  const y = lane === 'both' ? baseY - BOTH_Y_OFFSET : baseY;
-
-  let x: number;
-  if (tier === 10 || tier === 12) {
-    // Left Wing (Flat)
-    x = lane === 'treble' ? 65 : lane === 'both' ? 150 : 235;
-  } else if (tier === 9 || tier === 11) {
-    // Right Wing (Sharp)
-    x = lane === 'treble' ? 445 : lane === 'both' ? 530 : 615;
-  } else {
-    // Central Trunk (Tiers 1-8)
-    x = lane === 'treble' ? 250 : lane === 'both' ? 340 : 430;
-  }
-
+  const x = LANE_X[level.lane]!;
+  const tierIndex = 12 - level.tier; // 0 for Tier 12, 11 for Tier 1
+  const baseY = PADDING_TOP + tierIndex * TIER_HEIGHT + BOTH_Y_OFFSET;
+  const y = level.lane === 'both' ? baseY - BOTH_Y_OFFSET : baseY;
   return { x, y };
 }
 
@@ -215,11 +192,9 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [isTrophyCelebrating, setIsTrophyCelebrating] = useState(false);
 
-  // Auto-scroll to center the current level node on mount and when level changes
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
-
     const currentLevel = ALL_LEVELS.find((l) => l.id === currentLevelId);
     if (!currentLevel) return;
 
@@ -235,8 +210,7 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
     }
   }, [currentLevelId]);
 
-  const isTrophyCompleted =
-    completedLevelIds.has('both-12') && completedLevelIds.has('both-11');
+  const isTrophyCompleted = completedLevelIds.has('both-12');
 
   const handleTrophyClick = () => {
     if (isTrophyCompleted) {
@@ -246,222 +220,121 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
     onSelectLevel('both-12');
   };
 
-  // Helper to render directed edges between nodes with markerEnd arrowhead
-  const renderDirectedArrow = (
-    fromX: number,
-    fromY: number,
-    toX: number,
-    toY: number,
-    isCompleted: boolean,
-    key: string,
-    targetIsRect = false
-  ) => {
-    const dx = toX - fromX;
-    const dy = toY - fromY;
-    const len = Math.hypot(dx, dy);
-    if (len === 0) return null;
+  // Generate directed arrows
+  const arrows: React.JSX.Element[] = [];
+
+  // Clean upward arrow connecting both-12 (x=150, y=110) to the base of the standalone Trophy (base at y=62)
+  arrows.push(
+    <line
+      key="arrow-both-trophy"
+      x1={150}
+      y1={110 - NODE_RADIUS}
+      x2={150}
+      y2={68}
+      stroke={isTrophyCompleted ? 'var(--emerald)' : '#b0aba2'}
+      strokeWidth={1.8}
+      markerEnd="url(#arrowhead)"
+    />
+  );
+
+  for (let tier = 1; tier <= 12; tier++) {
+    const tierIdx = 12 - tier;
+    const ySingleCur = PADDING_TOP + tierIdx * TIER_HEIGHT + BOTH_Y_OFFSET;
+    const yBothCur = ySingleCur - BOTH_Y_OFFSET;
+
+    // Upward arrows to next tier (tier -> tier + 1)
+    if (tier < 12) {
+      const ySingleNext = PADDING_TOP + (tierIdx - 1) * TIER_HEIGHT + BOTH_Y_OFFSET;
+      const yBothNext = ySingleNext - BOTH_Y_OFFSET;
+
+      // Treble upward
+      arrows.push(
+        <line
+          key={`arrow-treble-${tier}`}
+          x1={55}
+          y1={ySingleCur - NODE_RADIUS}
+          x2={55}
+          y2={ySingleNext + NODE_RADIUS + 4}
+          stroke={completedLevelIds.has(`treble-${tier + 1}`) ? 'var(--emerald)' : '#b0aba2'}
+          strokeWidth={1.8}
+          markerEnd="url(#arrowhead)"
+        />
+      );
+
+      // Bass upward
+      arrows.push(
+        <line
+          key={`arrow-bass-${tier}`}
+          x1={245}
+          y1={ySingleCur - NODE_RADIUS}
+          x2={245}
+          y2={ySingleNext + NODE_RADIUS + 4}
+          stroke={completedLevelIds.has(`bass-${tier + 1}`) ? 'var(--emerald)' : '#b0aba2'}
+          strokeWidth={1.8}
+          markerEnd="url(#arrowhead)"
+        />
+      );
+
+      // Both upward
+      arrows.push(
+        <line
+          key={`arrow-both-${tier}`}
+          x1={150}
+          y1={yBothCur - NODE_RADIUS}
+          x2={150}
+          y2={yBothNext + NODE_RADIUS + 4}
+          stroke={completedLevelIds.has(`both-${tier + 1}`) ? 'var(--emerald)' : '#b0aba2'}
+          strokeWidth={1.8}
+          markerEnd="url(#arrowhead)"
+        />
+      );
+    }
+
+    // Slanted arrows into Both from Treble and Bass
+    // Treble-k (55, ySingleCur) -> Both-k (150, yBothCur)
+    const dx = 150 - 55; // 95
+    const dy = yBothCur - ySingleCur; // -36 (upward)
+    const len = Math.sqrt(dx * dx + dy * dy);
     const ux = dx / len;
     const uy = dy / len;
 
-    const x1 = fromX + ux * NODE_RADIUS;
-    const y1 = fromY + uy * NODE_RADIUS;
-    const x2 = targetIsRect ? toX : toX - ux * (NODE_RADIUS + 4);
-    const y2 = targetIsRect ? toY : toY - uy * (NODE_RADIUS + 4);
-
-    return (
+    arrows.push(
       <line
-        key={key}
-        x1={x1}
-        y1={y1}
-        x2={x2}
-        y2={y2}
-        stroke={isCompleted ? 'var(--emerald)' : '#b0aba2'}
+        key={`arrow-cross-t-both-${tier}`}
+        x1={55 + ux * NODE_RADIUS}
+        y1={ySingleCur + uy * NODE_RADIUS}
+        x2={150 - ux * (NODE_RADIUS + 4)}
+        y2={yBothCur - uy * (NODE_RADIUS + 4)}
+        stroke={completedLevelIds.has(`both-${tier}`) ? 'var(--emerald)' : '#b0aba2'}
         strokeWidth={1.8}
         markerEnd="url(#arrowhead)"
       />
     );
-  };
 
-  // Generate all directed arrows in curriculum graph
-  const arrows: React.JSX.Element[] = [];
+    // Bass-k (245, ySingleCur) -> Both-k (150, yBothCur)
+    const dxB = 150 - 245; // -95
+    const uxB = dxB / len;
 
-  // Summit arrows: both-12 (Flat wing top) and both-11 (Sharp wing top) -> Summit Trophy foot
-  const arrowBoth12ToTrophy = renderDirectedArrow(
-    150,
-    104,
-    325,
-    62,
-    completedLevelIds.has('both-12'),
-    'arrow-both-12-trophy',
-    true
-  );
-  if (arrowBoth12ToTrophy) arrows.push(arrowBoth12ToTrophy);
-
-  const arrowBoth11ToTrophy = renderDirectedArrow(
-    530,
-    104,
-    355,
-    62,
-    completedLevelIds.has('both-11'),
-    'arrow-both-11-trophy',
-    true
-  );
-  if (arrowBoth11ToTrophy) arrows.push(arrowBoth11ToTrophy);
-
-  // Central Trunk (Tiers 1..8)
-  for (let tier = 1; tier <= 8; tier++) {
-    const { y: yTrebleCur } = getNodePosition({ id: `treble-${tier}`, tier, lane: 'treble' } as LevelSpec);
-    const { y: yBothCur } = getNodePosition({ id: `both-${tier}`, tier, lane: 'both' } as LevelSpec);
-    const { y: yBassCur } = getNodePosition({ id: `bass-${tier}`, tier, lane: 'bass' } as LevelSpec);
-
-    // Slanted arrows: Treble-k -> Both-k, Bass-k -> Both-k
-    const aTrebleBoth = renderDirectedArrow(
-      250,
-      yTrebleCur,
-      340,
-      yBothCur,
-      completedLevelIds.has(`both-${tier}`),
-      `arrow-slant-t-${tier}`
+    arrows.push(
+      <line
+        key={`arrow-cross-b-both-${tier}`}
+        x1={245 + uxB * NODE_RADIUS}
+        y1={ySingleCur + uy * NODE_RADIUS}
+        x2={150 - uxB * (NODE_RADIUS + 4)}
+        y2={yBothCur - uy * (NODE_RADIUS + 4)}
+        stroke={completedLevelIds.has(`both-${tier}`) ? 'var(--emerald)' : '#b0aba2'}
+        strokeWidth={1.8}
+        markerEnd="url(#arrowhead)"
+      />
     );
-    if (aTrebleBoth) arrows.push(aTrebleBoth);
-
-    const aBassBoth = renderDirectedArrow(
-      430,
-      yBassCur,
-      340,
-      yBothCur,
-      completedLevelIds.has(`both-${tier}`),
-      `arrow-slant-b-${tier}`
-    );
-    if (aBassBoth) arrows.push(aBassBoth);
-
-    // Upward arrows within trunk (tier -> tier + 1)
-    if (tier < 8) {
-      const { y: yTrebleNext } = getNodePosition({ id: `treble-${tier + 1}`, tier: tier + 1, lane: 'treble' } as LevelSpec);
-      const { y: yBothNext } = getNodePosition({ id: `both-${tier + 1}`, tier: tier + 1, lane: 'both' } as LevelSpec);
-      const { y: yBassNext } = getNodePosition({ id: `bass-${tier + 1}`, tier: tier + 1, lane: 'bass' } as LevelSpec);
-
-      const aTrebleUp = renderDirectedArrow(
-        250,
-        yTrebleCur,
-        250,
-        yTrebleNext,
-        completedLevelIds.has(`treble-${tier + 1}`),
-        `arrow-trunk-t-${tier}`
-      );
-      if (aTrebleUp) arrows.push(aTrebleUp);
-
-      const aBothUp = renderDirectedArrow(
-        340,
-        yBothCur,
-        340,
-        yBothNext,
-        completedLevelIds.has(`both-${tier + 1}`),
-        `arrow-trunk-both-${tier}`
-      );
-      if (aBothUp) arrows.push(aBothUp);
-
-      const aBassUp = renderDirectedArrow(
-        430,
-        yBassCur,
-        430,
-        yBassNext,
-        completedLevelIds.has(`bass-${tier + 1}`),
-        `arrow-trunk-b-${tier}`
-      );
-      if (aBassUp) arrows.push(aBassUp);
-    }
   }
-
-  // Branching arrows from Tier 8 into Left Wing (Tier 10) and Right Wing (Tier 9)
-  const posT8 = getNodePosition({ id: 'treble-8', tier: 8, lane: 'treble' } as LevelSpec);
-  const posM8 = getNodePosition({ id: 'both-8', tier: 8, lane: 'both' } as LevelSpec);
-  const posB8 = getNodePosition({ id: 'bass-8', tier: 8, lane: 'bass' } as LevelSpec);
-
-  // Left Wing (Tier 10)
-  const posT10 = getNodePosition({ id: 'treble-10', tier: 10, lane: 'treble' } as LevelSpec);
-  const posM10 = getNodePosition({ id: 'both-10', tier: 10, lane: 'both' } as LevelSpec);
-  const posB10 = getNodePosition({ id: 'bass-10', tier: 10, lane: 'bass' } as LevelSpec);
-
-  const aT8T10 = renderDirectedArrow(posT8.x, posT8.y, posT10.x, posT10.y, completedLevelIds.has('treble-10'), 'arrow-t8-t10');
-  if (aT8T10) arrows.push(aT8T10);
-  const aM8M10 = renderDirectedArrow(posM8.x, posM8.y, posM10.x, posM10.y, completedLevelIds.has('both-10'), 'arrow-m8-m10');
-  if (aM8M10) arrows.push(aM8M10);
-  const aB8B10 = renderDirectedArrow(posB8.x, posB8.y, posB10.x, posB10.y, completedLevelIds.has('bass-10'), 'arrow-b8-b10');
-  if (aB8B10) arrows.push(aB8B10);
-
-  // Right Wing (Tier 9)
-  const posT9 = getNodePosition({ id: 'treble-9', tier: 9, lane: 'treble' } as LevelSpec);
-  const posM9 = getNodePosition({ id: 'both-9', tier: 9, lane: 'both' } as LevelSpec);
-  const posB9 = getNodePosition({ id: 'bass-9', tier: 9, lane: 'bass' } as LevelSpec);
-
-  const aT8T9 = renderDirectedArrow(posT8.x, posT8.y, posT9.x, posT9.y, completedLevelIds.has('treble-9'), 'arrow-t8-t9');
-  if (aT8T9) arrows.push(aT8T9);
-  const aM8M9 = renderDirectedArrow(posM8.x, posM8.y, posM9.x, posM9.y, completedLevelIds.has('both-9'), 'arrow-m8-m9');
-  if (aM8M9) arrows.push(aM8M9);
-  const aB8B9 = renderDirectedArrow(posB8.x, posB8.y, posB9.x, posB9.y, completedLevelIds.has('bass-9'), 'arrow-b8-b9');
-  if (aB8B9) arrows.push(aB8B9);
-
-  // Left Wing (Flat Wing): Tier 10 inner, Tier 10 -> Tier 12, Tier 12 inner
-  const posT12 = getNodePosition({ id: 'treble-12', tier: 12, lane: 'treble' } as LevelSpec);
-  const posM12 = getNodePosition({ id: 'both-12', tier: 12, lane: 'both' } as LevelSpec);
-  const posB12 = getNodePosition({ id: 'bass-12', tier: 12, lane: 'bass' } as LevelSpec);
-
-  // Within Tier 10
-  const aT10M10 = renderDirectedArrow(posT10.x, posT10.y, posM10.x, posM10.y, completedLevelIds.has('both-10'), 'arrow-t10-m10');
-  if (aT10M10) arrows.push(aT10M10);
-  const aB10M10 = renderDirectedArrow(posB10.x, posB10.y, posM10.x, posM10.y, completedLevelIds.has('both-10'), 'arrow-b10-m10');
-  if (aB10M10) arrows.push(aB10M10);
-
-  // Tier 10 -> Tier 12
-  const aT10T12 = renderDirectedArrow(posT10.x, posT10.y, posT12.x, posT12.y, completedLevelIds.has('treble-12'), 'arrow-t10-t12');
-  if (aT10T12) arrows.push(aT10T12);
-  const aM10M12 = renderDirectedArrow(posM10.x, posM10.y, posM12.x, posM12.y, completedLevelIds.has('both-12'), 'arrow-m10-m12');
-  if (aM10M12) arrows.push(aM10M12);
-  const aB10B12 = renderDirectedArrow(posB10.x, posB10.y, posB12.x, posB12.y, completedLevelIds.has('bass-12'), 'arrow-b10-b12');
-  if (aB10B12) arrows.push(aB10B12);
-
-  // Within Tier 12
-  const aT12M12 = renderDirectedArrow(posT12.x, posT12.y, posM12.x, posM12.y, completedLevelIds.has('both-12'), 'arrow-t12-m12');
-  if (aT12M12) arrows.push(aT12M12);
-  const aB12M12 = renderDirectedArrow(posB12.x, posB12.y, posM12.x, posM12.y, completedLevelIds.has('both-12'), 'arrow-b12-m12');
-  if (aB12M12) arrows.push(aB12M12);
-
-  // Right Wing (Sharp Wing): Tier 9 inner, Tier 9 -> Tier 11, Tier 11 inner
-  const posT11 = getNodePosition({ id: 'treble-11', tier: 11, lane: 'treble' } as LevelSpec);
-  const posM11 = getNodePosition({ id: 'both-11', tier: 11, lane: 'both' } as LevelSpec);
-  const posB11 = getNodePosition({ id: 'bass-11', tier: 11, lane: 'bass' } as LevelSpec);
-
-  // Within Tier 9
-  const aT9M9 = renderDirectedArrow(posT9.x, posT9.y, posM9.x, posM9.y, completedLevelIds.has('both-9'), 'arrow-t9-m9');
-  if (aT9M9) arrows.push(aT9M9);
-  const aB9M9 = renderDirectedArrow(posB9.x, posB9.y, posM9.x, posM9.y, completedLevelIds.has('both-9'), 'arrow-b9-m9');
-  if (aB9M9) arrows.push(aB9M9);
-
-  // Tier 9 -> Tier 11
-  const aT9T11 = renderDirectedArrow(posT9.x, posT9.y, posT11.x, posT11.y, completedLevelIds.has('treble-11'), 'arrow-t9-t11');
-  if (aT9T11) arrows.push(aT9T11);
-  const aM9M11 = renderDirectedArrow(posM9.x, posM9.y, posM11.x, posM11.y, completedLevelIds.has('both-11'), 'arrow-m9-m11');
-  if (aM9M11) arrows.push(aM9M11);
-  const aB9B11 = renderDirectedArrow(posB9.x, posB9.y, posB11.x, posB11.y, completedLevelIds.has('bass-11'), 'arrow-b9-b11');
-  if (aB9B11) arrows.push(aB9B11);
-
-  // Within Tier 11
-  const aT11M11 = renderDirectedArrow(posT11.x, posT11.y, posM11.x, posM11.y, completedLevelIds.has('both-11'), 'arrow-t11-m11');
-  if (aT11M11) arrows.push(aT11M11);
-  const aB11M11 = renderDirectedArrow(posB11.x, posB11.y, posM11.x, posM11.y, completedLevelIds.has('both-11'), 'arrow-b11-m11');
-  if (aB11M11) arrows.push(aB11M11);
 
   return (
     <div className="nnsr-level-graph-container">
       <div className="nnsr-level-graph-header">
-        <div className="nnsr-header-wing left">♭ Flat Wing</div>
-        <div className="nnsr-header-trunk">
-          <span>Treble</span>
-          <span>Both</span>
-          <span>Bass</span>
-        </div>
-        <div className="nnsr-header-wing right">♯ Sharp Wing</div>
+        <div style={{ width: '33%', textAlign: 'center' }}>Treble</div>
+        <div style={{ width: '33%', textAlign: 'center' }}>Both</div>
+        <div style={{ width: '33%', textAlign: 'center' }}>Bass</div>
       </div>
 
       <div ref={scrollRef} className="nnsr-level-graph-scroll">
@@ -487,7 +360,7 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
           {/* Render Edge Arrows */}
           <g className="nnsr-graph-arrows">{arrows}</g>
 
-          {/* Summit Trophy Node: Standalone Vector Shape at Peak (Centered at X=340) */}
+          {/* Summit Trophy Node: Standalone Vector Shape at Peak (No Circle) */}
           <g
             className={`nnsr-graph-trophy-node ${isTrophyCompleted ? 'completed' : ''} ${
               isTrophyCelebrating ? 'celebrating' : ''
@@ -504,7 +377,6 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
               }
             }}
             style={{ cursor: 'pointer' }}
-            transform="translate(190, 0)"
           >
             {/* Left Handle */}
             <path
@@ -551,7 +423,7 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
               strokeWidth={1.2}
             />
 
-            {/* Pedestal Plinth */}
+            {/* Pedestal Plinth with SUMMIT engraving */}
             <rect
               x={131}
               y={49}
@@ -582,7 +454,7 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
             />
           </g>
 
-          {/* Accelerando Perpetuo Octagon Node (Left of Summit Trophy at X=230, Y=46) */}
+          {/* Accelerando Perpetuo Octagon Node (X=65, Y=65) */}
           <g
             className="nnsr-graph-octagon-node"
             role="button"
@@ -599,13 +471,13 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
             style={{ cursor: 'pointer' }}
           >
             <polygon
-              points={getOctagonPoints(230, 46, 23)}
+              points={getOctagonPoints(65, 65, 23)}
               fill="#ffffff"
               stroke="var(--emerald)"
               strokeWidth={2.2}
             />
             {/* Speedometer SVG Icon */}
-            <g transform="translate(230, 46)">
+            <g transform="translate(65, 65)">
               {/* Dial Arc */}
               <path
                 d="M -13 4 A 14 14 0 1 1 13 4"

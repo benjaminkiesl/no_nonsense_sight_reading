@@ -27,7 +27,7 @@ describe('App Integration Test', () => {
     expect(screen.getByText('Speed Up')).toBeDefined();
     expect(screen.getByText('Hold')).toBeDefined();
     expect(screen.getByTestId('view-toggle-button')).toBeDefined();
-    expect(screen.getByText('Map')).toBeDefined();
+    expect(screen.getByText('Levels')).toBeDefined();
 
     // Toggle to dedicated Level Map view
     act(() => {
@@ -38,9 +38,7 @@ describe('App Integration Test', () => {
     expect(screen.getByText('Treble')).toBeDefined();
     expect(screen.getByText('Both')).toBeDefined();
     expect(screen.getByText('Bass')).toBeDefined();
-    expect(screen.getByText('♭ Flat Wing')).toBeDefined();
-    expect(screen.getByText('♯ Sharp Wing')).toBeDefined();
-    expect(screen.getByText('← Back to Practice')).toBeDefined();
+    expect(screen.getByText('← Practice')).toBeDefined();
 
     // Toggle back to practice view
     act(() => {

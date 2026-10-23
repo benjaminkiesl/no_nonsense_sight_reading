@@ -80,35 +80,6 @@ describe('Curriculum Graph & Traversal', () => {
       expect(completed.has('treble-4')).toBe(false);
       expect(completed.has('bass-4')).toBe(false);
     });
-
-    it('isolates wing branches in transitive completion closure', () => {
-      // Completed Flat Wing Tier 10
-      const flatCompleted = getTransitiveCompletedLevels(['both-10']);
-      expect(flatCompleted.has('both-10')).toBe(true);
-      expect(flatCompleted.has('treble-10')).toBe(true);
-      expect(flatCompleted.has('bass-10')).toBe(true);
-      expect(flatCompleted.has('both-8')).toBe(true);
-      expect(flatCompleted.has('treble-8')).toBe(true);
-      expect(flatCompleted.has('bass-8')).toBe(true);
-
-      // Sharp wing levels must NOT be marked
-      expect(flatCompleted.has('both-9')).toBe(false);
-      expect(flatCompleted.has('treble-9')).toBe(false);
-      expect(flatCompleted.has('bass-9')).toBe(false);
-      expect(flatCompleted.has('both-11')).toBe(false);
-
-      // Completed Sharp Wing Tier 11
-      const sharpCompleted = getTransitiveCompletedLevels(['both-11']);
-      expect(sharpCompleted.has('both-11')).toBe(true);
-      expect(sharpCompleted.has('treble-11')).toBe(true);
-      expect(sharpCompleted.has('both-9')).toBe(true);
-      expect(sharpCompleted.has('both-8')).toBe(true);
-
-      // Flat wing levels must NOT be marked
-      expect(sharpCompleted.has('both-10')).toBe(false);
-      expect(sharpCompleted.has('treble-10')).toBe(false);
-      expect(sharpCompleted.has('both-12')).toBe(false);
-    });
   });
 
   describe('getNextRecommendedLevel', () => {
@@ -132,27 +103,9 @@ describe('Curriculum Graph & Traversal', () => {
       expect(getNextRecommendedLevel('bass-2', finished)).toBe('treble-2');
     });
 
-    it('recommends treble-(k+1) when both-k is finished in central trunk', () => {
+    it('recommends treble-(k+1) when both-k is finished', () => {
       const finished = new Set(['both-1', 'treble-1', 'bass-1']);
       expect(getNextRecommendedLevel('both-1', finished)).toBe('treble-2');
-    });
-
-    it('recommends Sharp wing (treble-9) when both-8 is finished, or Flat wing if Sharp wing is done', () => {
-      const finished8 = new Set(['both-8']);
-      expect(getNextRecommendedLevel('both-8', finished8)).toBe('treble-9');
-
-      const finished8And9 = new Set(['both-8', 'both-9']);
-      expect(getNextRecommendedLevel('both-8', finished8And9)).toBe('treble-10');
-    });
-
-    it('recommends treble-11 when both-9 is finished, and treble-12 when both-10 is finished', () => {
-      expect(getNextRecommendedLevel('both-9', new Set(['both-9']))).toBe('treble-11');
-      expect(getNextRecommendedLevel('both-10', new Set(['both-10']))).toBe('treble-12');
-    });
-
-    it('recommends uncompleted Flat wing when both-11 is finished', () => {
-      expect(getNextRecommendedLevel('both-11', new Set(['both-11']))).toBe('treble-10');
-      expect(getNextRecommendedLevel('both-11', new Set(['both-11', 'both-12']))).toBe('both-11');
     });
 
     it('remains on both-12 when both-12 is finished', () => {

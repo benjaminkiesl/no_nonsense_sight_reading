@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { LevelGraph } from '../../src/components/LevelGraph';
 
 describe('LevelGraph Component', () => {
-  it('renders the 3 lane headers and two-wing headers', () => {
+  it('renders the 3 lane headers', () => {
     render(
       <LevelGraph
         currentLevelId="treble-1"
@@ -15,8 +15,6 @@ describe('LevelGraph Component', () => {
     expect(screen.getByText('Treble')).toBeDefined();
     expect(screen.getByText('Both')).toBeDefined();
     expect(screen.getByText('Bass')).toBeDefined();
-    expect(screen.getByText('♭ Flat Wing')).toBeDefined();
-    expect(screen.getByText('♯ Sharp Wing')).toBeDefined();
   });
 
   it('renders all 36 level nodes, highlights current level, and applies celebratory ring', () => {
