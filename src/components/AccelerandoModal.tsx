@@ -413,9 +413,9 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
 
             {/* Clef symbols: standard music engraving sizing & positioning */}
             <text
-              x={45}
-              y={78}
-              fontSize="34px"
+              x={44}
+              y={82}
+              fontSize="43px"
               fontFamily="serif"
               textAnchor="middle"
               dominantBaseline="central"
@@ -424,9 +424,9 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
               𝄞
             </text>
             <text
-              x={45}
-              y={184}
-              fontSize="26px"
+              x={44}
+              y={191}
+              fontSize="43px"
               fontFamily="serif"
               textAnchor="middle"
               dominantBaseline="central"
@@ -439,7 +439,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
             {keySigSpec.accidentalType !== 'none' && (
               <>
                 {keySigSpec.trebleStepOffsets.map((offset, idx) => {
-                  const x = 58 + idx * 10;
+                  const x = 63 + idx * 9;
                   const ny = 95 - offset * 5;
                   return (
                     <text
@@ -457,7 +457,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
                   );
                 })}
                 {keySigSpec.bassStepOffsets.map((offset, idx) => {
-                  const x = 58 + idx * 10;
+                  const x = 63 + idx * 9;
                   const ny = 205 - offset * 5;
                   return (
                     <text
