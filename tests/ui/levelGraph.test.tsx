@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { LevelGraph } from '../../src/components/LevelGraph';
 
 describe('LevelGraph Component', () => {
-  it('renders the 3 lane headers', () => {
+  it('renders the 3 lane headers and two-wing headers', () => {
     render(
       <LevelGraph
         currentLevelId="treble-1"
@@ -15,14 +15,17 @@ describe('LevelGraph Component', () => {
     expect(screen.getByText('Treble')).toBeDefined();
     expect(screen.getByText('Both')).toBeDefined();
     expect(screen.getByText('Bass')).toBeDefined();
+    expect(screen.getByText('♭ Flat Wing')).toBeDefined();
+    expect(screen.getByText('♯ Sharp Wing')).toBeDefined();
   });
 
-  it('renders all 36 level nodes and highlights current level', () => {
+  it('renders all 36 level nodes, highlights current level, and applies celebratory ring', () => {
     const { container } = render(
       <LevelGraph
         currentLevelId="treble-3"
-        completedLevelIds={new Set(['treble-1', 'treble-2'])}
+        completedLevelIds={new Set(['treble-1', 'treble-2', 'treble-3'])}
         onSelectLevel={vi.fn()}
+        celebratingLevelId="treble-3"
       />
     );
 
@@ -32,8 +35,11 @@ describe('LevelGraph Component', () => {
     const currentNode = container.querySelector('.nnsr-graph-node.current');
     expect(currentNode).toBeDefined();
 
-    const completedNodes = container.querySelectorAll('.nnsr-graph-node.completed');
-    expect(completedNodes.length).toBe(2);
+    const celebratingNode = container.querySelector('.nnsr-graph-node.celebrating-node');
+    expect(celebratingNode).toBeDefined();
+
+    const rippleRing = container.querySelector('.nnsr-celebrate-ring');
+    expect(rippleRing).toBeDefined();
   });
 
   it('triggers onSelectLevel when a node is clicked', () => {

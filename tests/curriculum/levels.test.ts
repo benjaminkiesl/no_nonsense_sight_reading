@@ -115,4 +115,62 @@ describe('Curriculum Levels Definition', () => {
     expect(t3ReviewIds).toContain('G4');
     expect(t3ReviewIds).toContain('C4');
   });
+
+  it('correctly sets two-wing scale prerequisites and next chains above Tier 8', () => {
+    // Tier 8 branches into both wings (Tier 9 and Tier 10)
+    const t8 = LEVELS_BY_ID.get('treble-8')!;
+    expect(t8.nextIds).toContain('treble-9');
+    expect(t8.nextIds).toContain('treble-10');
+    expect(t8.nextIds).toContain('both-8');
+
+    const b8 = LEVELS_BY_ID.get('bass-8')!;
+    expect(b8.nextIds).toContain('bass-9');
+    expect(b8.nextIds).toContain('bass-10');
+    expect(b8.nextIds).toContain('both-8');
+
+    const m8 = LEVELS_BY_ID.get('both-8')!;
+    expect(m8.nextIds).toEqual(['both-9', 'both-10']);
+
+    // Flat Wing: Tier 10 (F Major) depends on Tier 8, and branches into Tier 12
+    const t10 = LEVELS_BY_ID.get('treble-10')!;
+    expect(t10.prerequisiteIds).toEqual(['treble-8']);
+    expect(t10.nextIds).toEqual(['both-10', 'treble-12']);
+
+    const b10 = LEVELS_BY_ID.get('bass-10')!;
+    expect(b10.prerequisiteIds).toEqual(['bass-8']);
+    expect(b10.nextIds).toEqual(['both-10', 'bass-12']);
+
+    const m10 = LEVELS_BY_ID.get('both-10')!;
+    expect(m10.prerequisiteIds).toContain('treble-10');
+    expect(m10.prerequisiteIds).toContain('bass-10');
+    expect(m10.prerequisiteIds).toContain('both-8');
+    expect(m10.nextIds).toEqual(['both-12']);
+
+    // Flat Wing: Tier 12 (Bb Major) depends on Tier 10
+    const t12 = LEVELS_BY_ID.get('treble-12')!;
+    expect(t12.prerequisiteIds).toEqual(['treble-10']);
+    expect(t12.nextIds).toEqual(['both-12']);
+
+    const m12 = LEVELS_BY_ID.get('both-12')!;
+    expect(m12.prerequisiteIds).toContain('both-10');
+    expect(m12.nextIds).toEqual([]);
+
+    // Sharp Wing: Tier 9 (G Major) depends on Tier 8, and branches into Tier 11
+    const t9 = LEVELS_BY_ID.get('treble-9')!;
+    expect(t9.prerequisiteIds).toEqual(['treble-8']);
+    expect(t9.nextIds).toEqual(['both-9', 'treble-11']);
+
+    const m9 = LEVELS_BY_ID.get('both-9')!;
+    expect(m9.prerequisiteIds).toContain('both-8');
+    expect(m9.nextIds).toEqual(['both-11']);
+
+    // Sharp Wing: Tier 11 (D Major) depends on Tier 9
+    const t11 = LEVELS_BY_ID.get('treble-11')!;
+    expect(t11.prerequisiteIds).toEqual(['treble-9']);
+    expect(t11.nextIds).toEqual(['both-11']);
+
+    const m11 = LEVELS_BY_ID.get('both-11')!;
+    expect(m11.prerequisiteIds).toContain('both-9');
+    expect(m11.nextIds).toEqual([]);
+  });
 });

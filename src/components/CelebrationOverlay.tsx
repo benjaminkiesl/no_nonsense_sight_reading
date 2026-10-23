@@ -13,7 +13,7 @@ export const CelebrationOverlay: React.FC<CelebrationOverlayProps> = ({
   onAccelerandoContinue,
 }) => {
   return (
-    <div className="nnsr-celebration-overlay" onClick={onContinue}>
+    <div className="nnsr-celebration-overlay" data-testid="celebration-overlay" onClick={onContinue}>
       <div className="nnsr-celebration-card" onClick={(e) => e.stopPropagation()}>
         <div className="nnsr-celebration-badge">✦ LEVEL COMPLETE ✦</div>
         <h2 className="nnsr-celebration-title">{level.title}</h2>
@@ -23,16 +23,23 @@ export const CelebrationOverlay: React.FC<CelebrationOverlayProps> = ({
         </p>
         <div className="nnsr-celebration-prompt">Press any key or choose an option below</div>
         <div className="nnsr-celebration-actions">
-          <button className="nnsr-celebration-button" onClick={onContinue}>
+          <button
+            type="button"
+            className="nnsr-celebration-button"
+            onClick={onContinue}
+            data-testid="next-level-button"
+          >
             Next Level →
           </button>
           {onAccelerandoContinue && (
             <button
+              type="button"
               className="nnsr-celebration-button nnsr-celebration-button-accelerando"
               onClick={(e) => {
                 e.stopPropagation();
                 onAccelerandoContinue();
               }}
+              data-testid="celebration-accelerando-button"
             >
               Infinite Speed-Up →
             </button>

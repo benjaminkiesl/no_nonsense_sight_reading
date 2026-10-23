@@ -15,34 +15,57 @@ describe('App Integration Test', () => {
     });
   });
 
-  it('renders the complete sight reading application workspace', () => {
+  it('renders the complete sight reading application workspace and toggles between views', () => {
     render(<App />);
 
-    // Header title
+    // Header title and MIDI
     expect(screen.getByText('No-Nonsense Sight-Reading')).toBeDefined();
     expect(screen.getByText(/No device connected/)).toBeDefined();
 
-    // Progress bar sections
+    // In practice view, practice arena is rendered
     expect(screen.getByText('Learn')).toBeDefined();
     expect(screen.getByText('Speed Up')).toBeDefined();
     expect(screen.getByText('Hold')).toBeDefined();
+    expect(screen.getByTestId('view-toggle-button')).toBeDefined();
+    expect(screen.getByText('Map')).toBeDefined();
 
-    // Level graph headers
+    // Toggle to dedicated Level Map view
+    act(() => {
+      fireEvent.click(screen.getByTestId('view-toggle-button'));
+    });
+
+    // Dedicated Map headers
     expect(screen.getByText('Treble')).toBeDefined();
     expect(screen.getByText('Both')).toBeDefined();
     expect(screen.getByText('Bass')).toBeDefined();
+    expect(screen.getByText('♭ Flat Wing')).toBeDefined();
+    expect(screen.getByText('♯ Sharp Wing')).toBeDefined();
+    expect(screen.getByText('← Back to Practice')).toBeDefined();
+
+    // Toggle back to practice view
+    act(() => {
+      fireEvent.click(screen.getByTestId('view-toggle-button'));
+    });
+    expect(screen.getByText('Learn')).toBeDefined();
   });
 
   it('responds to keyboard input and level graph switching', () => {
     render(<App />);
 
-    // Switch level via graph
+    // Switch to map view to pick a level
+    act(() => {
+      fireEvent.click(screen.getByTestId('view-toggle-button'));
+    });
+
+    // Switch level via graph node click
     const bassNode = screen.getByLabelText(/Bass Clef - Tier 1\b/);
     act(() => {
       fireEvent.click(bassNode);
     });
 
+    // Selecting node switches back to practice view and updates store
     expect(useAppStore.getState().currentLevelId).toBe('bass-1');
+    expect(screen.getByText('Learn')).toBeDefined();
 
     // Press a note key (e.g. 'c')
     act(() => {

@@ -49,7 +49,13 @@ export function getTransitiveCompletedLevels(directlyCompletedIds: Iterable<stri
  * Determines the next recommended level when currentLevelId is completed:
  * 1. If treble-k was just finished and bass-k is not finished -> bass-k.
  * 2. If bass-k was just finished and treble-k is finished -> both-k (else treble-k).
- * 3. If both-k was just finished -> treble-(k+1) (if k < 12, else stays on both-12).
+ * 3. If both-k was just finished:
+ *    - For trunk (tiers 1..7): advances to treble-(k+1).
+ *    - For tier 8: branches into Sharp wing (treble-9) or Flat wing (treble-10).
+ *    - For tier 9 (Sharp wing 1): advances to treble-11 (Sharp wing 2).
+ *    - For tier 10 (Flat wing 1): advances to treble-12 (Flat wing 2).
+ *    - For tier 11: recommends uncompleted Flat wing (treble-10/12) or remains on both-11.
+ *    - For tier 12: stays on both-12 (summit).
  */
 export function getNextRecommendedLevel(
   completedLevelId: string,
@@ -73,8 +79,34 @@ export function getNextRecommendedLevel(
   }
 
   // lane === 'both'
-  if (tier < 12) {
+  if (tier < 8) {
     return `treble-${tier + 1}`;
   }
+
+  if (tier === 8) {
+    if (finishedSet.has('both-9') && !finishedSet.has('both-10')) {
+      return 'treble-10';
+    }
+    return 'treble-9';
+  }
+
+  if (tier === 9) {
+    return 'treble-11';
+  }
+
+  if (tier === 10) {
+    return 'treble-12';
+  }
+
+  if (tier === 11) {
+    if (finishedSet.has('both-12')) {
+      return 'both-11';
+    }
+    if (!finishedSet.has('both-10') && !finishedSet.has('treble-10')) {
+      return 'treble-10';
+    }
+    return 'treble-12';
+  }
+
   return 'both-12';
 }

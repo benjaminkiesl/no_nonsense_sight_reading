@@ -183,7 +183,22 @@ function buildAllLevels(): LevelSpec[] {
   ): StaffNoteTarget[] => {
     if (tier === 1) return [];
     if (tier === 2) return newNotesMap.get(1) ?? [];
-    return [...(newNotesMap.get(tier - 1) ?? []), ...(newNotesMap.get(tier - 2) ?? [])];
+    if (tier <= 8) {
+      return [...(newNotesMap.get(tier - 1) ?? []), ...(newNotesMap.get(tier - 2) ?? [])];
+    }
+    if (tier === 9 || tier === 10) {
+      // Branching from Tier 8: review from 8 and 7
+      return [...(newNotesMap.get(8) ?? []), ...(newNotesMap.get(7) ?? [])];
+    }
+    if (tier === 11) {
+      // Branching from Tier 9: review from 9 and 8
+      return [...(newNotesMap.get(9) ?? []), ...(newNotesMap.get(8) ?? [])];
+    }
+    if (tier === 12) {
+      // Branching from Tier 10: review from 10 and 8
+      return [...(newNotesMap.get(10) ?? []), ...(newNotesMap.get(8) ?? [])];
+    }
+    return [];
   };
 
   // Helper for level titles
@@ -213,10 +228,26 @@ function buildAllLevels(): LevelSpec[] {
 
     // Treble level
     const treblePrereqs: string[] = [];
-    if (tier > 1) treblePrereqs.push(`treble-${tier - 1}`);
+    if (tier > 1 && tier <= 8) {
+      treblePrereqs.push(`treble-${tier - 1}`);
+    } else if (tier === 9 || tier === 10) {
+      treblePrereqs.push('treble-8');
+    } else if (tier === 11) {
+      treblePrereqs.push('treble-9');
+    } else if (tier === 12) {
+      treblePrereqs.push('treble-10');
+    }
 
     const trebleNext: string[] = [`both-${tier}`];
-    if (tier < 12) trebleNext.push(`treble-${tier + 1}`);
+    if (tier < 8) {
+      trebleNext.push(`treble-${tier + 1}`);
+    } else if (tier === 8) {
+      trebleNext.push('treble-9', 'treble-10');
+    } else if (tier === 9) {
+      trebleNext.push('treble-11');
+    } else if (tier === 10) {
+      trebleNext.push('treble-12');
+    }
 
     const trebleInterval = getInterval(trebleAll, 'treble');
     const trebleLevel: LevelSpec = {
@@ -238,10 +269,26 @@ function buildAllLevels(): LevelSpec[] {
 
     // Bass level
     const bassPrereqs: string[] = [];
-    if (tier > 1) bassPrereqs.push(`bass-${tier - 1}`);
+    if (tier > 1 && tier <= 8) {
+      bassPrereqs.push(`bass-${tier - 1}`);
+    } else if (tier === 9 || tier === 10) {
+      bassPrereqs.push('bass-8');
+    } else if (tier === 11) {
+      bassPrereqs.push('bass-9');
+    } else if (tier === 12) {
+      bassPrereqs.push('bass-10');
+    }
 
     const bassNext: string[] = [`both-${tier}`];
-    if (tier < 12) bassNext.push(`bass-${tier + 1}`);
+    if (tier < 8) {
+      bassNext.push(`bass-${tier + 1}`);
+    } else if (tier === 8) {
+      bassNext.push('bass-9', 'bass-10');
+    } else if (tier === 9) {
+      bassNext.push('bass-11');
+    } else if (tier === 10) {
+      bassNext.push('bass-12');
+    }
 
     const bassInterval = getInterval(bassAll, 'bass');
     const bassLevel: LevelSpec = {
@@ -265,10 +312,26 @@ function buildAllLevels(): LevelSpec[] {
     const bothAll = [...trebleAll, ...bassAll];
     const bothNew = [...trebleNew, ...bassNew];
     const bothPrereqs: string[] = [`treble-${tier}`, `bass-${tier}`];
-    if (tier > 1) bothPrereqs.push(`both-${tier - 1}`);
+    if (tier > 1 && tier <= 8) {
+      bothPrereqs.push(`both-${tier - 1}`);
+    } else if (tier === 9 || tier === 10) {
+      bothPrereqs.push('both-8');
+    } else if (tier === 11) {
+      bothPrereqs.push('both-9');
+    } else if (tier === 12) {
+      bothPrereqs.push('both-10');
+    }
 
     const bothNext: string[] = [];
-    if (tier < 12) bothNext.push(`both-${tier + 1}`);
+    if (tier < 8) {
+      bothNext.push(`both-${tier + 1}`);
+    } else if (tier === 8) {
+      bothNext.push('both-9', 'both-10');
+    } else if (tier === 9) {
+      bothNext.push('both-11');
+    } else if (tier === 10) {
+      bothNext.push('both-12');
+    }
 
     // Combined review notes: union of treble review and bass review
     const bothReview = [

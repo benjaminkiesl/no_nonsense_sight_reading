@@ -31,12 +31,21 @@ export default function App(): React.JSX.Element {
     setLastCustomAccelerandoNotes,
   } = useAppStore();
 
+  const [activeView, setActiveView] = useState<'practice' | 'map'>('practice');
   const currentLevel = getLevelById(currentLevelId);
   const engineRef = useRef<SightReadingEngine>(new SightReadingEngine(currentLevel));
   const [snapshot, setSnapshot] = useState<EngineSnapshot>(() => engineRef.current.getSnapshot());
   const [activeHighlights, setActiveHighlights] = useState<ActiveKeyHighlight[]>([]);
   const [isAccelerandoModalOpen, setIsAccelerandoModalOpen] = useState(false);
   const [isAccelerandoActive, setIsAccelerandoActive] = useState(false);
+
+  // Transition to Map view and mark level completed upon LEVEL_COMPLETE phase
+  useEffect(() => {
+    if (snapshot.phase === 'LEVEL_COMPLETE') {
+      markLevelCompleted(currentLevelId);
+      setActiveView('map');
+    }
+  }, [snapshot.phase, currentLevelId, markLevelCompleted]);
 
   // Re-create engine whenever selected level changes (unless in accelerando run)
   useEffect(() => {
@@ -51,6 +60,7 @@ export default function App(): React.JSX.Element {
     (notes: readonly StaffNoteTarget[], startingBpm: number) => {
       setIsAccelerandoActive(true);
       setIsAccelerandoModalOpen(false);
+      setActiveView('practice');
       engineRef.current = new SightReadingEngine(currentLevel, Math.random, {
         mode: 'accelerando',
         accelerandoStartingBpm: startingBpm,
@@ -75,9 +85,29 @@ export default function App(): React.JSX.Element {
     (id: string) => {
       setIsAccelerandoActive(false);
       selectLevel(id);
+      const level = getLevelById(id);
+      engineRef.current = new SightReadingEngine(level);
+      setSnapshot(engineRef.current.getSnapshot());
+      setActiveView('practice');
     },
     [selectLevel]
   );
+
+  // Manual advance on celebration continue
+  const handleCelebrationContinue = useCallback(() => {
+    const nextId = getNextRecommendedLevel(currentLevelId, allFinishedLevelIds);
+    markLevelCompleted(currentLevelId);
+    selectLevel(nextId);
+    const nextLevel = getLevelById(nextId);
+    engineRef.current = new SightReadingEngine(nextLevel);
+    setSnapshot(engineRef.current.getSnapshot());
+    setActiveView('practice');
+  }, [currentLevelId, allFinishedLevelIds, markLevelCompleted, selectLevel]);
+
+  // Continue to Accelerando Perpetuo from celebration overlay (at 90 BPM)
+  const handleCelebrationAccelerando = useCallback(() => {
+    handleStartAccelerando(currentLevel.allNotes, SpeedController.V_TARGET_MAX);
+  }, [currentLevel.allNotes, handleStartAccelerando]);
 
   // Handle note dispatch
   const handleNoteInput = useCallback(
@@ -86,9 +116,7 @@ export default function App(): React.JSX.Element {
       const result = engine.handleNoteInput(input);
 
       if (result.outcome === 'level_advance') {
-        const nextId = getNextRecommendedLevel(currentLevelId, allFinishedLevelIds);
-        markLevelCompleted(currentLevelId);
-        selectLevel(nextId);
+        handleCelebrationContinue();
         return;
       }
 
@@ -115,23 +143,10 @@ export default function App(): React.JSX.Element {
         setActiveHighlights([]);
       }, 180);
     },
-    [currentLevelId, allFinishedLevelIds, markLevelCompleted, selectLevel, updateBestAccelerandoBpm]
+    [handleCelebrationContinue, updateBestAccelerandoBpm]
   );
 
-  // Manual advance on celebration continue
-  const handleCelebrationContinue = useCallback(() => {
-    const nextId = getNextRecommendedLevel(currentLevelId, allFinishedLevelIds);
-    markLevelCompleted(currentLevelId);
-    selectLevel(nextId);
-  }, [currentLevelId, allFinishedLevelIds, markLevelCompleted, selectLevel]);
-
-  // Continue to Accelerando Perpetuo from celebration overlay
-  const handleCelebrationAccelerando = useCallback(() => {
-    // Current level finished tempo is SpeedController.V_TARGET_MAX
-    handleStartAccelerando(currentLevel.allNotes, SpeedController.V_TARGET_MAX);
-  }, [currentLevel.allNotes, handleStartAccelerando]);
-
-  // Main 60fps Animation Loop
+  // Main 60fps Animation Loop - Pauses ticking when viewing map or when modal is open
   useEffect(() => {
     let animId: number;
     let lastTime = performance.now();
@@ -140,15 +155,17 @@ export default function App(): React.JSX.Element {
       const deltaMs = time - lastTime;
       lastTime = time;
 
-      engineRef.current.tick(deltaMs);
-      setSnapshot(engineRef.current.getSnapshot());
+      if (activeView === 'practice' && !isAccelerandoModalOpen) {
+        engineRef.current.tick(deltaMs);
+        setSnapshot(engineRef.current.getSnapshot());
+      }
 
       animId = requestAnimationFrame(loop);
     };
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, []);
+  }, [activeView, isAccelerandoModalOpen]);
 
   // Web MIDI API Initialization
   useEffect(() => {
@@ -175,6 +192,10 @@ export default function App(): React.JSX.Element {
         return;
       }
 
+      if (activeView === 'map') {
+        return;
+      }
+
       const mapped = mapKeyboardEventToInput(e);
       if (mapped) {
         if (e.altKey || e.metaKey) {
@@ -186,38 +207,46 @@ export default function App(): React.JSX.Element {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNoteInput, handleCelebrationContinue, isAccelerandoModalOpen]);
+  }, [handleNoteInput, handleCelebrationContinue, isAccelerandoModalOpen, activeView]);
 
   return (
     <div className="nnsr-app">
-      <Header midiDeviceName={midiDeviceName} />
+      <Header
+        midiDeviceName={midiDeviceName}
+        activeView={activeView}
+        onToggleView={() => setActiveView((v) => (v === 'practice' ? 'map' : 'practice'))}
+      />
 
-      <main className="nnsr-workspace">
-        <section className="nnsr-main-column">
-          <GrandStaffCanvas snapshot={snapshot} level={currentLevel} />
-          <ProgressBar snapshot={snapshot} />
-          <PianoKeyboard
-            onKeyPress={(midi) => handleNoteInput({ source: 'piano_click', midi })}
-            activeHighlights={activeHighlights}
-          />
-        </section>
-
-        <aside className="nnsr-sidebar">
-          <LevelGraph
-            currentLevelId={currentLevelId}
-            completedLevelIds={allFinishedLevelIds}
-            onSelectLevel={handleSelectLevel}
-            onOpenAccelerando={() => setIsAccelerandoModalOpen(true)}
-          />
-        </aside>
-      </main>
-
-      {snapshot.phase === 'LEVEL_COMPLETE' && (
-        <CelebrationOverlay
-          level={currentLevel}
-          onContinue={handleCelebrationContinue}
-          onAccelerandoContinue={handleCelebrationAccelerando}
-        />
+      {activeView === 'practice' ? (
+        <main className="nnsr-workspace nnsr-practice-workspace">
+          <section className="nnsr-main-column">
+            <GrandStaffCanvas snapshot={snapshot} level={currentLevel} />
+            <ProgressBar snapshot={snapshot} />
+            <PianoKeyboard
+              onKeyPress={(midi) => handleNoteInput({ source: 'piano_click', midi })}
+              activeHighlights={activeHighlights}
+            />
+          </section>
+        </main>
+      ) : (
+        <main className="nnsr-workspace nnsr-map-workspace">
+          <div className="nnsr-map-view">
+            {snapshot.phase === 'LEVEL_COMPLETE' && (
+              <CelebrationOverlay
+                level={currentLevel}
+                onContinue={handleCelebrationContinue}
+                onAccelerandoContinue={handleCelebrationAccelerando}
+              />
+            )}
+            <LevelGraph
+              currentLevelId={currentLevelId}
+              completedLevelIds={allFinishedLevelIds}
+              onSelectLevel={handleSelectLevel}
+              onOpenAccelerando={() => setIsAccelerandoModalOpen(true)}
+              celebratingLevelId={snapshot.phase === 'LEVEL_COMPLETE' ? currentLevelId : null}
+            />
+          </div>
+        </main>
       )}
 
       <AccelerandoModal
