@@ -117,6 +117,7 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
         levelId: 'treble-1',
         phase: 'SPEED_UP',
         substate: 'NORMAL',
+        recoveryRemainingMs: 0,
         countdownRemainingSec: 0,
         actualBpm: 60,
         targetBpm: 60,

@@ -17,6 +17,10 @@ export const ENGINE_GEOMETRY = {
   FIRST_NOTE_COUNTDOWN_X: 216,
 } as const;
 
+export const RECOVERY_PAUSE_TOTAL_MS = 6500;
+export const RECOVERY_LOOKAHEAD_MS = 1000; // Final 1.0s of the 6.5s pause is static lookahead
+export const ERROR_CLUSTER_THRESHOLD = 6;  // <= 6 correct hits since previous failure
+
 export interface EngineOptions {
   mode?: 'standard' | 'accelerando';
   accelerandoStartingBpm?: number;
@@ -38,6 +42,9 @@ export class SightReadingEngine {
   private activeNotes: ActiveNote[] = [];
   private emptyZonePulseRemainingMs = 0;
   private levelCompleteGuardRemainingMs = 0;
+  private recoveryRemainingMs = 0;
+  private pendingRecoveryPause = false;
+  private wrongAttemptsDuringCorrection = 0;
 
   private noteIdCounter = 0;
   private lastPrecedingTarget: StaffNoteTarget | null = null;
@@ -118,6 +125,17 @@ export class SightReadingEngine {
     if (this.phase === 'SPEED_UP' || this.phase === 'HOLD') {
       const deltaSec = deltaMs / 1000;
 
+      if (this.substate === 'RECOVERY_PAUSE') {
+        this.speedController.tick(deltaSec, true);
+        this.recoveryRemainingMs = Math.max(0, this.recoveryRemainingMs - deltaMs);
+        if (this.recoveryRemainingMs <= 0) {
+          this.recoveryRemainingMs = 0;
+          this.substate = 'NORMAL';
+          this.speedController.startRecoveryRamp();
+        }
+        return;
+      }
+
       if (this.substate === 'NORMAL') {
         this.speedController.tick(deltaSec, false);
 
@@ -156,15 +174,8 @@ export class SightReadingEngine {
         // Check for late misses (note crossed left border of hit zone)
         const frontmost = this.getFrontmostApproachingNote();
         if (frontmost && frontmost.x < ENGINE_GEOMETRY.HIT_ZONE_LEFT_X) {
-          frontmost.state = 'failed';
           frontmost.x = ENGINE_GEOMETRY.HIT_ZONE_LEFT_X;
-          this.failedNote = frontmost;
-          this.substate = 'WAITING_FOR_CORRECTION';
-          this.distribution.recordFailure(frontmost.target, this.lastPrecedingTarget);
-          this.speedController.onFailure(this.phase as 'SPEED_UP' | 'HOLD');
-          if (this.phase === 'HOLD') {
-            this.phase = 'SPEED_UP';
-          }
+          this.triggerNoteFailure(frontmost);
         }
       } else {
         // substate === 'WAITING_FOR_CORRECTION'
@@ -174,7 +185,14 @@ export class SightReadingEngine {
   }
 
   public handleNoteInput(input: UserNoteInput): {
-    outcome: 'correct_hit' | 'wrong_hit' | 'correction_complete' | 'empty_zone' | 'level_advance' | 'ignored';
+    outcome:
+      | 'correct_hit'
+      | 'wrong_hit'
+      | 'correction_complete'
+      | 'empty_zone'
+      | 'level_advance'
+      | 'recovery_muted'
+      | 'ignored';
     matchedTarget?: StaffNoteTarget;
   } {
     if (this.phase === 'LEVEL_COMPLETE') {
@@ -223,6 +241,10 @@ export class SightReadingEngine {
     }
 
     // SPEED_UP or HOLD phase
+    if (this.substate === 'RECOVERY_PAUSE') {
+      return { outcome: 'recovery_muted' };
+    }
+
     if (this.substate === 'WAITING_FOR_CORRECTION') {
       if (!this.failedNote) {
         this.substate = 'NORMAL';
@@ -235,11 +257,23 @@ export class SightReadingEngine {
         this.failedNote.stateTimeMs = 0;
         this.lastPrecedingTarget = target;
         this.failedNote = null;
-        this.substate = 'NORMAL';
-        this.speedController.startRecoveryRamp();
+
+        if (this.pendingRecoveryPause) {
+          this.substate = 'RECOVERY_PAUSE';
+          this.recoveryRemainingMs = RECOVERY_PAUSE_TOTAL_MS;
+          this.pendingRecoveryPause = false;
+          this.wrongAttemptsDuringCorrection = 0;
+        } else {
+          this.substate = 'NORMAL';
+          this.speedController.startRecoveryRamp();
+        }
         return { outcome: 'correction_complete', matchedTarget: target };
       }
 
+      this.wrongAttemptsDuringCorrection++;
+      if (this.wrongAttemptsDuringCorrection >= 2) {
+        this.pendingRecoveryPause = true;
+      }
       return { outcome: 'wrong_hit', matchedTarget: this.failedNote.target };
     }
 
@@ -279,14 +313,7 @@ export class SightReadingEngine {
     }
 
     // Wrong hit inside hittable window
-    frontmost.state = 'failed';
-    this.substate = 'WAITING_FOR_CORRECTION';
-    this.failedNote = frontmost;
-    this.distribution.recordFailure(frontmost.target, this.lastPrecedingTarget);
-    this.speedController.onFailure(this.phase as 'SPEED_UP' | 'HOLD');
-    if (this.phase === 'HOLD') {
-      this.phase = 'SPEED_UP';
-    }
+    this.triggerNoteFailure(frontmost);
 
     return { outcome: 'wrong_hit', matchedTarget: frontmost.target };
   }
@@ -296,6 +323,7 @@ export class SightReadingEngine {
       levelId: this.level.id,
       phase: this.phase,
       substate: this.substate,
+      recoveryRemainingMs: this.recoveryRemainingMs,
       countdownRemainingSec: this.countdownRemainingSec,
       actualBpm: this.speedController.actualBpm,
       targetBpm: this.speedController.targetBpm,
@@ -311,6 +339,24 @@ export class SightReadingEngine {
       isAccelerando: this.isAccelerando,
       accelerandoStartBpm: this.accelerandoStartBpm,
     };
+  }
+
+  private triggerNoteFailure(note: ActiveNote): void {
+    const hitsSinceLastFail = this.speedController.getNotesHitSinceLastFailure();
+    const isClusterOrHoldFailure =
+      hitsSinceLastFail <= ERROR_CLUSTER_THRESHOLD || this.phase === 'HOLD';
+
+    this.pendingRecoveryPause = isClusterOrHoldFailure;
+    this.wrongAttemptsDuringCorrection = 0;
+
+    note.state = 'failed';
+    this.failedNote = note;
+    this.substate = 'WAITING_FOR_CORRECTION';
+    this.distribution.recordFailure(note.target, this.lastPrecedingTarget);
+    this.speedController.onFailure(this.phase as 'SPEED_UP' | 'HOLD');
+    if (this.phase === 'HOLD') {
+      this.phase = 'SPEED_UP';
+    }
   }
 
   private spawnLearnNote(target: StaffNoteTarget): void {

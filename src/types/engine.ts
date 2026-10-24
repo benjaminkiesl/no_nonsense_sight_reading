@@ -1,7 +1,7 @@
 import { StaffNoteTarget } from './music';
 
 export type EnginePhase = 'LEARN' | 'COUNTDOWN' | 'SPEED_UP' | 'HOLD' | 'LEVEL_COMPLETE';
-export type EngineSubstate = 'NORMAL' | 'WAITING_FOR_CORRECTION';
+export type EngineSubstate = 'NORMAL' | 'WAITING_FOR_CORRECTION' | 'RECOVERY_PAUSE';
 export type ActiveNoteState = 'approaching' | 'hit' | 'failed';
 
 export interface ActiveNote {
@@ -17,6 +17,7 @@ export interface EngineSnapshot {
   readonly levelId: string;
   readonly phase: EnginePhase;
   readonly substate: EngineSubstate;
+  readonly recoveryRemainingMs: number; // 0 when not in RECOVERY_PAUSE; 6500..0 during RECOVERY_PAUSE
   readonly countdownRemainingSec: number;
   readonly actualBpm: number;
   readonly targetBpm: number;

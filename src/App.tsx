@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { playMutedFeltThud, playSanctuaryRestChime, playSanctuaryWakeChime } from './audio/recoveryAudio';
 import { AccelerandoModal } from './components/AccelerandoModal';
 import { CelebrationOverlay } from './components/CelebrationOverlay';
 import { GrandStaffCanvas } from './components/GrandStaffCanvas';
@@ -124,6 +125,16 @@ export default function App(): React.JSX.Element {
         return;
       }
 
+      if (result.outcome === 'recovery_muted') {
+        playMutedFeltThud();
+        return;
+      }
+
+      const nextSnapshot = engine.getSnapshot();
+      if (result.outcome === 'correction_complete' && nextSnapshot.substate === 'RECOVERY_PAUSE') {
+        playSanctuaryRestChime();
+      }
+
       // Record best Accelerando BPM on hits
       if (engine.isAccelerando && (result.outcome === 'correct_hit' || result.outcome === 'correction_complete')) {
         updateBestAccelerandoBpm(engine.speedController.targetBpm);
@@ -156,8 +167,16 @@ export default function App(): React.JSX.Element {
       lastTime = time;
 
       if (activeView === 'practice' && !isAccelerandoModalOpen) {
+        const prevRecoveryMs = engineRef.current.getSnapshot().recoveryRemainingMs;
         engineRef.current.tick(deltaMs);
-        setSnapshot(engineRef.current.getSnapshot());
+        const nextSnap = engineRef.current.getSnapshot();
+        const nextRecoveryMs = nextSnap.recoveryRemainingMs;
+
+        if (prevRecoveryMs > 1000 && nextRecoveryMs <= 1000 && nextRecoveryMs > 0) {
+          playSanctuaryWakeChime();
+        }
+
+        setSnapshot(nextSnap);
       }
 
       animId = requestAnimationFrame(loop);

@@ -148,6 +148,48 @@ body {
   display: block;
 }
 
+/* Recovery Sanctuary Overlay */
+.nnsr-recovery-sanctuary {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: rgba(24, 26, 25, 0.90);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 350ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nnsr-recovery-sanctuary.active {
+  opacity: 1;
+}
+
+.nnsr-recovery-sanctuary.lookahead {
+  opacity: 0;
+}
+
+.nnsr-recovery-prompt-main {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 500;
+  color: #f4f3ef;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.nnsr-recovery-prompt-sub {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(244, 243, 239, 0.58);
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
 /* Progress Bar */
 .nnsr-progress-bar-container {
   display: flex;

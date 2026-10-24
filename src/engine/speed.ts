@@ -124,6 +124,10 @@ export class SpeedController {
     this.rampElapsedSec = 0.0;
   }
 
+  public getNotesHitSinceLastFailure(): number {
+    return this.notesHitSinceLastFailure;
+  }
+
   public getSpeedStepIndex(): number {
     const minBpm = this.isAccelerando ? SpeedController.V_MIN_START : SpeedController.V_TARGET_INIT;
     const maxBpm = this.maxBpm;

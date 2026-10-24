@@ -222,6 +222,13 @@ export const GrandStaffCanvas: React.FC<GrandStaffCanvasProps> = ({ snapshot, le
     ctx.restore();
   }, [snapshot, level]);
 
+  const isSanctuaryDark =
+    snapshot.substate === 'RECOVERY_PAUSE' && snapshot.recoveryRemainingMs > 1000;
+  const isRecoveryLookahead =
+    snapshot.substate === 'RECOVERY_PAUSE' &&
+    snapshot.recoveryRemainingMs > 0 &&
+    snapshot.recoveryRemainingMs <= 1000;
+
   return (
     <div className="nnsr-staff-container">
       <canvas
@@ -229,6 +236,16 @@ export const GrandStaffCanvas: React.FC<GrandStaffCanvasProps> = ({ snapshot, le
         className="nnsr-staff-canvas"
         style={{ width: '840px', height: '280px', display: 'block' }}
       />
+      <div
+        className={`nnsr-recovery-sanctuary ${isSanctuaryDark ? 'active' : ''} ${
+          isRecoveryLookahead ? 'lookahead' : ''
+        }`.trim()}
+        aria-hidden={!isSanctuaryDark}
+        data-testid="recovery-sanctuary-overlay"
+      >
+        <p className="nnsr-recovery-prompt-main">Close your eyes. Drop your shoulders.</p>
+        <p className="nnsr-recovery-prompt-sub">A chime will wake the staff.</p>
+      </div>
     </div>
   );
 };
