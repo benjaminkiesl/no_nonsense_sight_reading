@@ -24,8 +24,8 @@ To bridge the gap from analytical decoding to automatic sight-reading fluency, o
 │  • Learner inspects beat cells, audiates in their head, and freely     │
 │    taps/plays the rhythm on their keyboard/spacebar at ANY tempo       │
 │    (slow, rubato, repeating tricky cells) until the groove is felt.    │
-│  • Optional crutches (fadeable): Beat-function syllables (Takadimi)    │
-│    hover or "Hear Single Cell" audio preview (never auto-played).      │
+│  • Optional help (fadeable): Click any single 1-beat cell to hear its  │
+│    acoustic groove directly (zero syllable jargon or math counting).   │
 └───────────────────────────────────┬─────────────────────────────────────┘
                                     │  Learner presses [Space / Foot Pedal]
                                     │  ("I've got the groove — Test Me")
@@ -114,23 +114,14 @@ Science does not say we should throw away the metronome entirely; rather, it cla
    * Music education theorist **Edwin E. Gordon** coined the term **audiation** to describe hearing and comprehending musical sound internally when no physical sound is present ("audiation is to music what thought is to language").
    * Gordon proved that fluent notation reading is impossible unless the reader already possesses a vocabulary of **internalized rhythmic patterns** in long-term memory. When you see `┌─♬─┐` (eighth + two sixteenths), you do not compute $\frac{1}{2} + \frac{1}{4} + \frac{1}{4} = 1$; you immediately *hear/feel* the galloping gesture inside your head.
 
-3. **Why Numerical Counting ("1-e-&-a") Fails as an Internalization Engine (Hoffman, Pelto, & White, 1996)**:
-   * In their landmark paper introducing the **Takadimi** system (*Journal of Music Theory Pedagogy*, 1996), Hoffman, Pelto, and White demonstrated why traditional numerical counting (*"1-e-and-a, 2-e-and-a"*) interferes with pattern chunking:
-     1. **Beat-Number Contamination**: In numerical counting, the * exact same rhythmic cell* (`eighth + two sixteenths`) is spoken differently on every beat of the bar (*"1-and-a"*, *"2-and-a"*, *"3-and-a"*, *"4-and-a"*). Because the verbal label changes depending on whether it lands on beat 1, 2, 3, or 4, the brain struggles to recognize that all four beats contain the **identical rhythmic word**!
-     2. **Phonetic Clunkiness**: Numbers like *"three-e-and-a"* or *"seven-and"* have high articulatory friction and uneven vowel/consonant onsets compared to percussive syllables.
-
-#### Nuance from Science & Pedagogy: Beat-Function Syllables as the Bridge
-While the end goal of fluency is **direct, silent visual-to-kinesthetic audiation**, pedagogy research (Gordon, 2012; Hoffman et al., 1996; Karpinski, 2000; South Indian *Konnakol*) reveals a critical intermediate bridge between "analytical math" and "pure word-level feel":
-* **Beat-Function Phonetic Syllables (e.g., Takadimi / Gordon / Konnakol)**:
-  * Unlike *"1-e-&-a"*, beat-function systems assign a **consistent phonetic word** to each 1-beat cell regardless of which beat of the measure it falls on.
-  * For example, in **Takadimi**:
-    * Any beat onset is `ta`.
-    * Two eighth notes on *any* beat is always **`ta-di`**.
-    * Four sixteenths on *any* beat is always **`ta-ka-di-mi`**.
-    * Eighth + two sixteenths is always **`ta-di-mi`**.
-    * Two sixteenths + eighth is always **`ta-ka-di`**.
-    * Dotted eighth + sixteenth is always **`ta---mi`**.
-  * Because `ta-di-mi` always sounds and feels the same in the mouth whether it is on beat 1, 2, 3, or 4, it acts as a **true sonic word** for that visual shape. Once the learner associates the visual beam shape `┌─♬─┐` with the spoken gesture `ta-di-mi`, the overt vocalization quickly internalizes into silent sub-vocal audiation (Brodsky et al., 2003, 2008)—and finally into pure kinesthetic feel!
+3. **Why Both Numerical Counting ("1-e-&-a") and Artificial Syllable Systems ("Takadimi") Are Unnecessary Middlemen**:
+   * **Why `"1-e-and-a"` Fails**: Hoffman, Pelto, & White (1996) showed that in numerical counting, the *exact same rhythmic cell* (`♪ ♬`, eighth + two sixteenths) gets a different verbal label on every beat of the bar (*"1-and-a"*, *"2-and-a"*, *"3-and-a"*, *"4-and-a"*). Because the label changes on every beat, the brain struggles to recognize that all four beats contain the **identical rhythmic word**.
+   * **Why Academic Syllables (`"ta-di-mi"`) Also Miss the Point ("If in Doubt, Leave It Out")**:
+     * Music theory classrooms often try to fix `"1-e-and-a"` by teaching artificial syllable languages like *Takadimi* (assigning `ta - ka - di - mi` to the 4 sixteenth-note slots of a beat, so `♪ ♬` is called `"ta-di-mi"`).
+     * **The Fundamental Flaw**: Simply saying three syllables `"ta-di-mi"` does **not** naturally make your mouth land on slots `1 - 3 - 4`! If a normal person says `"ta-di-mi"`, they naturally space the three syllables evenly like a triplet (`1 - 2 - 3`). The only way `"ta-di-mi"` lands on `1 - 3 - 4` is if you *already know the rhythm* and artificially stretch `"taaa"` across the silent second slot (`ta-(ka)-di-mi`).
+     * Worse yet, forcing a learner to memorize a 16-word foreign code (`ta-ka-di-mi`, `ta-ki-da`, `ta-ka-mi`) inserts a **pointless translation middleman** (`Visual Notation` $\rightarrow$ `Made-Up Syllable` $\rightarrow$ `Motor Feel`).
+   * **The No-Nonsense Solution: Direct Visual-to-Sonic/Motor Mapping**:
+     * You do not need numbers or academic syllables. When you see `♪ ♬`, you map that **visual shape directly to its physical/sonic feel** (e.g., `DUM — da-da`, like a horse gallop, or the physical sensation of `Long – quick-quick` in your fingers against the beat).
 
 ---
 
@@ -169,8 +160,8 @@ To design the optimal training system, we must understand the exact neuro-cognit
 
 ```mermaid
 flowchart LR
-    A["Visual Score\n(Beamed Beat Cells)"] -->|"Ocular Fixation\n(200-250ms)"| B["Visual-Phonological\nChunking ('Rhythmic Word')"]
-    B -->|"1-2 Beat Eye-Hand\nSpan Buffer"| C["Notational Audiation\n(Premotor / Covert Vocal)"]
+    A["Visual Score\n(Beamed Beat Cells)"] -->|"Ocular Fixation\n(200-250ms)"| B["Visual Pattern\nChunking ('Rhythmic Word')"]
+    B -->|"1-2 Beat Eye-Hand\nSpan Buffer"| C["Notational Audiation\n(Sonic & Motor Feel)"]
     D["Internal Pulse Generator\n(Putamen + SMA)"] -->|"Macro/Micro Tactus\nEntrainment"| E["Motor Execution\n(Ballistic Keystrokes)"]
     C -->|"Figure-Ground\nIntegration"| E
     E -->|"Proprioceptive &\nAuditory Feedback"| D
@@ -188,36 +179,36 @@ In Edwin Gordon's *Music Learning Theory* and modern neural oscillation models (
 > Experts maintain a continuous physical/kinesthetic sensation of the **Macro-Beat** (in their torso, foot, or SMA neural oscillation) so that playing a note *off* the beat is experienced as a distinct physical sensation (an upbeat bounce or syncopated tension against the silent downbeat) rather than a mathematical delay of $250\text{ ms}$.
 
 ### 3.2 Sub-Beat Cells ("Rhythmic Words"): The Finite Vocabulary of Music
-One of the most liberating discoveries in music pedagogy (Hoffman et al., 1996; Karpinski, 2000; Starer, 1969) is that **95% of all Western rhythmic notation is built from fewer than 16 one-beat cells ("rhythmic words")**!
+One of the most liberating discoveries in music pedagogy (Karpinski, 2000; Starer, 1969) is that **95% of all Western rhythmic notation is built from fewer than 16 one-beat cells ("rhythmic words")**!
 
-Just as all English words are built from a small set of phonemes/syllables, almost every bar of $\frac{2}{4}$, $\frac{3}{4}$, $\frac{4}{4}$, and $\frac{6}{8}$ music is simply a 2-, 3-, or 4-word sentence assembled from a tiny dictionary of 1-beat cells:
+Just as all English sentences are built from a small set of common words, almost every bar of $\frac{2}{4}$, $\frac{3}{4}$, $\frac{4}{4}$, and $\frac{6}{8}$ music is simply a 2-, 3-, or 4-word sentence assembled from a tiny dictionary of 1-beat visual shapes:
 
 #### The Core Simple-Meter Dictionary (1 Beat = Quarter Note `♩`)
 
-| Cell Category | Visual Pattern (within 1 Beat) | Beat-Unit Subdivisions ($1\text{–}e\text{–}\&\text{–}a$ Grid) | Takadimi Word | Iconic "Groove Feel" / Archetype |
+| Cell Category | Visual Pattern (within 1 Beat) | 4-Slot Beat Grid (`1 . & .`) | Direct Sonic / Kinesthetic Feel | Iconic Groove Archetype |
 | :--- | :--- | :--- | :--- | :--- |
-| **1. Pulse & Rest** | `♩` (Quarter) | `[X . . .]` | **`ta`** | Solid downbeat step |
-| | `𝄽` (Quarter Rest) | `[. . . .]` | **`(ta)`** *(silent breath)* | Grounded silent pulse |
-| **2. First-Level Division (Eighths)** | `♫` (Two Eighths) | `[X . X .]` | **`ta-di`** | Even walking stride |
-| | `𝄾 ♪` (Eighth Rest + Eighth) | `[. . X .]` | **`(ta)-di`** | Upbeat lift / reggae skank |
-| **3. Second-Level Subdivision (Sixteenths)** | `♬♬` (Four Sixteenths) | `[X X X X]` | **`ta-ka-di-mi`** | Rapid snare roll / drum fill |
-| | `♪ ♬` (Eighth + Two Sixteenths) | `[X . X X]` | **`ta-di-mi`** | Classic horse gallop (*"strawberry"*) |
-| | `♬ ♪` (Two Sixteenths + Eighth) | `[X X X .]` | **`ta-ka-di`** | Reverse gallop (*"apricot"*) |
-| | `♪.  sixteenth` (Dotted Eighth + Sixteenth) | `[X . . X]` | **`ta---mi`** | Crisp martial snap / skip |
-| | `sixteenth ♪.` (Sixteenth + Dotted Eighth) | `[X X . .]` | **`ta-ka---`** | Scotch snap (*Lombard rhythm*) |
-| | `sixteenth ♪ sixteenth` (Syncopated Cell) | `[X X . X]` | **`ta-ka-mi`** | Funky intra-beat syncopation |
-| | `𝄿 ♬♪` (Sixteenth Rest + Three Sixteenths) | `[. X X X]` | **`(ta)-ka-di-mi`** | Post-downbeat pickup burst |
-| **4. Borrowed / Tuplet Cell** | `3┌─♫♪─┐` (Eighth Triplet) | `[X  X  X]` *(3-in-1)* | **`ta-ki-da`** | Rolling waltz / triplet flow |
+| **1. Pulse & Rest** | `♩` (Quarter) | `[X . . .]` | **`DUM`** *(Downbeat step)* | Solid quarter-note pulse |
+| | `𝄽` (Quarter Rest) | `[. . . .]` | **`(rest)`** *(Silent downbeat bounce)* | Grounded silent beat |
+| **2. First-Level Division (Eighths)** | `♫` (Two Eighths) | `[X . X .]` | **`DUM - da`** *(Down - Up)* | Even walking stride |
+| | `𝄾 ♪` (Eighth Rest + Eighth) | `[. . X .]` | **`(down) - UP`** *(Silent beat, play on rebound)* | Upbeat lift / reggae skank |
+| **3. Second-Level Subdivision (Sixteenths)** | `♬♬` (Four Sixteenths) | `[X X X X]` | **`da-da-da-da`** *(4 even rapid taps)* | Rapid snare roll / drum fill |
+| | `♪ ♬` (Eighth + Two Sixteenths) | `[X . X X]` | **`DUM — da-da`** *(Long – quick-quick)* | Classic horse gallop |
+| | `♬ ♪` (Two Sixteenths + Eighth) | `[X X X .]` | **`da-da — DUM`** *(Quick-quick – Long)* | Reverse gallop |
+| | `♪. sixteenth` (Dotted Eighth + Sixteenth) | `[X . . X]` | **`DUM - - - da`** *(Hold through beat, late snap)* | Crisp martial skip |
+| | `sixteenth ♪.` (Sixteenth + Dotted Eighth) | `[X X . .]` | **`da-DUM - - -`** *(Immediate snap onto hold)* | Scotch snap (*Lombard rhythm*) |
+| | `sixteenth ♪ sixteenth` (Syncopated Cell) | `[X X . X]` | **`da - DUM - da`** *(Short – Long – Short)* | Funky intra-beat syncopation |
+| | `𝄿 ♬♪` (Sixteenth Rest + Three Sixteenths) | `[. X X X]` | **`(down) da-da-da`** *(Silent downbeat + 3-note burst)* | Post-downbeat pickup burst |
+| **4. Borrowed / Tuplet Cell** | `3┌─♫♪─┐` (Eighth Triplet) | `[X  X  X]` *(3-in-1)* | **`DUM - da - da`** *(3 even rolling steps)* | Rolling waltz / triplet flow |
 
 #### Multi-Beat Gesture Words (2-Beat Cells)
 When ties or longer durations cross a beat boundary, they form **2-beat compound words**:
-* **The Classic Syncopation** (`♪ ♩ ♪` or `♪ ♪_♪ ♪`): **`ta-di-(ta)-di`** — The second note attacks on `di` and rides *through* the silent downbeat `(ta)`.
-* **The Dotted Quarter + Eighth** (`♩. ♪`): **`ta---di`** — A heavy beat 1 that absorbs beat 2's onset and releases on the upbeat `di`.
-* **The Anticipation Tie** (`♩ ♪_♩`): Pushing the next beat's arrival early onto the `di` or `mi` of the preceding beat.
+* **The Classic Syncopation** (`♪ ♩ ♪` or `♪ ♪_♪ ♪`): **`Down - UP - (down) - UP`** — The second note attacks on Beat 1's upward rebound and rides *through* Beat 2's silent downbeat.
+* **The Dotted Quarter + Eighth** (`♩. ♪`): **`DUM - - (down) - UP`** — A heavy Beat 1 that absorbs Beat 2's down-stroke and releases on Beat 2's upward rebound.
+* **The Anticipation Tie** (`♩ ♪_♩`): Attacking the next beat's note slightly early on the rebound before the beat lands.
 
 > [!TIP]
 > **Why This Transforms Sight-Reading:**
-> When a student realizes that a terrifying-looking bar of sixteenth notes in $\frac{4}{4}$ is literally just **four 1-beat words lined up side-by-side** (e.g., `[ta-di] [ta-di-mi] [ta-ka-di] [ta]`), cognitive load plummets by 75%. Instead of processing 11 separate notes and fractions, the brain reads **4 familiar words**!
+> When a student realizes that a terrifying-looking bar of sixteenth notes in $\frac{4}{4}$ is literally just **four 1-beat visual shapes lined up side-by-side** (e.g., `[♫] [♪ ♬] [♬ ♪] [♩]`), cognitive load plummets by 75%. Instead of calculating 11 separate notes and fractions, the brain sees and feels **4 familiar rhythmic words**!
 
 ### 3.3 The Eye-Hand Span (EHS) in Rhythm Reading
 Eye-tracking studies by **Furneaux & Land (1999)**, **Truitt et al. (1997)**, and **Sloboda (1974, 1977)** revealed how the visual system feeds the motor system during rhythmic sight-reading:
@@ -255,11 +246,11 @@ In music cognition (Justin London's *Hearing in Time*, 2012; Fraisse, 1982), the
 1. **Standard Simple Meters ($\frac{4}{4}$, $\frac{3}{4}$, $\frac{2}{4}$ at $60\text{–}120\text{ BPM}$) $\rightarrow$ Move on the Quarter Note ("Fourths")**:
    * Your primary pulse moves on the **4 quarter notes** (in $\frac{4}{4}$) or **3 quarter notes** (in $\frac{3}{4}$).
    * **Why a Physical Bounce Gives You Eighth Notes for Free (Dalcroze *Crusis* & *Anacrusis*)**: Every physical tap or nod has two biomechanical phases:
-     * **The Down-Stroke (*Gravity / Crusis*)** = The quarter-note beat (**`ta`**).
-     * **The Up-Stroke (*Rebound / Lift / Anacrusis*)** = The exact midpoint between beats—the off-beat eighth note (**`di`** / the *"and"*)!
+     * **The Down-Stroke (*Gravity / Crusis*)** = The quarter-note beat (**Down**).
+     * **The Up-Stroke (*Rebound / Lift / Anacrusis*)** = The exact midpoint between beats—the off-beat eighth note (**Up** / the *"and"*)!
      * If you only think abstractly in your head, an off-beat eighth note feels like a mathematical fraction. If you have a gentle physical bounce, the off-beat is literally **playing at the top of your upward rebound**!
 2. **Compound Meters ($\frac{6}{8}$, $\frac{9}{8}$, $\frac{12}{8}$) $\rightarrow$ Move on the Dotted Quarter Note (`♩.`)**:
-   * Never tap all 6 eighth notes in $\frac{6}{8}$ (unless it is an ultra-slow Adagio). Instead, move your pulse on the **2 big beats per bar** (Beat 1 = eighth notes 1–2–3; Beat 2 = eighth notes 4–5–6), feeling the triple roll (`ta-ki-da`) inside each big beat.
+   * Never tap all 6 eighth notes in $\frac{6}{8}$ (unless it is an ultra-slow Adagio). Instead, move your pulse on the **2 big beats per bar** (Beat 1 = eighth notes 1–2–3; Beat 2 = eighth notes 4–5–6), feeling the 3-note roll inside each big beat.
 3. **Fast Tempos / Cut Time ($\frac{2}{2}$ *Alla Breve*, or $\frac{4}{4}$ above $135\text{ BPM}$) $\rightarrow$ Shift Up to the Half Note (`𝅗𝅥`)**:
    * Trying to tap 4 quarter notes per bar at $160\text{ BPM}$ creates frantic muscle tension. Instead, shift your physical pulse to **2 half-note beats per bar** (Beat 1 and Beat 3), treating each half-note as a 2-beat compound word.
 4. **Very Slow Ballads / Adagios (Quarter Note $< 50\text{ BPM}$) $\rightarrow$ Subdivide to the Eighth Note (`♪`)**:
@@ -290,11 +281,11 @@ Pedagogy identifies **three specific situations where analytical counting is a v
 2. **Use Case 2 — Multi-Bar Rests & Long Static Ties in Ensemble Playing**:
    * When playing in an ensemble and resting for 12 bars (`1-2-3-4, 2-2-3-4, 3-2-3-4...`), or holding a static chord across 8 beats with no moving inner voices, verbal bar-counting acts as a simple bookmark.
 3. **Use Case 3 — First Contact with Asymmetric/Additive Meters ($\frac{5}{8}$, $\frac{7}{8}$, $\frac{11}{8}$)**:
-   * When first learning an odd meter like $\frac{7}{8}$, learners initially count `1-2, 1-2, 1-2-3` to see the grouping structure ($2+2+3$). Even here, fluency arrives as soon as those numbers turn into a **galloping physical lilt** (`Short – Short – Long` / `ta-di ta-di ta-ki-da`).
+   * When first learning an odd meter like $\frac{7}{8}$, learners initially count `1-2, 1-2, 1-2-3` to see the grouping structure ($2+2+3$). Even here, fluency arrives as soon as those numbers turn into a **galloping physical lilt** (`Short – Short – Long`).
 4. **Why Counting Fails During Real-Time Piano Sight-Reading**:
    * While sight-reading at the piano, your brain is simultaneously processing **two staves of vertical and horizontal pitch geometry, key signatures, fingering topography, harmonic voice-leading, and dynamics**.
    * If your phonological loop is occupied reciting *"one-e-and-a, two-and-three-and..."*, it creates severe **dual-task interference** (Baddeley, 2003), starving your visual look-ahead (Eye-Hand Span) and causing hesitation.
-   * **Summary Rule**: *Use math offline only to figure out what a new word sounds like; use beat-function syllables (`ta-di-mi`) as a temporary phonetic bridge; and rely on **Embodied Metric Gravity + Visual Word Chunking** when actually reading and playing.*
+   * **Summary Rule**: *Use math offline only to figure out what a new pattern sounds like; then map the **visual shape directly to its physical/sonic feel** against your embodied metric pulse when reading and playing.*
 
 ---
 
@@ -323,10 +314,10 @@ In standard rhythm-tapping apps:
 | :--- | :--- | :--- |
 | **Initial Encounter with a Phrase** | **Immediate Timed Stress**: Metronome starts clicking immediately; decode or die. | **Unmetered Sandbox (Phase 1)**: Inspect, audiate, and freely tap/play at your own pace with zero clock pressure until internalized. |
 | **Role of the Metronome** | **Continuous Crutch**: Loud click on every beat from start to finish (induces Guidance Dependence). | **Count-In $\rightarrow$ Disappearing Pulse**: Establishes tempo during count-in, then vanishes or thins to sparse anchors so *you* generate the beat. |
-| **Unit of Reading** | **Note-by-Note Math**: Individual durations calculated serially (`1-e-&-a`). | **1-Beat "Rhythmic Words"**: Visual chunking of the 16 core beat cells mapped to beat-function feel (`ta-di-mi`). |
+| **Unit of Reading** | **Note-by-Note Math**: Individual durations calculated serially (`1-e-&-a`). | **1-Beat "Rhythmic Words"**: Visual chunking of the 16 core beat cells mapped directly to sonic/motor feel (zero syllable jargon). |
 | **Ocular Training (Eye-Hand Span)** | **Cursor Chasing (EHS = 0)**: Eyes follow a bouncing ball on the current beat. | **Look-Ahead Framing (EHS = 1–2 Beats)**: No distracting playhead cursor; optional "dim-behind" mode encourages looking 1 beat ahead. |
 | **Rhythmic Dictation** | **Arithmetic Duration Counting**: Count how many clicks a long beep lasts. | **Groove-to-Cell Matching & Error Spotting**: Hear a short, dynamically inflected groove and snap together 1-beat Word Tiles or play it back. |
-| **Timing Evaluation** | **Rigid Absolute Grid**: Penalizes natural human tempo breathe ($\pm 3\%$) as "late/early" errors. | **Relative Groove + Drift Tracking**: Evaluates sub-beat proportional accuracy ("Did the `ta-di-mi` groove?") separately from macro-tempo drift. |
+| **Timing Evaluation** | **Rigid Absolute Grid**: Penalizes natural human tempo breathe ($\pm 3\%$) as "late/early" errors. | **Relative Groove + Drift Tracking**: Evaluates sub-beat proportional accuracy ("Did the gallop cell groove?") separately from macro-tempo drift. |
 
 ---
 
@@ -344,7 +335,6 @@ Every standard reading exercise presents a **2-bar or 4-bar rhythmic phrase** re
 * **Visual State**:
   * The 2–4 bar score is displayed clearly at the center of the screen with generous horizontal spacing and clear beat-group beaming.
   * **Beat-Cell Framing (Toggleable Scaffolding)**: Subtle visual brackets or soft background pills underneath each beat group highlight the **1-beat "Rhythmic Words"** (e.g., showing that Bar 1 consists of 4 distinct beat cells).
-  * **Optional Syllable Underlay**: At early stages of a new level, beat-function syllables (`ta`, `ta-di`, `ta-di-mi`, `(ta)-di`) can be toggled below the staff—never mathematical numbers (`1-e-&-a`).
 * **Audio / Metronome State**:
   * **Complete silence by default.** No ticking clock, no countdown timer, no pressure.
 * **Interactive Sandbox Controls (What the User Does Here)**:
@@ -372,7 +362,7 @@ Immediately upon completing the last beat of the phrase (takes $<1\text{ second}
 * **Visual Replay Overlay**:
   * Small, crisp onset ticks appear directly beneath the notation showing *where* your taps landed relative to your own local beat pulse.
   * **Two-Metric Score**:
-    1. **Groove Shape Score (%)**: Did your rhythmic words have the right internal proportions (e.g., did your `ta-di-mi` actually sound like `eighth + two sixteenths` rather than a triplet)?
+    1. **Groove Shape Score (%)**: Did your rhythmic words have the right internal proportions (e.g., did your `♪ ♬` gallop actually sound like `eighth + two sixteenths` rather than a triplet)?
     2. **Internal Pulse Stability**: Did your macro-tempo hold steady across the silent bars, rush (`+BPM`), or drag (`-BPM`)?
 * **Fast Iteration Actions**:
   * **If Nailed ($\ge 90\%$ Groove)**: Press `Space` to immediately advance to the next phrase (or play the same phrase 10 BPM faster).
@@ -435,12 +425,12 @@ Tier 1: Macro/Micro Foundations (Quarter, Eighths, Rests)
 
 | Tier | Focus & Meter | New "Rhythmic Words" Introduced | Key Pedagogical Milestone |
 | :--- | :--- | :--- | :--- |
-| **Tier 1** | **The Pulse & Primary Division** ($\frac{2}{4}, \frac{3}{4}, \frac{4}{4}$) | `♩` (`ta`), `♫` (`ta-di`), `𝄽` (`(ta)`), `𝅗𝅥` (`ta-(ta)`) | Keeping a rock-solid internal pulse across silent quarter-rest beats without rushing. |
-| **Tier 2** | **Upbeats, Syncopation & Ties** ($\frac{4}{4}, \frac{2}{2}$) | `𝄾 ♪` (`(ta)-di`), `♪ ♩ ♪` (`ta-di-(ta)-di`), `♩. ♪` (`ta---di`), Cross-beat ties | Feeling the **silent downbeat** inside your body while playing on the upbeat `di`. |
-| **Tier 3** | **The Core Sixteenth Words** ($\frac{2}{4}, \frac{4}{4}$) | `♬♬` (`ta-ka-di-mi`), `♪ ♬` (`ta-di-mi`), `♬ ♪` (`ta-ka-di`) | Reading 4-note and 3-note beamed groups as a **single visual word** at a glance. |
-| **Tier 4** | **Dotted Snaps & Funk Cells** ($\frac{4}{4}$) | `♪. sixteenth` (`ta---mi`), `sixteenth ♪.` (`ta-ka---`), `sixteenth ♪ sixteenth` (`ta-ka-mi`), `𝄿 ♬♪` | Distinguishing the crisp late `mi` snap ($3:1$ ratio) from a lazy triplet ($2:1$ ratio). |
-| **Tier 5** | **Compound Flow & Triplets** ($\frac{6}{8}, \frac{9}{8}, \frac{4}{4}$ Triplets) | `♩.` (`ta`), `♫♪` (`ta-ki-da`), `♩ ♪` (`ta--da`), `♪ ♩` (`ta-ki--`) | Feeling triple micro-divisions organically without counting *"1-2-3, 4-5-6"*. |
-| **Tier 6** | **Two-Hand Piano Rhythm & Polyrhythms** ($\frac{4}{4}, \frac{3}{4}, \frac{6}{8}$) | LH steady pulse/ostinato vs. RH syncopation; $3:2$ (`ta-ki-da` vs `ta-di`) & $4:3$ composite words | True bimanual rhythmic independence for real piano repertoire (Chopin, Debussy, Ragtime, Jazz). |
+| **Tier 1** | **The Pulse & Primary Division** ($\frac{2}{4}, \frac{3}{4}, \frac{4}{4}$) | `♩` (Quarter), `♫` (Eighths), `𝄽` (Rest), `𝅗𝅥` (Half) | Keeping a rock-solid internal pulse across silent quarter-rest beats without rushing. |
+| **Tier 2** | **Upbeats, Syncopation & Ties** ($\frac{4}{4}, \frac{2}{2}$) | `𝄾 ♪` (Upbeat), `♪ ♩ ♪` (Syncopation), `♩. ♪`, Cross-beat ties | Feeling the **silent downbeat** inside your body while playing on the upward rebound. |
+| **Tier 3** | **The Core Sixteenth Words** ($\frac{2}{4}, \frac{4}{4}$) | `♬♬` (4 Sixteenths), `♪ ♬` (Gallop), `♬ ♪` (Reverse Gallop) | Reading 4-note and 3-note beamed groups as a **single visual word** at a glance. |
+| **Tier 4** | **Dotted Snaps & Funk Cells** ($\frac{4}{4}$) | `♪. sixteenth` (Skip/Snap), `sixteenth ♪.` (Scotch Snap), `sixteenth ♪ sixteenth`, `𝄿 ♬♪` | Distinguishing the crisp late sixteenth snap ($3:1$ ratio) from a lazy triplet ($2:1$ ratio). |
+| **Tier 5** | **Compound Flow & Triplets** ($\frac{6}{8}, \frac{9}{8}, \frac{4}{4}$ Triplets) | `♩.`, `♫♪` (Triplet roll), `♩ ♪` (Long-Short), `♪ ♩` (Short-Long) | Feeling triple micro-divisions organically without counting *"1-2-3, 4-5-6"*. |
+| **Tier 6** | **Two-Hand Piano Rhythm & Polyrhythms** ($\frac{4}{4}, \frac{3}{4}, \frac{6}{8}$) | LH steady pulse/ostinato vs. RH syncopation; $3:2$ & $4:3$ composite words | True bimanual rhythmic independence for real piano repertoire (Chopin, Debussy, Ragtime, Jazz). |
 
 > [!TIP]
 > **Two-Hand Piano Mode (Bimanual Integration):**
@@ -471,7 +461,7 @@ Drawing on music performance science (Repp, 2005; Desain & Honing, 1999; Wing & 
    * **Tolerance Bands (at 90–120 BPM)**:
      * **Locked-In Groove (Green)**: Within $\pm 7\%$ of the local beat period ($\sim \pm 35\text{–}42\text{ ms}$), and preserves categorical subdivision boundaries (e.g., a dotted-eighth + sixteenth $3:1$ ratio is clearly distinct from a triplet $2:1$ ratio).
      * **Slightly Loose (Amber)**: Within $\pm 7\text{–}13\%$ of the local beat period.
-     * **Misread / Wrong Cell (Red)**: Exceeds $\pm 13\%$, extra/missing noteonset, or categorical swap (e.g., played `ta-ka-di` instead of `ta-di-mi`).
+     * **Misread / Wrong Cell (Red)**: Exceeds $\pm 13\%$, extra/missing noteonset, or categorical swap (e.g., played `♬ ♪` instead of `♪ ♬`).
 
 2. **Metric 2: Internal Pulse Stability (Macro-Tempo Drift — 20% of Score)**
    * Separately from whether you read the rhythmic words accurately, we compare your local tempo $\text{BPM}_{\text{end}}$ in the final bar against the count-in tempo $\text{BPM}_{\text{count-in}}$:
