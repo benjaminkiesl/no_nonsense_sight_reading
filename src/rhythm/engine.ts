@@ -328,7 +328,6 @@ export class RhythmEngine {
 
   public evaluatePerformance(nowMs?: number): RhythmFeedbackSummary {
     const N = this.flattenedNotes.length;
-    const M = this.recordedTaps.length;
     const targetBpm = this.phrase.targetBpm;
     const T = 60000 / targetBpm;
 
@@ -346,61 +345,30 @@ export class RhythmEngine {
     }
 
     const t0 = this.recordedTaps[0]?.pressTimeMs ?? 0;
+    const expectedBeats = this.flattenedNotes.map((n) => n.startBeat);
     const approxBeats = this.recordedTaps.map((tap) => (tap.pressTimeMs - t0) / T);
 
-    // Step 1: Chronological Nearest-Note Matching
-    const matchedTapForNote = new Array<number | null>(N).fill(null);
-    const matchedNoteForTap = new Array<number | null>(M).fill(null);
-
-    if (M > 0) {
-      matchedTapForNote[0] = 0;
-      matchedNoteForTap[0] = 0;
-      let jLastMatched = 0;
-
-      for (let i = 1; i < N; i++) {
-        const b_i = this.flattenedNotes[i]!.startBeat;
-        let bestJ: number | null = null;
-        let bestDiff = Infinity;
-
-        for (let j = jLastMatched + 1; j < M; j++) {
-          const b_tilde_j = approxBeats[j]!;
-          const diff = Math.abs(b_tilde_j - b_i);
-          if (diff <= 0.48 && diff < bestDiff) {
-            // If i + 1 < N, ensure tap is not closer to note i+1
-            if (i + 1 < N) {
-              const b_next = this.flattenedNotes[i + 1]!.startBeat;
-              const diffNext = Math.abs(b_tilde_j - b_next);
-              if (diff > diffNext) {
-                continue;
-              }
-            }
-            bestDiff = diff;
-            bestJ = j;
-          }
-        }
-
-        if (bestJ !== null) {
-          matchedTapForNote[i] = bestJ;
-          matchedNoteForTap[bestJ] = i;
-          jLastMatched = bestJ;
-        }
-      }
-    }
+    // Step 1: Sequence Alignment via Dynamic Programming
+    // Replaces fragile greedy lookahead with global minimum-error monotonic matching
+    const alignment1 = this.alignNotesAndTaps(expectedBeats, approxBeats, 0.48);
+    let matchedTapForNote = alignment1.matchedTapForNote;
+    let matchedNoteForTap = alignment1.matchedNoteForTap;
 
     // Step 2: Global 1-Parameter Least-Squares Shift (t0_hat)
-    const uList: number[] = [];
-    for (let i = 0; i < N; i++) {
-      const j = matchedTapForNote[i];
-      if (j !== null && j !== undefined) {
-        const note = this.flattenedNotes[i]!;
-        const tap = this.recordedTaps[j]!;
-        const u_k = tap.pressTimeMs - T * note.startBeat;
-        uList.push(u_k);
+    const computeT0Hat = (matches: (number | null)[]): number => {
+      const uList: number[] = [];
+      for (let i = 0; i < N; i++) {
+        const j = matches[i];
+        if (j !== null && j !== undefined) {
+          const note = this.flattenedNotes[i]!;
+          const tap = this.recordedTaps[j]!;
+          const u_k = tap.pressTimeMs - T * note.startBeat;
+          uList.push(u_k);
+        }
       }
-    }
 
-    let t0_hat = t0;
-    if (uList.length > 0) {
+      if (uList.length === 0) return t0;
+
       const sortedU = [...uList].sort((a, b) => a - b);
       const mid = Math.floor(sortedU.length / 2);
       const uMed =
@@ -410,11 +378,19 @@ export class RhythmEngine {
 
       const inliers = uList.filter((u) => Math.abs(u - uMed) <= 0.25 * T);
       if (inliers.length > 0) {
-        t0_hat = inliers.reduce((sum, val) => sum + val, 0) / inliers.length;
-      } else {
-        t0_hat = uMed;
+        return inliers.reduce((sum, val) => sum + val, 0) / inliers.length;
       }
-    }
+      return uMed;
+    };
+
+    let t0_hat = computeT0Hat(matchedTapForNote);
+
+    // Step 2b: Second-pass re-alignment with t0_hat absorbed
+    const shiftedApproxBeats = this.recordedTaps.map((tap) => (tap.pressTimeMs - t0_hat) / T);
+    const alignment2 = this.alignNotesAndTaps(expectedBeats, shiftedApproxBeats, 0.48);
+    matchedTapForNote = alignment2.matchedTapForNote;
+    matchedNoteForTap = alignment2.matchedNoteForTap;
+    t0_hat = computeT0Hat(matchedTapForNote);
 
     // Step 3: Compute Globally-Shifted User Taps (ShiftedTap[]) & Note Evaluations
     const shiftedTaps: ShiftedTap[] = this.recordedTaps.map((tap, j) => {
@@ -524,7 +500,8 @@ export class RhythmEngine {
 
     // Linear regression slope to estimate actual user BPM
     let estimatedUserBpm = targetBpm;
-    if (uList.length >= 2) {
+    const matchedCount = matchedTapForNote.filter((j) => j !== null).length;
+    if (matchedCount >= 2) {
       let sumB = 0;
       let sumT = 0;
       let count = 0;
@@ -587,5 +564,98 @@ export class RhythmEngine {
       shiftedTaps,
       passed,
     };
+  }
+
+  /**
+   * Monotonic Dynamic Programming Sequence Alignment.
+   * Finds the global minimum-cost alignment between written notes and recorded taps,
+   * completely eliminating greedy cascading errors on consecutive eighth notes.
+   */
+  public alignNotesAndTaps(
+    expectedBeats: number[],
+    tapBeats: number[],
+    maxDiff = 0.48,
+    missCost = 0.35,
+    extraCost = 0.35
+  ): { matchedTapForNote: (number | null)[]; matchedNoteForTap: (number | null)[] } {
+    const N = expectedBeats.length;
+    const M = tapBeats.length;
+
+    const matchedTapForNote = new Array<number | null>(N).fill(null);
+    const matchedNoteForTap = new Array<number | null>(M).fill(null);
+
+    if (N === 0 || M === 0) {
+      return { matchedTapForNote, matchedNoteForTap };
+    }
+
+    // dp[i][j]: minimum cost to align expectedBeats[0..i-1] with tapBeats[0..j-1]
+    // choice[i][j]: 0 = MATCH (from i-1, j-1), 1 = MISS (from i-1, j), 2 = EXTRA (from i, j-1)
+    const dp: number[][] = Array.from({ length: N + 1 }, () => new Array(M + 1).fill(Infinity));
+    const choice: number[][] = Array.from({ length: N + 1 }, () => new Array(M + 1).fill(-1));
+
+    dp[0]![0] = 0;
+    for (let i = 1; i <= N; i++) {
+      dp[i]![0] = i * missCost;
+      choice[i]![0] = 1; // MISS
+    }
+    for (let j = 1; j <= M; j++) {
+      dp[0]![j] = j * extraCost;
+      choice[0]![j] = 2; // EXTRA
+    }
+
+    for (let i = 1; i <= N; i++) {
+      const b_i = expectedBeats[i - 1]!;
+      for (let j = 1; j <= M; j++) {
+        const b_j = tapBeats[j - 1]!;
+        const diff = Math.abs(b_j - b_i);
+
+        // Option 1: Miss note i-1
+        let bestCost = dp[i - 1]![j]! + missCost;
+        let bestChoice = 1;
+
+        // Option 2: Extra tap j-1
+        const extraTapCost = dp[i]![j - 1]! + extraCost;
+        if (extraTapCost < bestCost) {
+          bestCost = extraTapCost;
+          bestChoice = 2;
+        }
+
+        // Option 3: Match note i-1 with tap j-1 (if diff <= maxDiff)
+        if (diff <= maxDiff) {
+          const matchCost = dp[i - 1]![j - 1]! + diff * diff;
+          if (matchCost < bestCost) {
+            bestCost = matchCost;
+            bestChoice = 0;
+          }
+        }
+
+        dp[i]![j] = bestCost;
+        choice[i]![j] = bestChoice;
+      }
+    }
+
+    // Backtrack from (N, M) to recover optimal alignment
+    let currI = N;
+    let currJ = M;
+
+    while (currI > 0 || currJ > 0) {
+      const c = choice[currI]![currJ]!;
+      if (c === 0) {
+        matchedTapForNote[currI - 1] = currJ - 1;
+        matchedNoteForTap[currJ - 1] = currI - 1;
+        currI--;
+        currJ--;
+      } else if (c === 1) {
+        matchedTapForNote[currI - 1] = null;
+        currI--;
+      } else if (c === 2) {
+        matchedNoteForTap[currJ - 1] = null;
+        currJ--;
+      } else {
+        break;
+      }
+    }
+
+    return { matchedTapForNote, matchedNoteForTap };
   }
 }

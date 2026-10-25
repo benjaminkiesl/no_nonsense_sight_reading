@@ -264,4 +264,63 @@ describe('RhythmEngine & Curriculum Tests (4-Stage Count-In & Global Shift Flow)
 
     expect(engine.getSnapshot().phase).toBe('LEVEL_COMPLETE');
   });
+
+  // Test 6: User Screenshot Bug Reproduction & Fix Verification
+  // In Level 2 Phrase 2 (r2-p2), eighth notes on beat 5.0 and 5.5 played with slight steady drift
+  // must match Tap 8 to Note 8, Tap 9 to Note 9, Tap 10 to Note 10 with 0 orphaned taps!
+  it('aligns consecutive eighth notes correctly when played with slight steady tempo drift without greedy cascade or orphaning Note 8', () => {
+    const level2 = RHYTHM_LEVELS[1]!; // rhythm-2: Eighth-Note Flow
+    const engine = new RhythmEngine(level2, 1); // phrase 2: r2-p2
+    const phrase = engine.getSnapshot().phrase;
+    expect(phrase.id).toBe('r2-p2');
+
+    const beatMs = 60000 / phrase.targetBpm;
+    const notes = engine.getSnapshot().flattenedNotes;
+    expect(notes.length).toBe(13);
+
+    // Note 8 is the 3rd note of Bar 2 (startBeat 5.0, eighth note)
+    expect(notes[6]?.startBeat).toBe(4.0); // Bar 2, note 1
+    expect(notes[7]?.startBeat).toBe(4.5); // Bar 2, note 2
+    expect(notes[8]?.startBeat).toBe(5.0); // Bar 2, note 3
+    expect(notes[9]?.startBeat).toBe(5.5); // Bar 2, note 4
+    expect(notes[10]?.startBeat).toBe(6.0); // Bar 2, note 5 (quarter)
+
+    engine.startCountIn(1000);
+    engine.tick(1000 + RhythmEngine.COUNT_IN_LEAD_IN_MS + phrase.beatsPerBar * beatMs);
+    expect(engine.getSnapshot().phase).toBe('READY_TO_PLAY');
+
+    const baseTime = 5000;
+    // Simulate user playing all 13 notes with a slight steady drift:
+    // Bar 1 notes played on time
+    // Bar 2 notes played slightly behind (~0.26 beats drift on eighths)
+    for (let i = 0; i < notes.length; i++) {
+      const n = notes[i]!;
+      const driftBeats = i >= 8 ? 0.26 : 0.05;
+      const press = baseTime + (n.startBeat + driftBeats) * beatMs;
+      const release = press + n.durationBeats * beatMs * 0.8;
+      engine.handleNotePress(press);
+      engine.handleNoteRelease(release);
+    }
+
+    const feedback = engine.getSnapshot().feedback;
+    expect(feedback).not.toBeNull();
+
+    // Verify 1-to-1 matching: Tap 8 MUST match Note 8, Tap 9 MUST match Note 9, Tap 10 MUST match Note 10!
+    const noteEval8 = feedback?.noteEvaluations[8];
+    const noteEval9 = feedback?.noteEvaluations[9];
+    const noteEval10 = feedback?.noteEvaluations[10];
+
+    expect(noteEval8?.status).not.toBe('missed');
+    expect(noteEval9?.status).not.toBe('missed');
+    expect(noteEval10?.status).not.toBe('missed');
+
+    // No orphaned taps!
+    const orphanedTaps = feedback?.shiftedTaps.filter((t) => t.matchedNoteIndex === null);
+    expect(orphanedTaps?.length).toBe(0);
+
+    // Dotted lines connect Tap 8 -> Note 8, Tap 9 -> Note 9, Tap 10 -> Note 10
+    expect(feedback?.shiftedTaps[8]?.matchedNoteIndex).toBe(8);
+    expect(feedback?.shiftedTaps[9]?.matchedNoteIndex).toBe(9);
+    expect(feedback?.shiftedTaps[10]?.matchedNoteIndex).toBe(10);
+  });
 });
