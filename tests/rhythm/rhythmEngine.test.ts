@@ -202,9 +202,11 @@ describe('RhythmEngine & Curriculum Tests (Self-Paced First-Press Flow)', () => 
       expect(engine.getSnapshot().feedback?.passed).toBe(true);
       expect(engine.getSnapshot().phrasesCompletedInLevel).toBe(p + 1);
 
-      // Tick forward by 800ms past feedback entry to trigger auto-advance
-      currentTime = phraseEndTime + 800;
-      engine.tick(currentTime);
+      // Press key after 400ms debounce to confirm feedback and advance to next phrase (or LEVEL_COMPLETE)
+      currentTime = phraseEndTime + 400;
+      engine.handleNotePress(currentTime);
+      engine.handleNoteRelease(currentTime + 50);
+      currentTime += 100;
 
       if (p < 4) {
         expect(engine.getSnapshot().phase).toBe('READY');

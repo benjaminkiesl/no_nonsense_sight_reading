@@ -139,27 +139,28 @@ export class RhythmEngine {
 
     // In FEEDBACK phase:
     if (this.phase === 'FEEDBACK') {
+      // Require 350ms debounce after finishing the last note so an accidental trailing press
+      // doesn't immediately dismiss the feedback screen before the user sees their green/red score!
+      if (nowMs - this.feedbackEnteredTimeMs < 350) {
+        return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
+      }
+
       if (this.feedback?.passed) {
-        // Passed phrase confirmation: if pressed after 250ms, advance immediately
-        if (nowMs - this.feedbackEnteredTimeMs >= 250) {
-          if (this.phrasesCompletedInLevel >= this.phrasesRequiredForLevel) {
-            this.phase = 'LEVEL_COMPLETE';
-            return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
-          }
-          this.advanceToNextPhrase();
-          // And start Note 0 with this press!
-          this.phase = 'PLAYING';
-          return this.recordNotePress(nowMs, 0);
+        // User saw their passed green phrase and pressed a key to load the next phrase (or finish level)
+        if (this.phrasesCompletedInLevel >= this.phrasesRequiredForLevel) {
+          this.phase = 'LEVEL_COMPLETE';
+          return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
         }
+        this.advanceToNextPhrase();
+        // Put the new phrase in READY state so the user can look at the new phrase before tapping Note 1!
         return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
       } else {
-        // Failed phrase: after 350ms debounce, immediately start a fresh retry on Note 0!
-        if (nowMs - this.feedbackEnteredTimeMs >= 350) {
-          this.resetForPhrase();
-          this.phase = 'PLAYING';
-          return this.recordNotePress(nowMs, 0);
-        }
-        return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
+        // Failed phrase: reset to READY (or start Note 0 of retry? Resetting to READY lets user see clean staff, or starting Note 0 directly)
+        // Wait: if they are looking at the SAME phrase on screen and press Space to retry, starting Note 0 directly or resetting?
+        // Actually, starting Note 0 directly when retrying the same phrase is natural porque they are already looking at the same phrase!
+        this.resetForPhrase();
+        this.phase = 'PLAYING';
+        return this.recordNotePress(nowMs, 0);
       }
     }
 
@@ -230,20 +231,8 @@ export class RhythmEngine {
       }
     }
 
-    // If passed FEEDBACK and 750ms elapsed, auto-advance
-    if (this.phase === 'FEEDBACK') {
-      if (this.feedback?.passed) {
-        if (nowMs - this.feedbackEnteredTimeMs >= 750) {
-          if (this.phrasesCompletedInLevel >= this.phrasesRequiredForLevel) {
-            this.phase = 'LEVEL_COMPLETE';
-            return { levelComplete: true };
-          }
-          this.advanceToNextPhrase();
-          return { advancedPhrase: true };
-        }
-      }
-    }
-
+    // Do NOT auto-wipe FEEDBACK on a fast timer! Keep the green/red graded phrase visible
+    // until the user presses a key (or clicks Next Phrase) so they can see how they did.
     return {};
   }
 

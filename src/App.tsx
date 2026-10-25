@@ -9,7 +9,7 @@ import { ActiveKeyHighlight, PianoKeyboard } from './components/PianoKeyboard';
 import { ProgressBar } from './components/ProgressBar';
 import { RhythmArena } from './components/RhythmArena';
 import { getLevelById, getNextRecommendedLevel } from './curriculum/graph';
-import { isRhythmLevelId } from './rhythm/curriculum';
+import { getRhythmLevelById, isRhythmLevelId } from './rhythm/curriculum';
 import { SightReadingEngine } from './engine/engine';
 import { SpeedController } from './engine/speed';
 import { mapKeyboardEventToInput } from './input/keyboardMapper';
@@ -43,6 +43,7 @@ export default function App(): React.JSX.Element {
   const [activeHighlights, setActiveHighlights] = useState<ActiveKeyHighlight[]>([]);
   const [isAccelerandoModalOpen, setIsAccelerandoModalOpen] = useState(false);
   const [isAccelerandoActive, setIsAccelerandoActive] = useState(false);
+  const [isRhythmLevelCelebrating, setIsRhythmLevelCelebrating] = useState(false);
 
   // Transition to Levels view and mark level completed upon LEVEL_COMPLETE phase
   useEffect(() => {
@@ -89,6 +90,7 @@ export default function App(): React.JSX.Element {
   const handleSelectLevel = useCallback(
     (id: string) => {
       setIsAccelerandoActive(false);
+      setIsRhythmLevelCelebrating(false);
       selectLevel(id);
       if (!isRhythmLevelId(id)) {
         const level = getLevelById(id);
@@ -104,6 +106,7 @@ export default function App(): React.JSX.Element {
   const handleCelebrationContinue = useCallback(() => {
     const nextId = getNextRecommendedLevel(currentLevelId, allFinishedLevelIds);
     markLevelCompleted(currentLevelId);
+    setIsRhythmLevelCelebrating(false);
     selectLevel(nextId);
     if (!isRhythmLevelId(nextId)) {
       const nextLevel = getLevelById(nextId);
@@ -218,7 +221,7 @@ export default function App(): React.JSX.Element {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isAccelerandoModalOpen) return;
 
-      if (!isRhythmMode && engineRef.current.getSnapshot().phase === 'LEVEL_COMPLETE') {
+      if ((!isRhythmMode && engineRef.current.getSnapshot().phase === 'LEVEL_COMPLETE') || isRhythmLevelCelebrating) {
         handleCelebrationContinue();
         return;
       }
@@ -256,6 +259,7 @@ export default function App(): React.JSX.Element {
                 levelId={currentLevelId}
                 onLevelComplete={() => {
                   markLevelCompleted(currentLevelId);
+                  setIsRhythmLevelCelebrating(true);
                   setActiveView('levels');
                 }}
               />
@@ -283,12 +287,24 @@ export default function App(): React.JSX.Element {
                 onAccelerandoContinue={handleCelebrationAccelerando}
               />
             )}
+            {isRhythmLevelCelebrating && isRhythmMode && (
+              <CelebrationOverlay
+                customTitle={`Rhythm — ${getRhythmLevelById(currentLevelId).title}`}
+                customDescription="Outstanding rhythm sight-reading! You played all 5 two-bar phrases in steady proportion."
+                onContinue={handleCelebrationContinue}
+              />
+            )}
             <LevelGraph
               currentLevelId={currentLevelId}
               completedLevelIds={allFinishedLevelIds}
               onSelectLevel={handleSelectLevel}
               onOpenAccelerando={() => setIsAccelerandoModalOpen(true)}
-              celebratingLevelId={snapshot.phase === 'LEVEL_COMPLETE' && !isRhythmMode ? currentLevelId : null}
+              celebratingLevelId={
+                (snapshot.phase === 'LEVEL_COMPLETE' && !isRhythmMode) ||
+                (isRhythmLevelCelebrating && isRhythmMode)
+                  ? currentLevelId
+                  : null
+              }
             />
           </div>
         </main>

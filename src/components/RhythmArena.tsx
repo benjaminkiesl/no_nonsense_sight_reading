@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { playRhythmNoteVoice } from '../audio/rhythmAudio';
 import { getRhythmLevelById } from '../rhythm/curriculum';
 import { RhythmEngine } from '../rhythm/engine';
 import { RhythmEngineSnapshot } from '../types/rhythm';
@@ -81,10 +80,7 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
       if (isPlayKey) {
         e.preventDefault();
         if (!e.repeat) {
-          const res = engineRef.current.handleNotePress(performance.now());
-          if (res.noteIndex !== -1) {
-            playRhythmNoteVoice(res.durationBeats * 0.45, res.isLanding);
-          }
+          engineRef.current.handleNotePress(performance.now());
           updateSnapshot();
         }
       }
@@ -136,17 +132,24 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
 
   // Bottom Status Prompt
   let statusPrompt = '';
+  let statusTone: 'neutral' | 'passed' | 'failed' = 'neutral';
   if (snapshot.phase === 'READY') {
     statusPrompt = 'Play the 1st note (Space or any piano key) to start at your own tempo';
   } else if (snapshot.phase === 'PLAYING') {
     statusPrompt = 'Keep your steady beat through the final note...';
   } else if (snapshot.phase === 'FEEDBACK') {
     if (snapshot.feedback?.passed) {
-      statusPrompt = `✓ Steady rhythm (~${snapshot.feedback.estimatedUserBpm} BPM)`;
+      statusTone = 'passed';
+      const isLastPhrase = snapshot.phrasesCompletedInLevel >= snapshot.phrasesRequiredForLevel;
+      statusPrompt = isLastPhrase
+        ? `✓ Phrase ${snapshot.phrasesCompletedInLevel}/${snapshot.phrasesRequiredForLevel} Passed (${snapshot.feedback.overallScorePct}% at ~${snapshot.feedback.estimatedUserBpm} BPM) — Press Space or any key to finish level`
+        : `✓ Phrase ${snapshot.phrasesCompletedInLevel}/${snapshot.phrasesRequiredForLevel} Passed (${snapshot.feedback.overallScorePct}% at ~${snapshot.feedback.estimatedUserBpm} BPM) — Press Space or any key for next phrase`;
     } else {
-      statusPrompt = 'Timing off on highlighted notes — play the 1st note to try again';
+      statusTone = 'failed';
+      statusPrompt = `✗ Timing off on red notes (${snapshot.feedback?.overallScorePct ?? 0}% score) — Play the 1st note to try this phrase again`;
     }
   } else if (snapshot.phase === 'LEVEL_COMPLETE') {
+    statusTone = 'passed';
     statusPrompt = '✓ Level Complete!';
   }
 
@@ -601,7 +604,23 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
         </svg>
 
         {/* Clear bottom status prompt */}
-        <div className="nnsr-rhythm-status-prompt">
+        <div
+          className="nnsr-rhythm-status-prompt"
+          style={{
+            backgroundColor:
+              statusTone === 'passed'
+                ? '#e6f5ee'
+                : statusTone === 'failed'
+                ? '#fdecea'
+                : undefined,
+            color:
+              statusTone === 'passed'
+                ? '#04724d'
+                : statusTone === 'failed'
+                ? '#c0392b'
+                : undefined,
+          }}
+        >
           <span>{statusPrompt}</span>
         </div>
       </div>
