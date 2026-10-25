@@ -206,6 +206,11 @@ describe('RhythmEngine & Curriculum Tests (4-Stage Count-In & Global Shift Flow)
     // Note 2 was played on time -> status: 'perfect'
     const evalNote2 = feedback?.noteEvaluations[2];
     expect(evalNote2?.status).toBe('perfect');
+
+    // In FEEDBACK phase after failure: retrying ALWAYS triggers count-in (never direct PLAYING)
+    const retryTime = timeoutTime + 500;
+    engine.handleNotePress(retryTime);
+    expect(engine.getSnapshot().phase).toBe('COUNT_IN');
   });
 
   // Test 5: Debounce Retry on Failed Phrase & 5-Phrase Progression

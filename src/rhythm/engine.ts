@@ -186,11 +186,11 @@ export class RhythmEngine {
         this.advanceToNextPhrase();
         return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
       } else {
-        // Failed phrase: directly begin Note 0 of a fresh retry
+        // Failed phrase: ALWAYS require metronome count-in before playing!
+        // Start count-in with lead-in delay rather than jumping directly to PLAYING.
         this.resetForPhrase();
-        this.phase = 'PLAYING';
-        this.firstTapPressMs = nowMs;
-        return this.recordNotePress(nowMs, 0);
+        this.startCountIn(nowMs);
+        return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
       }
     }
 

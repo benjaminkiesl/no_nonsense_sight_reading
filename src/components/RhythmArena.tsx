@@ -122,12 +122,15 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
             return;
           }
         } else {
-          if (e.key === 'Enter') {
+          // Failed phrase: ALWAYS tap in with metronome, triggered simply with Space or Enter
+          if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter') {
             e.preventDefault();
             handleStartCountIn();
             return;
           }
         }
+        // In FEEDBACK phase, ignore other keys so they never bypass count-in
+        return;
       }
 
       // Play keys for READY_TO_PLAY or PLAYING (or retry on feedback)
@@ -847,9 +850,7 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                 </>
               ) : (
                 <>
-                  <span>
-                    ✗ Compare your timing on the linear grid below — Play 1st note to try again, or
-                  </span>
+                  <span>✗ Compare your timing on the linear grid below:</span>
                   <button
                     data-testid="hear-tempo-button"
                     onClick={handleStartCountIn}
@@ -857,14 +858,14 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                       border: 'none',
                       background: '#1f2421',
                       color: '#ffffff',
-                      padding: '6px 14px',
+                      padding: '6px 16px',
                       borderRadius: '6px',
                       fontWeight: 600,
                       cursor: 'pointer',
-                      fontSize: '12px',
+                      fontSize: '13px',
                     }}
                   >
-                    Hear Tempo Again [Enter]
+                    Retry [Space / Enter]
                   </button>
                 </>
               )}
