@@ -7,6 +7,7 @@ import { Header } from './components/Header';
 import { LevelGraph } from './components/LevelGraph';
 import { ActiveKeyHighlight, PianoKeyboard } from './components/PianoKeyboard';
 import { ProgressBar } from './components/ProgressBar';
+import { RhythmArena } from './components/RhythmArena';
 import { getLevelById, getNextRecommendedLevel } from './curriculum/graph';
 import { SightReadingEngine } from './engine/engine';
 import { SpeedController } from './engine/speed';
@@ -32,7 +33,7 @@ export default function App(): React.JSX.Element {
     setLastCustomAccelerandoNotes,
   } = useAppStore();
 
-  const [activeView, setActiveView] = useState<'practice' | 'levels'>('practice');
+  const [activeView, setActiveView] = useState<'practice' | 'levels' | 'rhythm'>('practice');
   const currentLevel = getLevelById(currentLevelId);
   const engineRef = useRef<SightReadingEngine>(new SightReadingEngine(currentLevel));
   const [snapshot, setSnapshot] = useState<EngineSnapshot>(() => engineRef.current.getSnapshot());
@@ -211,7 +212,7 @@ export default function App(): React.JSX.Element {
         return;
       }
 
-      if (activeView === 'levels') {
+      if (activeView === 'levels' || activeView === 'rhythm') {
         return;
       }
 
@@ -234,9 +235,14 @@ export default function App(): React.JSX.Element {
         midiDeviceName={midiDeviceName}
         activeView={activeView}
         onToggleView={() => setActiveView((v) => (v === 'practice' ? 'levels' : 'practice'))}
+        onToggleRhythm={() => setActiveView((v) => (v === 'rhythm' ? 'practice' : 'rhythm'))}
       />
 
-      {activeView === 'practice' ? (
+      {activeView === 'rhythm' ? (
+        <main className="nnsr-workspace nnsr-practice-workspace">
+          <RhythmArena />
+        </main>
+      ) : activeView === 'practice' ? (
         <main className="nnsr-workspace nnsr-practice-workspace">
           <section className="nnsr-main-column">
             <GrandStaffCanvas snapshot={snapshot} level={currentLevel} />
