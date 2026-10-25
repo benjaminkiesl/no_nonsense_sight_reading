@@ -799,8 +799,14 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
 
           {snapshot.phase === 'COUNT_IN' && (
             <span>
-              Tempo ({snapshot.phrase.targetBpm} BPM): Beat{' '}
-              {(snapshot.countInBeatIndex ?? 0) + 1} of {snapshot.phrase.beatsPerBar}...
+              {snapshot.countInBeatIndex !== undefined && snapshot.countInBeatIndex >= 0 ? (
+                <>
+                  Tempo ({snapshot.phrase.targetBpm} BPM): Beat {snapshot.countInBeatIndex + 1} of{' '}
+                  {snapshot.phrase.beatsPerBar}...
+                </>
+              ) : (
+                <>Tempo ({snapshot.phrase.targetBpm} BPM): Count-in starting...</>
+              )}
             </span>
           )}
 

@@ -109,12 +109,13 @@ export class RhythmEngine {
     this.countInStartTimeMs = 0;
   }
 
+  public static readonly COUNT_IN_LEAD_IN_MS = 400;
+
   public startCountIn(nowMs: number): void {
     this.phase = 'COUNT_IN';
     this.countInStartTimeMs = nowMs;
-    this.countInBeatIndex = 0;
+    this.countInBeatIndex = -1;
     this.countInTotalBeats = this.phrase.beatsPerBar;
-    playMetricCountInClick(0, this.countInTotalBeats);
   }
 
   public advanceToNextPhrase(): boolean {
@@ -258,17 +259,23 @@ export class RhythmEngine {
   }
 
   public tick(nowMs: number): TickResult {
-    // Stage 2: COUNT_IN metronome progression
+    // Stage 2: COUNT_IN metronome progression with preparatory lead-in delay
     if (this.phase === 'COUNT_IN') {
       const beatPeriodMs = 60000 / this.phrase.targetBpm;
       const elapsed = nowMs - this.countInStartTimeMs;
       const totalBeats = this.countInTotalBeats ?? this.phrase.beatsPerBar;
+
+      // During lead-in delay, count-in hasn't started clicking yet
+      if (elapsed < RhythmEngine.COUNT_IN_LEAD_IN_MS) {
+        return {};
+      }
+
+      const elapsedAfterLeadIn = elapsed - RhythmEngine.COUNT_IN_LEAD_IN_MS;
       // Use a 5ms epsilon to guard against IEEE-754 precision issues (e.g. 1000 + beatPeriod * 4)
-      const currentBeat = Math.floor((elapsed + 5) / beatPeriodMs);
+      const currentBeat = Math.floor((elapsedAfterLeadIn + 5) / beatPeriodMs);
 
       if (
-        this.countInBeatIndex !== undefined &&
-        currentBeat > this.countInBeatIndex &&
+        currentBeat > (this.countInBeatIndex ?? -1) &&
         currentBeat < totalBeats
       ) {
         this.countInBeatIndex = currentBeat;
@@ -276,7 +283,7 @@ export class RhythmEngine {
       }
 
       // Transition to READY_TO_PLAY after all count-in beats have elapsed
-      if (elapsed >= totalBeats * beatPeriodMs - 5) {
+      if (elapsedAfterLeadIn >= totalBeats * beatPeriodMs - 5) {
         this.phase = 'READY_TO_PLAY';
         this.countInBeatIndex = undefined;
         return { transitionedToReadyToPlay: true };

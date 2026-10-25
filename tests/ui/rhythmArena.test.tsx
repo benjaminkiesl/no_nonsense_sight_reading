@@ -47,8 +47,8 @@ describe('RhythmArena UI Specification Tests (4-Stage Count-In & Optical Engravi
       fireEvent.click(hearTempoBtn);
     });
 
-    // In COUNT_IN
-    expect(screen.getByText(/Tempo \(76 BPM\): Beat 1 of 4/)).toBeDefined();
+    // In COUNT_IN with lead-in delay
+    expect(screen.getByText(/Tempo \(76 BPM\): Count-in starting\.\.\./)).toBeDefined();
 
     // Note pointer is NOT shown during COUNT_IN
     expect(screen.queryByText('▼ 1st note')).toBeNull();

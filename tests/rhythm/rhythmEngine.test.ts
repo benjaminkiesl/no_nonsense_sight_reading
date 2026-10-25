@@ -68,20 +68,27 @@ describe('RhythmEngine & Curriculum Tests (4-Stage Count-In & Global Shift Flow)
     // Stage 2: COUNT_IN
     engine.startCountIn(1000);
     expect(engine.getSnapshot().phase).toBe('COUNT_IN');
+    // During 400ms lead-in, countInBeatIndex is -1 (waiting before beat 0 click)
+    expect(engine.getSnapshot().countInBeatIndex).toBe(-1);
+
+    const leadIn = RhythmEngine.COUNT_IN_LEAD_IN_MS;
+
+    // After lead-in, Beat 0 clicks
+    engine.tick(1000 + leadIn);
     expect(engine.getSnapshot().countInBeatIndex).toBe(0);
 
     // Tick through 4 beats of count-in
-    engine.tick(1000 + beatPeriod);
+    engine.tick(1000 + leadIn + beatPeriod);
     expect(engine.getSnapshot().countInBeatIndex).toBe(1);
 
-    engine.tick(1000 + beatPeriod * 2);
+    engine.tick(1000 + leadIn + beatPeriod * 2);
     expect(engine.getSnapshot().countInBeatIndex).toBe(2);
 
-    engine.tick(1000 + beatPeriod * 3);
+    engine.tick(1000 + leadIn + beatPeriod * 3);
     expect(engine.getSnapshot().countInBeatIndex).toBe(3);
 
     // After 4 beats, metronome stops and transitions to READY_TO_PLAY
-    const resCountInEnd = engine.tick(1000 + beatPeriod * 4);
+    const resCountInEnd = engine.tick(1000 + leadIn + beatPeriod * 4);
     expect(resCountInEnd.transitionedToReadyToPlay).toBe(true);
     expect(engine.getSnapshot().phase).toBe('READY_TO_PLAY');
 
@@ -123,7 +130,7 @@ describe('RhythmEngine & Curriculum Tests (4-Stage Count-In & Global Shift Flow)
 
     // Move to READY_TO_PLAY
     engine.startCountIn(1000);
-    engine.tick(1000 + phrase.beatsPerBar * beatMs);
+    engine.tick(1000 + RhythmEngine.COUNT_IN_LEAD_IN_MS + phrase.beatsPerBar * beatMs);
     expect(engine.getSnapshot().phase).toBe('READY_TO_PLAY');
 
     // User plays with a constant 60ms latency on every note
@@ -159,7 +166,7 @@ describe('RhythmEngine & Curriculum Tests (4-Stage Count-In & Global Shift Flow)
     const notes = flattenPhraseToNotes(phrase);
 
     engine.startCountIn(1000);
-    engine.tick(1000 + phrase.beatsPerBar * beatMs);
+    engine.tick(1000 + RhythmEngine.COUNT_IN_LEAD_IN_MS + phrase.beatsPerBar * beatMs);
 
     const baseTime = 2000;
     // Play Note 0
@@ -217,7 +224,7 @@ describe('RhythmEngine & Curriculum Tests (4-Stage Count-In & Global Shift Flow)
 
       // Start count in
       engine.startCountIn(currentTime);
-      currentTime += phrase.beatsPerBar * beatMs;
+      currentTime += RhythmEngine.COUNT_IN_LEAD_IN_MS + phrase.beatsPerBar * beatMs;
       engine.tick(currentTime);
       expect(engine.getSnapshot().phase).toBe('READY_TO_PLAY');
 
