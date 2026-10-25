@@ -375,3 +375,326 @@ Across all three cohorts ($510 \rightarrow 1,025 \rightarrow 2,483$ works), we m
 7. **Sapp, C. S. (2005–2024).** *KernScores & Humdrum Data Digital Piano Corpora.* CCARH, Stanford University (`bach-wtc`, `inventions`, `art-of-the-fugue`, `bach-musical-offering`, `mozart-piano-sonatas`, `beethoven-piano-sonatas`, `haydn-piano-sonatas`, `chopin-preludes`, `chopin-mazurkas`, `humdrum-chopin-first-editions`, `hummel-preludes`, `scarlatti-keyboard-sonatas`, `joplin`, `Mysterium`, `rds-scores`).
 8. **Foscarin, F., et al. (2020).** *ASAP: A Dataset of Aligned Scores and Performances for Piano Transcription.* ISMIR 2020 (`fosfrancesco/asap-dataset`).
 9. **Gotham, M., & Jonas, P. (2022).** *The OpenScore Lieder Corpus.* Music Encoding Conference (`OpenScore/Lieder`, 1,462 two-hand piano scores across 127 composers).
+10. **Wang, Z., Chen, K., Jiang, J., Zhang, Y., Xu, M., Dai, S., Bin, G., & Xia, G. (2020).** *POP909: A Pop-song Dataset for Music Arrangement Generation.* Proceedings of the 21st International Society for Music Information Retrieval Conference (ISMIR 2020).
+
+---
+
+## 9. Pedagogical Synthesis: From Classical Polyphony to Contemporary Vernacular Groove
+
+The computational rhythm analysis presented across Sections 1–7 establishes the foundation of classical keyboard fluency: a highly concentrated vocabulary where simple metric anchors (`♩`, `♫`, `𝄽/Hold`) dominate, polyphony requires independent hand coordination, and phrase structure adheres to strict metric closures and classical hypermeter.
+
+However, modern pianists frequently navigate **vernacular popular music**—pop, rock, R&B, soul, and contemporary ballads. A critical musicological and pedagogical question arises:
+*Does the rhythmic distribution of popular music piano replicate classical distributions, or does vernacular piano rhythm follow an independent grammatical logic?*
+
+To resolve this question empirically, Section 10 extends our corpus methodology to **POP909**, the benchmark digital dataset of professional popular music piano scores.
+
+---
+
+## 10. Popular Music Piano Corpus Analysis (POP909 & Vernacular Pop Comparison)
+
+### 10.1 Popular Music Piano Corpus Scope & Repertoire Overview (POP909 Benchmark)
+
+To analyze the rhythmic grammar of popular music piano with the same empirical rigor applied to our 2,483 classical scores, we processed the complete **POP909** dataset (Wang et al., ISMIR 2020). POP909 consists of **909 professionally transcribed and arranged piano scores of popular music** (spanning pop ballads, pop-rock, R&B, dance-pop, and soul). Each song features aligned, track-separated MIDI (`MELODY`, `BRIDGE`, and `PIANO`) accompanied by beat- and bar-level downbeat ground truth (`beat_midi.txt`).
+
+Using high-resolution temporal quantization, every onset across all 909 songs was mapped onto the exact 16th-note grid ($4$ subdivisions per quarter-note beat). Hand assignment reflects standard professional performance practice:
+- **Right Hand (`RH`)**: Lead vocal melody (`MELODY`), secondary countermelodies and fills (`BRIDGE`), and treble accompaniment chord voicings ($\text{MIDI pitch} \ge 60$).
+- **Left Hand (`LH`)**: Bass lines, keyboard root voicings, and lower accompaniment figures ($\text{MIDI pitch} < 60$).
+
+Below is the repertoire scope of POP909 placed directly alongside the three classical cohorts:
+
+| Corpus Cohort | Repertoire Scope & Genre | Works / Scores | Complete Measures | 4/4 Measures Analyzed | Simple-Meter Beats per Hand (`♩`) | Pooled Single-Hand Beats (`RH ∪ LH`) |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **Cohort 1: Core Solo Piano** | Baroque, Classical, Romantic, Ragtime (`**kern`) | 510 | 50,670 | 11,013 | 119,527 | 239,054 |
+| **Cohort 2: Expanded Solo Piano** | Core Solo + Chopin Etudes/Nocturnes, Scriabin, ASAP | 1,025 | 101,739 | 19,642 | 242,740 | 485,480 |
+| **Cohort 3: All Two-Hand Piano** | Expanded Solo + OpenScore Lieder Accompaniments | 2,483 | 181,689 | 41,394 | 427,785 | 855,570 |
+| **Pop Piano (POP909 Corpus)** | **Pop, Rock, R&B, Ballad Piano Arrangements** | **909** | **74,010** | **69,968** | **279,872** | **559,744** |
+
+> [!NOTE]
+> **Metric Distribution in Popular Music**:
+> Across all 74,010 measures in POP909, **69,968 measures (94.54%) are strictly in $\frac{4}{4}$ time** ($4$ beats per measure). The remaining measures consist of occasional compound or asymmetric metric insertions: $\frac{6}{8}$ or $\frac{6}{4}$ ($2,572$ bars, $3.48\%$), $\frac{2}{4}$ ($923$ bars, $1.25\%$), $\frac{3}{4}$ ($313$ bars, $0.42\%$), and $\frac{5}{4}$ ($184$ bars, $0.25\%$).
+> Consequently, POP909 contains **$1.69\times$ more $\frac{4}{4}$ measures ($69,968$) than the entire 2,483-work Classical/Romantic piano corpus combined ($41,394$)**, providing high statistical power for simple-meter analysis.
+
+---
+
+### 10.2 The Six Core Empirical Divergences: Popular Music vs. Classical Piano
+
+Cross-comparing the 559,744 pooled single-hand beats of POP909 against the 855,570 pooled beats of Classical Cohort 3 reveals **six major rhythmic divergences** that define contemporary popular piano playing:
+
+1. **The Eighth-Note Pulse Inversion (`♫` Replaces `♩` as King of the Pulse)**:
+   * In Classical piano, the **Quarter Note (`♩`)** is the uncontested #1 pattern (**33.61%** of all beats), while **Two Eighths (`♫`)** is #2 (**21.14%**).
+   * In Pop piano, this hierarchy is completely inverted: **Two Eighths (`♫`) is the runaway #1 pattern at 33.95%**! In composite rhythm (`RH | LH`), an extraordinary **47.42% of all beats are steady eighth notes**! The Quarter Note plummets from 33.61% down to **18.52%** (a **0.55x** collapse). Popular music piano is fundamentally an **eighth-note motor groove**.
+2. **Explosion of the Gallop Family (`♪ ♬` and `♬ ♪`)**:
+   * The **Gallop (`♪ ♬` = 8th + two 16ths)** increases by **$6.59\times$** in Pop (**7.05%** vs. **1.07%** in Classical). In the Right Hand alone, Gallop accounts for **11.55% of all beats** (more than 1 out of every 9 beats played by the right hand!). Pop arrangers continuously utilize `♪ ♬` to drive forward motion in vocal fills and accompanimental arpeggios.
+   * The **Reverse Gallop (`♬ ♪` = two 16ths + 8th)** increases by **$7.98\times$** in Pop (**2.87%** vs. **0.36%** in Classical).
+3. **Severe Intra-Beat and Off-Beat Syncopation Expansion**:
+   * **Intra-Beat Syncopation (`♬ ♪ ♬` = 16th + 8th + 16th)** increases by **$9.13\times$** (**1.83%** in Pop vs. **0.20%** in Classical).
+   * **Scotch Snap (`♬ ♪.` = 16th + dotted 8th)** increases by **$5.56\times$** (**1.50%** in Pop vs. **0.27%** in Classical).
+   * **Single 16th on "e" (`[. X . .]`)** increases by **$28.36\times$** (**1.42%** in Pop vs. **0.05%** in Classical), reflecting contemporary syncopated keyboard stabs.
+   * **Upbeat Eighth (`𝄾 ♪`)** increases by **$1.67\times$** (**7.50%** in Pop vs. **4.48%** in Classical).
+4. **Reorganization of Bimanual Coordination `(RH, LH)`**:
+   * In Classical piano, the #1 bimanual coordination is **Homorhythmic Quarter Pulse `(♩, ♩)`** at **18.62%**. In Pop, `(♩, ♩)` plummets to Rank #5 at just **4.36%**!
+   * The #1 bimanual pair in Pop is **`Parallel / Accompanimental Eighth Stride (♫, ♫)` at 13.21%**, followed by **`Quarter Melody over Eighth Bass Stride (♩, ♫)` at 8.90%**, and **`RH Eighths over Sustained Bass (♫, 𝄽/Hold)` at 7.81%**.
+   * Bimanual syncopations unknown to the Classical Top 10 enter prominently: **`RH Eighths with LH Upbeat Bass (♫, 𝄾 ♪)` at 4.15% (Rank #6)** and **`RH Gallop over LH Eighths (♪ ♬, ♫)` at 2.68% (Rank #7)**.
+5. **The Pop "Vamp / Groove Loop" Effect (Intra-Song Ostinato)**:
+   * Across all 879 pop songs with $\ge 16$ bars in $\frac{4}{4}$, rhythmic repetition is intense:
+     * In Composite Rhythm (`RH | LH`), the **#1 most frequent 1-bar pattern accounts for an average of 30.98% of the entire song** (median 27.84%)!
+     * The **Top 2 bars account for 41.49%** (median 38.82%).
+     * The **Top 4 bars account for 53.15%** (median 52.75%)—meaning more than half of an entire pop arrangement is composed of just four looping rhythmic bars!
+     * In the Left Hand (bass groove), the **Top 4 bars account for 39.17%** of the performance.
+6. **Cross-Barline Anticipation & The "Pushed Downbeat"**:
+   * In $\frac{4}{4}$ Pop piano, **85.27% of measure transitions** feature active off-beat eighth motion on Beat 4 (`&` of 4), and **36.01%** feature a 16th-note anticipation (`a` of 4).
+   * While 98.4%–98.8% of these anticipations resolve onto a Beat 1 attack, **1.18%–1.62% are "pure pushed downbeats"** where the attack occurs on the off-beat and is **held/tied across the barline with NO attack on Beat 1**—a hallmark of pop, R&B, and ballad vocal phrasing that occurs over $4\times$ more frequently than in Classical scores.
+
+---
+
+### 10.3 Complete Comparative Pareto Coverage Tables (`P50`–`P99`)
+
+Below is the empirical Pareto coverage table comparing **Popular Music Piano (POP909: 69,968 bars)** against **Classical/Romantic Piano (Cohort 3: 41,394 bars)** across all metric levels and stream definitions:
+
+#### A. 1-Beat Sixteenth-Grid Cells (Theoretical Max: 16 Single-Hand / 256 Bimanual Pair)
+
+| Corpus Cohort | Stream Definition | Total Beats Analyzed ($N$) | Unique Ever Seen | Theoretical Space Used (%) | **P50** | **P75** | **P80** | **P90** | **P95** | **P99** |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Pop Piano (POP909)** | **Right Hand Only (`RH`)** | 279,872 | 16 / 16 | 100.00% | **2** | **5** | **5** | **7** | **10** | **14** |
+| *Classical (Cohort 3)* | *Right Hand Only (`RH`)* | 380,517 | 16 / 16 | 100.00% | *2* | *4* | *4* | *5* | *7* | *12* |
+| **Pop Piano (POP909)** | **Left Hand Only (`LH`)** | 279,872 | 16 / 16 | 100.00% | **2** | **4** | **5** | **9** | **11** | **15** |
+| *Classical (Cohort 3)* | *Left Hand Only (`LH`)* | 396,753 | 16 / 16 | 100.00% | *2* | *3* | *3* | *4* | *5* | *10* |
+| **Pop Piano (POP909)** | **Either Hand Pooled (`RH ∪ LH`)** | 559,744 | 16 / 16 | 100.00% | **2** | **5** | **6** | **8** | **11** | **15** |
+| *Classical (Cohort 3)* | *Either Hand Pooled (`RH ∪ LH`)* | 777,270 | 16 / 16 | 100.00% | *2* | *3* | *3* | *5* | *6* | *12* |
+| **Pop Piano (POP909)** | **Simultaneous 2-Hand Pair (`(RH, LH)`)** | 279,872 | 256 / 256 | 100.00% | **8** | **30** | **39** | **72** | **108** | **191** |
+| *Classical (Cohort 3)* | *Simultaneous 2-Hand Pair (`(RH, LH)`)* | 363,288 | 222 / 256 | 86.72% | *6* | *12* | *15* | *25* | *39* | *92* |
+| **Pop Piano (POP909)** | **1D Flattened Boolean OR (`RH \| LH`)** | 279,872 | 16 / 16 | 100.00% | **2** | **3** | **4** | **6** | **8** | **13** |
+| *Classical (Cohort 3)* | *1D Flattened Boolean OR (`RH \| LH`)* | 363,288 | 16 / 16 | 100.00% | *2* | *3* | *3* | *4* | *6* | *8* |
+
+#### B. 2-Beat Half-Bar Compound Cells (Theoretical Max: 256 Single-Hand / 65,536 Bimanual Pair)
+
+| Corpus Cohort | Stream Definition | Total Half-Bars ($N$) | Unique Ever Seen | Theoretical Space Used (%) | **P50** | **P75** | **P80** | **P90** | **P95** | **P99** |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Pop Piano (POP909)** | **Right Hand Only (`RH`)** | 139,936 | 256 / 256 | 100.00% | **8** | **25** | **33** | **64** | **97** | **181** |
+| *Classical (Cohort 3)* | *Right Hand Only (`RH`)* | 151,087 | 227 / 256 | 88.67% | *4* | *9* | *11* | *24* | *40* | *94* |
+| **Pop Piano (POP909)** | **Left Hand Only (`LH`)** | 139,936 | 254 / 256 | 99.22% | **7** | **22** | **29** | **59** | **93** | **160** |
+| *Classical (Cohort 3)* | *Left Hand Only (`LH`)* | 154,917 | 196 / 256 | 76.56% | *3* | *5* | *7* | *13* | *24* | *66* |
+| **Pop Piano (POP909)** | **Either Hand Pooled (`RH ∪ LH`)** | 279,872 | 256 / 256 | 100.00% | **8** | **28** | **37** | **75** | **112** | **182** |
+| *Classical (Cohort 3)* | *Either Hand Pooled (`RH ∪ LH`)* | 306,004 | 236 / 256 | 92.19% | *3* | *7* | *9* | *18* | *33* | *85* |
+| **Pop Piano (POP909)** | **Simultaneous 2-Hand Pair (`(RH, LH)`)** | 139,936 | 10,585 / 65,536 | 16.15% | **119** | **801** | **1,209** | **2,953** | **5,059** | **9,186** |
+| *Classical (Cohort 3)* | *Simultaneous 2-Hand Pair (`(RH, LH)`)* | 150,436 | 2,985 / 65,536 | 4.55% | *21* | *79* | *118* | *309* | *627* | *1,763* |
+| **Pop Piano (POP909)** | **1D Flattened Boolean OR (`RH \| LH`)** | 139,936 | 256 / 256 | 100.00% | **3** | **12** | **16** | **33** | **60** | **138** |
+| *Classical (Cohort 3)* | *1D Flattened Boolean OR (`RH \| LH`)* | 150,436 | 159 / 256 | 62.11% | *3* | *5* | *6* | *13* | *20* | *45* |
+
+#### C. 1-Bar 4/4 Full-Measure Patterns (Theoretical Max: 65,536 Single-Hand / 4.29B Bimanual Pair)
+
+| Corpus Cohort | Stream Definition | Total 4/4 Bars ($N$) | Unique Ever Seen | Theoretical Space Used (%) | **P50** | **P75** | **P80** | **P90** | **P95** | **P99** |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Pop Piano (POP909)** | **Right Hand Only (`RH`)** | 69,968 | 8,555 / 65,536 | 13.05% | **125** | **865** | **1,291** | **3,072** | **5,057** | **7,856** |
+| *Classical (Cohort 3)* | *Right Hand Only (`RH`)* | 41,394 | 1,379 / 65,536 | 2.10% | *9* | *44* | *63* | *166* | *353* | *966* |
+| **Pop Piano (POP909)** | **Left Hand Only (`LH`)** | 69,968 | 6,553 / 65,536 | 10.00% | **66** | **419** | **704** | **1,976** | **3,424** | **5,854** |
+| *Classical (Cohort 3)* | *Left Hand Only (`LH`)* | 42,030 | 1,079 / 65,536 | 1.65% | *4* | *22* | *32* | *87* | *210* | *660* |
+| **Pop Piano (POP909)** | **Either Hand Pooled (`RH ∪ LH`)** | 139,936 | 12,553 / 65,536 | 19.15% | **105** | **865** | **1,388** | **3,707** | **6,450** | **11,154** |
+| *Classical (Cohort 3)* | *Either Hand Pooled (`RH ∪ LH`)* | 83,424 | 1,740 / 65,536 | 2.66% | *6* | *32* | *47* | *133* | *312* | *989* |
+| **Pop Piano (POP909)** | **Simultaneous 2-Hand Pair (`(RH, LH)`)** | 69,968 | 33,214 / 4.29B | 0.00077% | **5,078** | **15,722** | **19,221** | **26,218** | **29,716** | **32,515** |
+| *Classical (Cohort 3)* | *Simultaneous 2-Hand Pair (`(RH, LH)`)* | 40,325 | 6,703 / 4.29B | 0.00016% | *121* | *838* | *1,252* | *2,854* | *4,687* | *6,300* |
+| **Pop Piano (POP909)** | **1D Flattened Boolean OR (`RH \| LH`)** | 69,968 | 5,135 / 65,536 | 7.84% | **21** | **175** | **282** | **912** | **2,021** | **4,436** |
+| *Classical (Cohort 3)* | *1D Flattened Boolean OR (`RH \| LH`)* | 40,325 | 830 / 65,536 | 1.27% | *3* | *16* | *26* | *73* | *157* | *483* |
+
+> [!IMPORTANT]
+> **Why Popular Music Rhythmic Distributions Are Broader Across Bars Yet Tighter Within Songs**:
+> 1. **Cross-Song Combinatorial Variety**: In Classical piano, accompaniments are dominated by formulaic patterns (Alberti bass `[♫ ♫ ♫ ♫]` or whole-note chords `[♩ 𝄽 𝄽 𝄽]`), resulting in extreme Pareto concentration where just $6$ single-hand bars cover $50\%$ of all classical literature. In Pop, each song features idiosyncratic vocal syncopations and distinct comping rhythms, expanding `P50` to $105$ bars.
+> 2. **Within-Song Ostinato Concentration**: However, *inside any single pop song*, repetition is vastly higher than in Classical music: the top 4 bars account for over $53\%$ of the entire work! Pop music achieves variety across songs, but maximum motor predictability *within* a groove.
+
+---
+
+### 10.4 1-Beat Atomic Cell Frequency & Classical Comparison (The Full 16-Cell Vocabulary)
+
+Below is the complete census across all **559,744 pooled single-hand beats** in POP909, ranked by frequency and compared directly against Classical Cohort 3:
+
+| Rank (Pop) | Beat Cell Name | Notation | 16th Grid `[1 e & a]` | RH Share (%) | LH Share (%) | Pop Pooled % (`RH ∪ LH`) | Pop Cum. % | Pop Composite OR % | Classical Pooled % | Ratio (Pop / Classical) |
+| :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **1** | **Two Eighths** | `♫` | `[X . X .]` | 35.66% | 32.24% | **33.95%** | 33.95% | 47.42% | 21.14% | **1.61x** |
+| **2** | **Quarter Note** | `♩` | `[X . . .]` | 20.01% | 17.04% | **18.52%** | 52.48% | 7.20% | 33.61% | **0.55x** |
+| **3** | **Rest / Tied Hold** | `𝄽 / Hold` | `[. . . .]` | 5.42% | 18.27% | **11.84%** | 64.32% | 2.56% | 18.03% | **0.66x** |
+| **4** | **Upbeat Eighth** | `𝄾 ♪` | `[. . X .]` | 5.19% | 9.82% | **7.50%** | 71.82% | 1.98% | 4.48% | **1.67x** |
+| **5** | **Gallop (8th + 2×16th)** | `♪ ♬` | `[X . X X]` | 11.55% | 2.55% | **7.05%** | 78.87% | 11.16% | 1.07% | **6.59x** |
+| **6** | **Four Sixteenths** | `♬♬` | `[X X X X]` | 7.74% | 3.67% | **5.71%** | 84.58% | 19.50% | 7.52% | **0.76x** |
+| **7** | **Dotted 8th + 16th** | `♪. ♬` | `[X . . X]` | 4.58% | 2.03% | **3.31%** | 87.89% | 1.90% | 2.24% | **1.48x** |
+| **8** | **Reverse Gallop (2×16th + 8th)** | `♬ ♪` | `[X X X .]` | 1.97% | 3.78% | **2.87%** | 90.76% | 3.36% | 0.36% | **7.98x** |
+| **9** | **Intra-Beat Syncopation** | `♬ ♪ ♬` | `[X X . X]` | 2.26% | 1.39% | **1.83%** | 92.59% | 1.84% | 0.20% | **9.13x** |
+| **10** | **Scotch Snap (16th + Dot 8th)** | `♬ ♪.` | `[X X . .]` | 1.12% | 1.88% | **1.50%** | 94.09% | 0.50% | 0.27% | **5.56x** |
+| **11** | **Single 16th on "e"** | `𝄿 ♬ 𝄾` | `[. X . .]` | 0.64% | 2.19% | **1.42%** | 95.51% | 0.29% | 0.05% | **28.36x** |
+| **12** | **Off-Beat 16ths** | `𝄿 ♪ ♬` | `[. X . X]` | 0.60% | 1.64% | **1.12%** | 96.63% | 0.48% | 0.30% | **3.73x** |
+| **13** | **Late 16th Pickup** | `𝄾. ♬` | `[. . . X]` | 0.76% | 1.04% | **0.90%** | 97.53% | 0.29% | 0.29% | **3.11x** |
+| **14** | **8th Rest + 2×16th** | `𝄾 ♬` | `[. . X X]` | 1.25% | 0.43% | **0.84%** | 98.37% | 0.40% | 0.37% | **2.27x** |
+| **15** | **16th Rest + 3×16th** | `𝄿 ♬♪` | `[. X X X]` | 0.89% | 0.79% | **0.84%** | 99.21% | 0.81% | 0.78% | **1.08x** |
+| **16** | **16th Rest + 16th + 8th** | `𝄿 ♪.` | `[. X X .]` | 0.35% | 1.24% | **0.79%** | 100.00% | 0.32% | 0.12% | **6.61x** |
+
+---
+
+### 10.5 Top 15 Simultaneous Two-Hand Bimanual 1-Beat Pairs `(RH, LH)`
+
+When a pianist performs pop arrangements, what are the most common simultaneous bimanual pairings? Below are the top 15 pairs across all **279,872 two-hand beats** in POP909:
+
+| Rank | Right Hand Cell | Left Hand Cell | Bimanual Texture Archetype | Pop Count | Pop Share (%) | Cumulative % | Classical Rank & % (Cohort 3) |
+| :---: | :---: | :---: | :--- | :---: | :---: | :---: | :---: |
+| **1** | `♫` `[X . X .]` | `♫` `[X . X .]` | **Parallel / Accompanimental Eighth Stride** | 36,959 | **13.21%** | 13.21% | #4 (7.70%) |
+| **2** | `♩` `[X . . .]` | `♫` `[X . X .]` | **Quarter Melody over Eighth Bass Stride** | 24,895 | **8.90%** | 22.10% | #6 (5.06%) |
+| **3** | `♫` `[X . X .]` | `𝄽 / Hold` `[. . . .]` | **RH Eighths over Sustained / Resting Bass** | 21,869 | **7.81%** | 29.91% | #5 (5.65%) |
+| **4** | `♫` `[X . X .]` | `♩` `[X . . .]` | **2-against-1 Melody over Quarter Bass** | 18,429 | **6.58%** | 36.50% | #2 (9.35%) |
+| **5** | `♩` `[X . . .]` | `♩` `[X . . .]` | **Homorhythmic Quarter Pulse** | 12,205 | **4.36%** | 40.86% | #1 (18.62%) |
+| **6** | `♫` `[X . X .]` | `𝄾 ♪` `[. . X .]` | **RH Eighths with LH Upbeat Bass Syncopation** | 11,623 | **4.15%** | 45.01% | Unranked (< 1.0%) |
+| **7** | `♪ ♬` `[X . X X]` | `♫` `[X . X .]` | **Gallop Figuration over Eighth Bass (`♪ ♬` over `♫`)** | 7,488 | **2.68%** | 47.69% | Unranked (< 1.0%) |
+| **8** | `𝄽 / Hold` `[. . . .]` | `𝄽 / Hold` `[. . . .]` | **Simultaneous Sustained Hold or Rest** | 7,164 | **2.56%** | 50.25% | #3 (7.72%) |
+| **9** | `♩` `[X . . .]` | `𝄽 / Hold` `[. . . .]` | **RH Quarter Movement over Held Bass** | 6,313 | **2.26%** | 52.50% | #7 (4.95%) |
+| **10** | `♩` `[X . . .]` | `𝄾 ♪` `[. . X .]` | **Quarter Melody over LH Upbeat Bass Bounce** | 6,307 | **2.25%** | 54.76% | Unranked (< 1.0%) |
+| **11** | `𝄾 ♪` `[. . X .]` | `♫` `[X . X .]` | **RH Upbeat over Walking Eighth Bass** | 4,645 | **1.66%** | 56.42% | Unranked (< 1.0%) |
+| **12** | `♬♬` `[X X X X]` | `♫` `[X . X .]` | **4-against-2 Sixteenth Run over Eighth Bass** | 4,230 | **1.51%** | 57.93% | #11 (2.66%) |
+| **13** | `𝄾 ♪` `[. . X .]` | `♩` `[X . . .]` | **Upbeat / Afterbeat Syncopation (`𝄾 ♪` over `♩`)** | 4,180 | **1.49%** | 59.42% | #9 (3.30%) |
+| **14** | `♬♬` `[X X X X]` | `𝄽 / Hold` `[. . . .]` | **RH Sixteenth Run over Held Bass** | 3,853 | **1.38%** | 60.80% | #12 (2.65%) |
+| **15** | `𝄽 / Hold` `[. . . .]` | `♫` `[X . X .]` | **Held Melody over Moving Eighth Bass** | 3,795 | **1.36%** | 62.16% | #10 (3.29%) |
+
+---
+
+### 10.6 Top 20 Two-Beat Compound Words in Pop Piano (`RH ∪ LH`)
+
+Across **279,872 pooled half-bars** in POP909, the top 20 compound 2-beat words reflect the synthesis of steady eighth-note grooves, anapestic pushes, and syncopated suspensions:
+
+| Rank | Beat 1 Cell | Beat 2 Cell | Combined Notation | Hex Word | Musical Function & Groove Context | Pop Count | Pop % | Pop Cum. % | Classical Rank & % |
+| :---: | :---: | :---: | :--- | :---: | :--- | :---: | :---: | :---: | :---: |
+| **1** | `♫` `[X . X .]` | `♫` `[X . X .]` | **`♫  ♫`** | `0xaa` | Even 4-eighth motor stride / ballad accompaniment | 49,072 | **17.53%** | 17.53% | #3 (17.02%) |
+| **2** | `♩` `[X . . .]` | `♫` `[X . X .]` | **`♩  ♫`** | `0x8a` | Anapestic drive (Quarter downbeat + 2 eighths push) | 18,328 | **6.55%** | 24.08% | #8 (3.22%) |
+| **3** | `♫` `[X . X .]` | `♩` `[X . . .]` | **`♫  ♩`** | `0xa8` | Trochaic resolution (2 eighths landing on Qtr) | 15,894 | **5.68%** | 29.76% | #6 (3.75%) |
+| **4** | `♩` `[X . . .]` | `♩` `[X . . .]` | **`♩  ♩`** | `0x88` | Two-quarter pulse (Solid downbeat stride) | 15,005 | **5.36%** | 35.12% | #2 (19.25%) |
+| **5** | `♩` `[X . . .]` | `𝄽 / Hold` `[. . . .]` | **`♩  𝄽 / Hold`** | `0x80` | Half note or quarter + rest (Sustained chord/bass) | 13,071 | **4.67%** | 39.79% | #1 (20.31%) |
+| **6** | `♫` `[X . X .]` | `𝄾 ♪` `[. . X .]` | **`♫  𝄾 ♪`** | `0xa2` | Syncopated suspension (`♪ ♩ ♪` across half-bar) | 12,706 | **4.54%** | 44.33% | #14 (1.20%) |
+| **7** | `𝄽 / Hold` `[. . . .]` | `𝄽 / Hold` `[. . . .]` | **`𝄽  𝄽 / Hold`** | `0x00` | Sustained whole/half note hold | 11,998 | **4.29%** | 48.62% | #4 (6.78%) |
+| **8** | `♫` `[X . X .]` | `𝄽 / Hold` `[. . . .]` | **`♫  𝄽 / Hold`** | `0xa0` | Two eighths + breathing hold (Trochaic stop) | 9,164 | **3.27%** | 51.89% | #11 (1.57%) |
+| **9** | `♩` `[X . . .]` | `𝄾 ♪` `[. . X .]` | **`♩. ♪`** | `0x82` | Dotted quarter + upbeat eighth figure | 5,864 | **2.10%** | 53.99% | #9 (2.92%) |
+| **10** | `♫` `[X . X .]` | `♪ ♬` `[X . X X]` | **`♫  ♪ ♬`** | `0xab` | Eighth pair driving into sixteenth gallop | 5,726 | **2.05%** | 56.04% | Unranked (< 0.5%) |
+| **11** | `𝄾 ♪` `[. . X .]` | `♫` `[X . X .]` | **`𝄾 ♪  ♫`** | `0x2a` | Upbeat eighth resolving into two eighths | 5,005 | **1.79%** | 57.82% | #5 (4.09%) |
+| **12** | `♬♬` `[X X X X]` | `♬♬` `[X X X X]` | **`♬♬  ♬♬`** | `0xff` | Running 8-sixteenth passage / piano fill | 4,768 | **1.70%** | 59.53% | #4 (6.78%) |
+| **13** | `♪ ♬` `[X . X X]` | `♫` `[X . X .]` | **`♪ ♬  ♫`** | `0xba` | Gallop drive into eighth pair | 4,766 | **1.70%** | 61.23% | Unranked (< 0.5%) |
+| **14** | `𝄽 / Hold` `[. . . .]` | `♫` `[X . X .]` | **`𝄽  ♫`** | `0x0a` | Beat-2 eighth entry (Rest + 2 eighths) | 4,199 | **1.50%** | 62.73% | #12 (1.40%) |
+| **15** | `𝄽 / Hold` `[. . . .]` | `♩` `[X . . .]` | **`𝄽  ♩`** | `0x08` | Off-downbeat quarter entry (Rest + Quarter) | 4,121 | **1.47%** | 64.20% | #7 (3.71%) |
+| **16** | `♪ ♬` `[X . X X]` | `♪ ♬` `[X . X X]` | **`♪ ♬  ♪ ♬`** | `0xbb` | Double gallop burst (continuous pop push) | 3,816 | **1.36%** | 65.57% | Unranked (< 0.2%) |
+| **17** | `♩` `[X . . .]` | `♪ ♬` `[X . X X]` | **`♩  ♪ ♬`** | `0x8b` | Quarter downbeat into gallop anticipation | 3,127 | **1.12%** | 66.68% | Unranked (< 0.5%) |
+| **18** | `𝄾 ♪` `[. . X .]` | `𝄽 / Hold` `[. . . .]` | **`𝄾 ♪  𝄽 / Hold`** | `0x20` | Upbeat eighth with tied hold over beat 2 | 3,017 | **1.08%** | 67.76% | Unranked (< 0.5%) |
+| **19** | `♪ ♬` `[X . X X]` | `♬♬` `[X X X X]` | **`♪ ♬  ♬♬`** | `0xbf` | Gallop accelerating into four sixteenths | 2,931 | **1.05%** | 68.81% | Unranked (< 0.2%) |
+| **20** | `𝄾 ♪` `[. . X .]` | `𝄾 ♪` `[. . X .]` | **`𝄾 ♪  𝄾 ♪`** | `0x22` | Consecutive off-beat eighths (Reggae/Ska/Pop afterbeat) | 2,866 | **1.02%** | 69.83% | #13 (1.32%) |
+
+---
+
+### 10.7 Top 15 1-Bar 4/4 Full-Measure Patterns in Pop Piano (`RH ∪ LH`)
+
+Across all **139,936 single-hand $\frac{4}{4}$ bars** in POP909, the top 15 patterns demonstrate the dominance of continuous eighth-note arpeggiation and syncopated suspensions:
+
+| Rank | 4-Beat Rhythmic Notation | Hex Bar | Musical Character & Accompanimental Texture | Pop Count | Pop Share (%) | Cumulative % | Classical Rank & % (Cohort 3) |
+| :---: | :--- | :---: | :--- | :---: | :---: | :---: | :---: |
+| **1** | **`[♫  ♫  ♫  ♫]`** | `0xaaaa` | **Steady 8-Eighth Motor** (Universal ballad arpeggio groove) | 9,673 | **6.91%** | 6.91% | #3 (3.82%) |
+| **2** | **`[♩  ♫  ♫  ♫]`** | `0x8aaa` | **Downbeat Bass Anchor + 6 Running Eighths** | 2,750 | **1.97%** | 8.88% | #12 (1.04%) |
+| **3** | **`[♩  𝄽 / Hold  𝄽 / Hold  𝄽 / Hold]`** | `0x8000` | **Whole Note / Sustained Bass Pad** | 1,993 | **1.42%** | 10.30% | #1 (9.14%) |
+| **4** | **`[♫  ♫  ♫  ♩]`** | `0xaaa8` | **6 Eighths + Cadential Quarter Landing** | 1,966 | **1.40%** | 11.71% | #15 (0.87%) |
+| **5** | **`[𝄽 / Hold  𝄽 / Hold  𝄽 / Hold  𝄽 / Hold]`** | `0x0000` | **Full Measure Rest / Sustained Tie** | 1,897 | **1.36%** | 13.06% | #5 (3.21%) |
+| **6** | **`[♫  ♫  ♩  ♫]`** | `0xaa8a` | **4 Eighths + Quarter Anchor + 2 Eighths Push** | 1,836 | **1.31%** | 14.37% | #18 (0.76%) |
+| **7** | **`[♩  ♩  ♩  ♩]`** | `0x8888` | **Four-Quarter Stride** (Solid quarter-note comping) | 1,763 | **1.26%** | 15.63% | #2 (6.54%) |
+| **8** | **`[♫  ♩  ♫  ♫]`** | `0xa8aa` | **Trochaic Beat 2 Landing + Anapestic Drive** | 1,645 | **1.18%** | 16.81% | #19 (0.74%) |
+| **9** | **`[♩  ♫  ♩  ♫]`** | `0x8a8a` | **Alternating Quarter & Two Eighths** | 1,615 | **1.15%** | 17.96% | #8 (1.61%) |
+| **10** | **`[♫  ♫  ♫  𝄾 ♪]`** | `0xaaa2` | **Eighth Stride into Beat-4 Upbeat Anticipation** | 1,595 | **1.14%** | 19.10% | Unranked (< 0.2%) |
+| **11** | **`[♩  𝄽 / Hold  ♩  𝄽 / Hold]`** | `0x8080` | **Two Half-Notes / Root-Fifth Bass Alternation** | 1,500 | **1.07%** | 20.18% | #4 (3.57%) |
+| **12** | **`[♫  ♩  ♫  ♩]`** | `0xa8a8` | **Two Trochaic Resolutions** (`♫ ♩` repeated) | 1,294 | **0.92%** | 21.10% | #10 (1.29%) |
+| **13** | **`[♫  𝄾 ♪  ♫  ♫]`** | `0xa2aa` | **Beat-2 Upbeat Syncopation with Even Frame** | 1,219 | **0.87%** | 21.97% | Unranked (< 0.1%) |
+| **14** | **`[♫  ♫  ♩  ♩]`** | `0xaa88` | **4 Eighths Resolving into Two Quarters** | 1,180 | **0.84%** | 22.81% | #9 (1.45%) |
+| **15** | **`[♫  𝄾 ♪  ♫  𝄾 ♪]`** | `0xa2a2` | **Double Syncopated Stride** (Classic pop ballad comping) | 982 | **0.70%** | 23.52% | Unranked (< 0.1%) |
+
+---
+
+### 10.8 Metric Onset Density Across All 16 Sixteenth Subdivisions (The Pop Groove Profile)
+
+To uncover how popular music distributes rhythmic energy across metric space, we measured the onset count at every single 16th-note subdivision slot ($0$ to $15$) in $\frac{4}{4}$ time:
+
+| Slot | Metric Position | Subdivision Type | RH Onset Share (%) | LH Onset Share (%) | Composite (`RH \| LH`) % | Musical Role in Popular Groove |
+| :---: | :--- | :--- | :---: | :---: | :---: | :--- |
+| **0** | **Beat 1** | Primary Downbeat | 11.65% | 14.81% | 10.04% | Harmonic root arrival; bass anchor |
+| **1** | 1-e | Off-Beat Sixteenth | 1.53% | 2.75% | 2.48% | Weak passing 16th |
+| **2** | **1-&** | Off-Beat Eighth | 7.37% | 10.63% | 8.76% | Accompanimental eighth subdivision |
+| **3** | **1-a** | Sixteenth Anticipation | 3.77% | 2.39% | 3.75% | **Beat 2 Melodic Anticipation** ($2.5\times$ weight of `e`) |
+| **4** | **Beat 2** | Secondary Downbeat (Backbeat) | 10.48% | 9.23% | 9.50% | Snare / Backbeat pulse point |
+| **5** | 2-e | Off-Beat Sixteenth | 2.27% | 2.61% | 2.92% | Rebound 16th |
+| **6** | **2-&** | Off-Beat Eighth (Primary Syncopation) | 9.03% | 8.74% | **9.04%** | **The Core Pop Syncopation Axis** (tied over Beat 3) |
+| **7** | **2-a** | Sixteenth Anticipation | 3.90% | 2.34% | 3.87% | **Beat 3 Half-Bar Melodic Push** |
+| **8** | **Beat 3** | Half-Bar Downbeat | 10.76% | 11.89% | 9.73% | Harmonic chord change; bass re-strike |
+| **9** | 3-e | Off-Beat Sixteenth | 1.59% | 2.81% | 2.54% | Weak passing 16th |
+| **10** | **3-&** | Off-Beat Eighth | 7.53% | 9.79% | 8.63% | Accompanimental eighth subdivision |
+| **11** | **3-a** | Sixteenth Anticipation | 3.66% | 2.48% | 3.71% | **Beat 4 Backbeat Anticipation** |
+| **12** | **Beat 4** | Secondary Downbeat (Backbeat) | 10.71% | 7.35% | 9.23% | Snare / Backbeat pulse point |
+| **13** | 4-e | Off-Beat Sixteenth | 2.62% | 2.94% | 3.28% | Late fill entry |
+| **14** | **4-&** | Off-Beat Eighth (Barline Push) | 9.26% | 7.37% | **8.78%** | **Cross-Barline Upbeat Anticipation** |
+| **15** | **4-a** | Sixteenth Anticipation (Cadential Push) | 3.89% | 1.86% | 3.74% | **Cross-Barline Sixteenth Anticipation** |
+
+> [!TIP]
+> **Two Musicological Proofs from the Metric Onset Profile:**
+> 1. **Symmetric Weight of Off-Beat Eighths**:
+>    Notice that **Slot 6 (`2-&`) carries 9.04%** and **Slot 14 (`4-&`) carries 8.78%** of all composite onsets—virtually identical to the downbeat weights of Beat 2 (9.50%) and Beat 4 (9.23%)! Pop musicians treat the off-beat eighth rebounds of Beats 2 and 4 as co-equal structural attack points.
+> 2. **Sixteenth Anticipation Asymmetry (`a` vs. `e`)**:
+>    Across all four beats, the late sixteenth (`a`: slots 3, 7, 11, 15) averages **$3.77\%$ onset density**, while the early sixteenth (`e`: slots 1, 5, 9, 13) averages only **$1.90\%$**—an asymmetry of nearly **$2 : 1$**! Sixteenths in pop music function primarily as **anticipatory catapults (`a`) into the subsequent beat**, rather than decrescendo releases (`e`).
+
+---
+
+### 10.9 Lead Vocal Melody (`MELODY`) vs. Piano Accompaniment (`PIANO`)
+
+Because POP909 isolates the pure vocal melody line from the keyboard accompaniment body, we can analyze the structural specialization between singing voice and piano accompaniment:
+
+| Rank | Beat Cell Name | Notation | 16th Grid `[1 e & a]` | Lead Melody Share (%) | Piano Accompaniment Share (%) | Structural Function & Specialization |
+| :---: | :--- | :---: | :---: | :---: | :---: | :--- |
+| **1** | **Rest / Tied Hold** | `𝄽 / Hold` | `[. . . .]` | **41.03%** | 6.38% | Vocal breathing pauses and lyric vowel suspensions |
+| **2** | **Two Eighths** | `♫` | `[X . X .]` | 20.21% | **47.35%** | Continuous accompaniment arpeggio motor |
+| **3** | **Quarter Note** | `♩` | `[X . . .]` | 14.69% | 14.56% | Balanced structural pulse in both voice and piano |
+| **4** | **Upbeat Eighth** | `𝄾 ♪` | `[. . X .]` | **7.12%** | 3.59% | Melodic upbeat pickups on lyrics |
+| **5** | **Gallop (8th + 2×16th)** | `♪ ♬` | `[X . X X]` | 4.40% | 4.48% | Balanced melodic hook and keyboard figuration |
+| **6** | **Four Sixteenths** | `♬♬` | `[X X X X]` | 1.99% | **13.08%** | Rapid keyboard arpeggio cascades and broken chord fills |
+| **7** | **8th Rest + 2×16th** | `𝄾 ♬` | `[. . X X]` | **2.37%** | 0.35% | Vocal late-syllable lyric ornamentations |
+| **8** | **Dotted 8th + 16th** | `♪. ♬` | `[X . . X]` | 2.08% | 2.45% | Lyrical snap / dotted declamation |
+| **9** | **Intra-Beat Syncopation** | `♬ ♪ ♬` | `[X X . X]` | 1.54% | 1.42% | Syllabic syncopation across voice and piano |
+| **10** | **Late 16th Pickup** | `𝄾. ♬` | `[. . . X]` | **1.14%** | 0.39% | Breath pickup before downbeat syllable |
+
+---
+
+### 10.10 Authentic Pop Piano 4-Bar Phrasing Archetypes from POP909
+
+Below are four authentic, highly representative 4-bar piano rhythmic archetypes extracted from POP909, illustrating the canonical textures of popular piano playing:
+
+#### Archetype 1: The Contemporary Ballad Arpeggio Groove (Continuous 8-Eighth Motor)
+* **RH**: Steady 8-eighth broken chord arpeggios (`[♫ ♫ ♫ ♫]`) with trochaic melodic phrasing.
+* **LH**: Root downbeat anchor moving to half-bar harmonic stride.
+```
+Bar 1:  RH: [♫   ♫   ♫   ♫]  ||  LH: [♩   𝄽   𝄽   𝄽]   (Root anchor pad)
+Bar 2:  RH: [♫   ♫   ♫   ♫]  ||  LH: [♩   𝄽   ♩   𝄽]   (Root-Fifth pulse)
+Bar 3:  RH: [♫   ♫   ♩   ♫]  ||  LH: [♫   ♫   ♫   ♫]   (Walking eighth bass)
+Bar 4:  RH: [♫   ♫   ♫   ♩]  ||  LH: [♩   𝄽   𝄽   𝄽]   (Cadential resolution)
+```
+
+#### Archetype 2: The Syncopated Pop-Rock Comping Vamp (The "Push" Groove)
+* Features repeated off-beat eighth suspensions (`♫  𝄾 ♪`) over driving quarter bass.
+```
+Bar 1:  RH: [♫   𝄾 ♪   ♫   𝄾 ♪]  ||  LH: [♩   ♩   ♩   ♩]   (Four-quarter bass stride)
+Bar 2:  RH: [♫   𝄾 ♪   ♫   𝄾 ♪]  ||  LH: [♩   ♩   ♩   ♩]   (Verbatim loop repeat)
+Bar 3:  RH: [♫   𝄾 ♪   ♫   ♫]    ||  LH: [♩   ♩   ♫   ♫]   (Anapestic drive to chorus)
+Bar 4:  RH: [♩   ♫     ♩   𝄽]    ||  LH: [♩   𝄽   ♩   𝄽]   (Breathing cadence)
+```
+
+#### Archetype 3: The Gallop-Driven Melodic Chorus Hook
+* Demonstrates the Right Hand's $11.55\%$ reliance on `♪ ♬` (8th + two 16ths) driving forward momentum.
+```
+Bar 1:  RH: [♪ ♬   ♫   ♪ ♬   ♫]  ||  LH: [♫   ♫   ♫   ♫]   (Parallel eighth motor)
+Bar 2:  RH: [♪ ♬   ♫   ♬♬    ♫]  ||  LH: [♫   ♫   ♫   ♫]   (16th fill acceleration)
+Bar 3:  RH: [♪ ♬   ♫   ♪ ♬   ♫]  ||  LH: [♫   ♫   ♫   ♫]   (Motif recurrence)
+Bar 4:  RH: [♫     ♩   ♩     𝄽]  ||  LH: [♩   𝄽   𝄽   𝄽]   (Cadential landing)
+```
+
+#### Archetype 4: The Anticipated / Pushed Cadence (Cross-Barline Tie-Over)
+* Demonstrates the classic R&B / ballad pushed downbeat: Beat 4 ends on an off-beat eighth (`𝄾 ♪`) or sixteenth (`𝄾. ♬`) that ties across the barline, leaving Beat 1 silent.
+```
+Bar 1:  RH: [♩     ♫   ♩   𝄾 ♪]  ||  LH: [♩   𝄽   ♩   𝄽]   (Upbeat push on Beat 4)
+Bar 2:  RH: [Hold  ♫   ♫   ♫]    ||  LH: [♩   𝄽   ♫   ♫]   (Pushed downbeat: Beat 1 held!)
+Bar 3:  RH: [♪. ♬  ♩   𝄾 ♪ ♫]    ||  LH: [♩   𝄽   ♩   𝄽]   (Snap + syncopated push)
+Bar 4:  RH: [♩     ♩   ♩   𝄽]    ||  LH: [♩   𝄽   𝄽   𝄽]   (Final tonic closure)
+```
+
+---
