@@ -252,7 +252,7 @@ export default function App(): React.JSX.Element {
       />
 
       {activeView === 'practice' ? (
-        isRhythmMode ? (
+        !isAccelerandoActive && isRhythmMode ? (
           <main className="nnsr-workspace nnsr-practice-workspace">
             <section className="nnsr-main-column">
               <RhythmArena
