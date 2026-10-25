@@ -34,17 +34,18 @@ export default function App(): React.JSX.Element {
     setLastCustomAccelerandoNotes,
   } = useAppStore();
 
-  const isRhythmMode = isRhythmLevelId(currentLevelId);
+  const [isAccelerandoModalOpen, setIsAccelerandoModalOpen] = useState(false);
+  const [isAccelerandoActive, setIsAccelerandoActive] = useState(false);
+  const [isRhythmLevelCelebrating, setIsRhythmLevelCelebrating] = useState(false);
+  const [isManuallyPaused, setIsManuallyPaused] = useState(false);
+
+  const isRhythmMode = !isAccelerandoActive && isRhythmLevelId(currentLevelId);
   const currentLevel = isRhythmMode ? getLevelById('treble-1') : getLevelById(currentLevelId);
 
   const [activeView, setActiveView] = useState<'practice' | 'levels'>('practice');
   const engineRef = useRef<SightReadingEngine>(new SightReadingEngine(currentLevel));
   const [snapshot, setSnapshot] = useState<EngineSnapshot>(() => engineRef.current.getSnapshot());
   const [activeHighlights, setActiveHighlights] = useState<ActiveKeyHighlight[]>([]);
-  const [isAccelerandoModalOpen, setIsAccelerandoModalOpen] = useState(false);
-  const [isAccelerandoActive, setIsAccelerandoActive] = useState(false);
-  const [isRhythmLevelCelebrating, setIsRhythmLevelCelebrating] = useState(false);
-  const [isManuallyPaused, setIsManuallyPaused] = useState(false);
 
   // Transition to Levels view and mark level completed upon LEVEL_COMPLETE phase
   useEffect(() => {
