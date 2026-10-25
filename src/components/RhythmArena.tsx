@@ -76,7 +76,22 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
   // Keyboard Event Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey || e.key === 'Tab' || e.key === 'Escape') {
+      // Escape: stop / cancel current play and reset immediately
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        engineRef.current.resetForPhrase();
+        updateSnapshot();
+        return;
+      }
+
+      // 'M' or 'T': Repeat the metronome count-in at any time
+      if (e.key === 'm' || e.key === 'M' || e.key === 't' || e.key === 'T') {
+        e.preventDefault();
+        handleStartCountIn();
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey || e.key === 'Tab') {
         return;
       }
       if (
@@ -448,20 +463,6 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                     isDottedQuarterStart ||
                     (cell.cellId === 'dot8_s' && eIdx === 0)) && (
                     <circle cx={xNote + 13} cy={baselineY - 5} r="2.5" fill={noteColor} />
-                  )}
-
-                  {!evt.tiedFromPrev && errorHint && (
-                    <text
-                      x={xNote}
-                      y={baselineY + 28}
-                      fontSize="11"
-                      fontFamily="var(--font-sans)"
-                      fontWeight="bold"
-                      fill="#e05a47"
-                      textAnchor="middle"
-                    >
-                      {errorHint}
-                    </text>
                   )}
                 </g>
               );
