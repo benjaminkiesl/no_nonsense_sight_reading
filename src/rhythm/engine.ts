@@ -263,7 +263,8 @@ export class RhythmEngine {
       const beatPeriodMs = 60000 / this.phrase.targetBpm;
       const elapsed = nowMs - this.countInStartTimeMs;
       const totalBeats = this.countInTotalBeats ?? this.phrase.beatsPerBar;
-      const currentBeat = Math.floor((elapsed + 1) / beatPeriodMs);
+      // Use a 5ms epsilon to guard against IEEE-754 precision issues (e.g. 1000 + beatPeriod * 4)
+      const currentBeat = Math.floor((elapsed + 5) / beatPeriodMs);
 
       if (
         this.countInBeatIndex !== undefined &&
@@ -274,7 +275,8 @@ export class RhythmEngine {
         playMetricCountInClick(currentBeat, totalBeats);
       }
 
-      if (elapsed >= totalBeats * beatPeriodMs - 1) {
+      // Transition to READY_TO_PLAY after all count-in beats have elapsed
+      if (elapsed >= totalBeats * beatPeriodMs - 5) {
         this.phase = 'READY_TO_PLAY';
         this.countInBeatIndex = undefined;
         return { transitionedToReadyToPlay: true };

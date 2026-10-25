@@ -45,6 +45,7 @@ export class SightReadingEngine {
   private recoveryRemainingMs = 0;
   private pendingRecoveryPause = false;
   private wrongAttemptsDuringCorrection = 0;
+  private totalMistakesCount = 0;
 
   private noteIdCounter = 0;
   private lastPrecedingTarget: StaffNoteTarget | null = null;
@@ -342,11 +343,13 @@ export class SightReadingEngine {
   }
 
   private triggerNoteFailure(note: ActiveNote): void {
+    this.totalMistakesCount++;
     const hitsSinceLastFail = this.speedController.getNotesHitSinceLastFailure();
     const isClusterOrHoldFailure =
       hitsSinceLastFail <= ERROR_CLUSTER_THRESHOLD || this.phase === 'HOLD';
+    const isEveryThirdMistake = this.totalMistakesCount % 3 === 0;
 
-    this.pendingRecoveryPause = isClusterOrHoldFailure;
+    this.pendingRecoveryPause = isClusterOrHoldFailure || isEveryThirdMistake;
     this.wrongAttemptsDuringCorrection = 0;
 
     note.state = 'failed';

@@ -28,70 +28,29 @@ function getAudioContext(): AudioContext | null {
 
 /**
  * Metric Count-In Click:
- * - Beat 0 (Beat 1 - Schwer / Downbeat Gravity): Warm woody rim/block at 320 Hz + 160 Hz resonance (90ms decay, gain 0.28).
- * - Middle Beats (Leicht): Crisp light clave tick at 640 Hz (45ms decay, gain 0.14).
- * - Final Beat (Auftakt / Lift): Slightly brighter upward-inflected tick at 760 Hz (55ms decay, gain 0.18).
+ * Plays a clean, uniform, professional metronome woodblock tick on every beat.
  */
-export function playMetricCountInClick(beatIndex: number, totalBeatsInBar: number): void {
+export function playMetricCountInClick(_beatIndex?: number, _totalBeatsInBar?: number): void {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
     const now = ctx.currentTime;
 
-    const isDownbeat = beatIndex === 0;
-    const isUpbeat = beatIndex === totalBeatsInBar - 1 && totalBeatsInBar > 1;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
 
-    if (isDownbeat) {
-      // Primary 320 Hz wooden attack
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'triangle';
-      osc1.frequency.setValueAtTime(320, now);
-      osc1.frequency.exponentialRampToValueAtTime(180, now + 0.09);
-      gain1.gain.setValueAtTime(0.28, now);
-      gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(now);
-      osc1.stop(now + 0.09);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(440, now + 0.04);
 
-      // Low 160 Hz body resonance
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(160, now);
-      gain2.gain.setValueAtTime(0.18, now);
-      gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(now);
-      osc2.stop(now + 0.09);
-    } else if (isUpbeat) {
-      // 760 Hz slightly upward-inflected lift
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(760, now);
-      osc.frequency.exponentialRampToValueAtTime(840, now + 0.055);
-      gain.gain.setValueAtTime(0.18, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.055);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.055);
-    } else {
-      // 640 Hz neutral middle beat tick
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(640, now);
-      gain.gain.setValueAtTime(0.14, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.045);
-    }
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.045);
   } catch {
     // Defensively ignore in headless / blocked audio environments
   }
