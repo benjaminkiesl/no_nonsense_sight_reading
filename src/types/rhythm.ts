@@ -1,48 +1,38 @@
 export type TimeSignatureStr = '4/4' | '3/4' | '2/4' | '2/2' | '6/8';
 
-export type RhythmEventKind = 'note' | 'rest';
+export type RhythmEventKind = 'attack' | 'rest' | 'hold';
 
 export interface RhythmSubEvent {
-  /** Offset from the start of the beat cell, in beats (e.g. 0, 0.25, 0.5, 0.75) */
-  readonly offsetBeats: number;
-  /** Duration in beats (e.g. 1.0 = quarter, 0.5 = eighth, 0.25 = sixteenth, 1.5 = dotted quarter) */
-  readonly durationBeats: number;
   readonly kind: RhythmEventKind;
-  /** Whether this note is tied from the previous event */
+  readonly durationBeats: number;
   readonly tiedFromPrev?: boolean;
+  readonly dotted?: boolean;
+  readonly tuplet?: 3;
 }
 
 export interface RhythmBeatCell {
-  readonly cellId: string; // e.g. 'q', 'e2', 's4', 'dot8_s', 'gallop', 'upbeat_e', 'rest_q', 'sync_16_8_16', 'triplet_e'
-  readonly label: string; // e.g. 'Quarter (♩)', 'Dotted 8th + 16th (♪. ♬)'
-  readonly symbol: string; // Compact visual symbol e.g. '♩', '♫', '♬♬', '♪. ♬', '♪ ♬', '𝄾 ♪'
+  readonly cellId: string;
   readonly events: readonly RhythmSubEvent[];
 }
 
 export interface RhythmPhrase {
   readonly id: string;
-  readonly title: string;
-  readonly sourceComposer?: string; // e.g. 'W.A. Mozart — Sonata K. 279'
+  readonly tier: number; // 1..12
   readonly timeSignature: TimeSignatureStr;
-  readonly beatsPerBar: number; // e.g. 4 for 4/4, 3 for 3/4, 2 for 2/4
-  readonly targetBpm: number; // Default tempo e.g. 76
-  /** Sequence of 1-beat cells across the bars, PLUS the final landing beat cell */
+  readonly beatsPerBar: number;
+  readonly beatUnit: 4 | 2 | 8;
+  readonly targetBpm: number; // Nominal reference tempo (used to clamp 35..200 BPM range)
   readonly beatCells: readonly RhythmBeatCell[];
-  /** Optional ID of the 2x Metric Zoom twin phrase (same physical timing, 2x note durations & 2x BPM) */
-  readonly zoomTwinPhraseId?: string;
-  readonly zoomScaleLabel?: '1x (Sixteenth Level)' | '2x (Eighth Level)';
 }
 
-export type RhythmExercisePhase = 'SANDBOX' | 'COUNT_IN' | 'PERFORM' | 'FEEDBACK';
-
-export type PulseAutonomyMode = 'SILENT_CONTINUATION' | 'BAR_DOWNBEAT_ANCHOR';
+export type RhythmExercisePhase = 'READY' | 'PLAYING' | 'FEEDBACK' | 'LEVEL_COMPLETE';
 
 export interface FlattenedRhythmNote {
-  readonly index: number;
-  readonly beatIndex: number;
-  readonly startBeat: number; // Global beat offset from phrase start (0.0, 0.5, 1.0, ...)
-  readonly durationBeats: number; // Written duration including any tied continuations
+  readonly noteIndex: number;
+  readonly startBeat: number;
+  readonly durationBeats: number;
   readonly isLandingNote: boolean;
+  readonly cellIndex: number;
 }
 
 export interface RecordedTap {
@@ -50,48 +40,61 @@ export interface RecordedTap {
   releaseTimeMs: number | null;
 }
 
+export type NoteErrorHint = 'early' | 'late' | 'short' | 'long' | null;
+
 export interface NoteEvaluation {
   readonly noteIndex: number;
   readonly expectedStartBeat: number;
   readonly expectedDurationBeats: number;
-  /** Relative onset error as a fraction of local beat period (-0.05 = 5% early) */
   readonly relativeOnsetError: number;
-  /** Ratio of actual hold duration to expected duration (1.0 = full hold) */
   readonly holdRatio: number;
   readonly status: 'perfect' | 'loose' | 'missed';
+  readonly errorHint: NoteErrorHint;
 }
 
 export interface RhythmFeedbackSummary {
-  readonly grooveScorePct: number; // 0..100 based on relative IOI accuracy
-  readonly holdScorePct: number; // 0..100 based on holding sustained/syncopated notes vs rests
-  readonly overallScorePct: number; // Weighted 80% groove + 20% hold
-  readonly pulseDriftPct: number; // e.g. +3.2% (rushed) or -2.1% (dragged)
+  readonly grooveScorePct: number;
+  readonly holdScorePct: number;
+  readonly overallScorePct: number;
   readonly estimatedUserBpm: number;
   readonly noteEvaluations: readonly NoteEvaluation[];
-  readonly passed: boolean; // true if overallScorePct >= 80
+  readonly passed: boolean;
 }
 
+export type MiniRhythmMotifType =
+  | 'q_q' // Tier 1: ♩ ♩
+  | 'e2_q' // Tier 2: ♫ ♩
+  | 'q_rest' // Tier 3: ♩ 𝄽
+  | 'dotq_e' // Tier 4: ♩. ♪
+  | 's4' // Tier 5: ♬♬
+  | 'gallop' // Tier 6: ♪ ♬
+  | 'rev_gallop' // Tier 7: ♬ ♪
+  | 'dot8_s' // Tier 8: ♪. ♬
+  | 'sync_e_q_e' // Tier 9: ♪ ♩ ♪
+  | 'tie_across' // Tier 10: ♩ ‿ ♪ ♪
+  | 'compound_6_8' // Tier 11: 6/8 ♫♪
+  | 'rag_sync'; // Tier 12: ♬ ♪ ♬
+
 export interface RhythmLevelSpec {
-  readonly id: string;
-  readonly tier: number;
+  readonly id: string; // 'rhythm-1' .. 'rhythm-12'
+  readonly tier: number; // 1 .. 12
   readonly title: string;
   readonly subtitle: string;
-  readonly description: string;
-  readonly featuredCellSymbols: readonly string[];
+  readonly motif: MiniRhythmMotifType;
+  readonly prerequisiteIds: readonly string[];
+  readonly nextIds: readonly string[];
   readonly phrases: readonly RhythmPhrase[];
 }
 
 export interface RhythmEngineSnapshot {
   readonly levelId: string;
-  readonly phrase: RhythmPhrase;
+  readonly levelTitle: string;
   readonly phase: RhythmExercisePhase;
-  readonly pulseMode: PulseAutonomyMode;
-  readonly countInBeatIndex: number; // 0..beatsPerBar-1 during COUNT_IN
+  readonly phrase: RhythmPhrase;
   readonly flattenedNotes: readonly FlattenedRhythmNote[];
-  readonly sandboxMatchedCount: number; // Progress in SANDBOX self-paced tapping
-  readonly performTapCount: number; // Number of notes tapped so far in PERFORM
+  readonly currentNoteIndex: number;
   readonly activeHoldNoteIndex: number | null;
-  readonly leftHandPulseCount: number; // Count of self-generated LH pulse taps ('F' key)
-  readonly showWordBoxes: boolean;
+  readonly phrasesCompletedInLevel: number;
+  readonly phrasesRequiredForLevel: number;
   readonly feedback: RhythmFeedbackSummary | null;
 }

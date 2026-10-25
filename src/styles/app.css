@@ -645,351 +645,42 @@ body {
 
 
 /* ==========================================================================
-   Rhythm Module Styles
+   Rhythm Practice Workspace (Radical Simplicity Redesign)
    ========================================================================== */
 
-.nnsr-rhythm-mode-btn {
-  background: rgba(255, 255, 255, 0.22);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  font-family: var(--font-sans);
-  font-size: 0.82rem;
-  font-weight: 700;
-  padding: 5px 14px;
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.nnsr-rhythm-mode-btn:hover {
-  background: rgba(255, 255, 255, 0.38);
-  color: #1f2421;
-}
-
-.nnsr-rhythm-arena {
+.nnsr-rhythm-practice-container {
   width: var(--main-column-width);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nnsr-rhythm-canvas-card {
+  width: 100%;
   background-color: var(--surface-paper);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  overflow: hidden;
   box-shadow: 0 2px 8px rgba(31, 36, 33, 0.04);
 }
 
-.nnsr-rhythm-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.nnsr-rhythm-selectors {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.nnsr-rhythm-select {
-  background-color: var(--bg-warm-ivory);
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-family: var(--font-sans);
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--ink-primary);
-  cursor: pointer;
-  outline: none;
-}
-
-.nnsr-rhythm-select:focus {
-  border-color: var(--emerald);
-}
-
-.nnsr-rhythm-composer-badge {
-  font-size: 0.8rem;
-  font-style: italic;
-  color: var(--ink-secondary);
-  background: rgba(31, 36, 33, 0.05);
-  padding: 4px 10px;
-  border-radius: 9999px;
-  border: 1px solid var(--border-subtle);
-}
-
-.nnsr-rhythm-toggles {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.nnsr-rhythm-btn {
-  font-family: var(--font-sans);
-  font-size: 0.82rem;
-  font-weight: 700;
-  padding: 6px 14px;
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.nnsr-rhythm-primary-btn {
-  background-color: var(--emerald);
-  color: var(--ink-primary);
-  border: 1px solid rgba(31, 36, 33, 0.2);
-}
-
-.nnsr-rhythm-primary-btn:hover {
-  filter: brightness(0.95);
-  box-shadow: 0 2px 6px rgba(96, 211, 148, 0.4);
-}
-
-.nnsr-rhythm-secondary-btn {
-  background-color: var(--surface-subtle);
-  color: var(--ink-primary);
-  border: 1px solid var(--border-strong);
-}
-
-.nnsr-rhythm-secondary-btn:hover {
-  background-color: var(--border-subtle);
-}
-
-.nnsr-rhythm-zoom-btn {
-  background-color: var(--jasmine);
-  color: var(--ink-primary);
-  border: 1px solid rgba(31, 36, 33, 0.25);
-}
-
-.nnsr-rhythm-zoom-btn:hover {
-  filter: brightness(0.95);
-}
-
-.nnsr-rhythm-score-container {
+.nnsr-rhythm-svg {
   width: 100%;
-  background-color: var(--bg-warm-ivory);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 10px 0;
-  overflow: hidden;
-}
-
-.nnsr-rhythm-score {
-  width: 100%;
-  height: auto;
+  height: 200px;
   display: block;
+  background-color: var(--surface-paper);
 }
 
-.nnsr-rhythm-word-box-group {
-  transition: transform 0.15s ease;
-}
-
-.nnsr-rhythm-word-box-rect {
-  transition: all 0.15s ease;
-}
-
-.nnsr-rhythm-word-box-group:hover .nnsr-rhythm-word-box-rect {
-  fill: #e8f5e9;
-  stroke: var(--emerald);
-}
-
-.nnsr-rhythm-status-bar {
-  width: 100%;
-  min-height: 72px;
-  display: flex;
-  align-items: center;
-}
-
-.nnsr-rhythm-phase-box {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+.nnsr-rhythm-status-prompt {
+  padding: 12px 20px;
   background-color: var(--surface-subtle);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 14px 20px;
-}
-
-.nnsr-rhythm-guidance {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.nnsr-rhythm-guidance p {
-  font-size: 0.88rem;
-  color: var(--ink-primary);
-  line-height: 1.4;
-}
-
-.nnsr-rhythm-badge {
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: rgba(31, 36, 33, 0.08);
-  color: var(--ink-primary);
-  width: fit-content;
-}
-
-.nnsr-badge-accent {
-  background-color: var(--jasmine);
-  color: #1f2421;
-}
-
-.nnsr-badge-live {
-  background-color: var(--vibrant-coral);
-  color: #ffffff;
-}
-
-.nnsr-kbd {
-  background: #ffffff;
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  padding: 1px 6px;
-  font-family: monospace;
-  font-size: 0.85em;
+  border-top: 1px solid var(--border-subtle);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
   font-weight: 600;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-}
-
-.nnsr-rhythm-gravity-meter {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.nnsr-countin-dot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px 14px;
-  border-radius: 8px;
-  background: #ffffff;
-  border: 1px solid var(--border-subtle);
-  transition: all 0.1s ease;
-}
-
-.nnsr-countin-dot.active {
-  background-color: var(--emerald);
   color: var(--ink-primary);
-  border-color: var(--emerald);
-  transform: scale(1.08);
-  box-shadow: 0 4px 12px rgba(96, 211, 148, 0.35);
-}
-
-.dot-num {
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.dot-label {
-  font-size: 0.75rem;
-  color: var(--ink-secondary);
-}
-
-.nnsr-countin-dot.active .dot-label {
-  color: var(--ink-primary);
-  font-weight: 600;
-}
-
-.nnsr-rhythm-tap-progress {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--ink-primary);
-}
-
-.nnsr-lh-pulse-tag {
-  font-size: 0.8rem;
-  font-weight: 600;
-  background: var(--surface-paper);
-  padding: 3px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--border-subtle);
-  color: var(--ink-secondary);
-}
-
-.nnsr-rhythm-feedback-box {
-  flex-direction: column;
-  gap: 16px;
-}
-
-.nnsr-rhythm-feedback-metrics {
-  display: flex;
-  width: 100%;
-  gap: 16px;
-  justify-content: space-around;
-}
-
-.nnsr-metric-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: #ffffff;
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--border-subtle);
-}
-
-.metric-title {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--ink-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.metric-val {
-  font-size: 1.7rem;
-  font-weight: 800;
-  color: var(--ink-primary);
-  margin: 4px 0;
-}
-
-.metric-desc {
-  font-size: 0.75rem;
-  color: var(--ink-secondary);
-}
-
-.nnsr-rhythm-feedback-actions {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.nnsr-feedback-badge {
-  font-size: 0.9rem;
-  font-weight: 700;
-  padding: 4px 12px;
-  border-radius: 9999px;
-}
-
-.nnsr-feedback-badge.passed {
-  background: rgba(96, 211, 148, 0.2);
-  color: #15803d;
-}
-
-.nnsr-feedback-badge.retry {
-  background: rgba(238, 96, 85, 0.15);
-  color: #b91c1c;
-}
-
-.nnsr-feedback-btn-group {
-  display: flex;
-  gap: 10px;
+  text-align: center;
+  letter-spacing: 0.01em;
 }

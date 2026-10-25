@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { getAllLevels } from '../curriculum/graph';
 import { getLedgerLines, getStemDirection } from '../music/notation';
 import { getStaffStepOffset } from '../music/pitch';
+import { RHYTHM_LEVELS } from '../rhythm/curriculum';
 import { LevelSpec } from '../types/curriculum';
 import { StaffNoteTarget } from '../types/music';
+import { MiniRhythmMotifType } from '../types/rhythm';
 
 export interface LevelGraphProps {
   currentLevelId: string;
@@ -18,7 +20,7 @@ const ALL_LEVELS = getAllLevels();
 const PADDING_TOP = 110;
 const TIER_HEIGHT = 96;
 const BOTH_Y_OFFSET = 36; // "both" is positioned 36px higher up than single clefs
-const SVG_WIDTH = 300;
+const SVG_WIDTH = 400;
 const SVG_HEIGHT = PADDING_TOP + 11 * TIER_HEIGHT + BOTH_Y_OFFSET + 70;
 const NODE_RADIUS = 25;
 
@@ -27,6 +29,7 @@ const LANE_X: Record<string, number> = {
   both: 150,
   bass: 245,
 };
+const RHYTHM_X = 345;
 
 export function getNodePosition(level: LevelSpec): { x: number; y: number } {
   const x = LANE_X[level.lane]!;
@@ -98,12 +101,12 @@ const MiniStaff: React.FC<MiniStaffProps> = ({
             return (
               <line
                 key={`ledger-${lOffset}`}
-                x1={nx - 2.8}
+                x1={nx - (isCompact ? 3.5 : 4.5)}
                 y1={ly}
-                x2={nx + 2.8}
+                x2={nx + (isCompact ? 3.5 : 4.5)}
                 y2={ly}
                 stroke="#1f2421"
-                strokeWidth={0.7}
+                strokeWidth={isCompact ? 0.8 : 1.0}
               />
             );
           })}
@@ -112,20 +115,20 @@ const MiniStaff: React.FC<MiniStaffProps> = ({
           <ellipse
             cx={nx}
             cy={ny}
-            rx={isCompact ? 1.3 : 1.8}
-            ry={isCompact ? 0.9 : 1.2}
-            transform={`rotate(-20 ${nx} ${ny})`}
+            rx={isCompact ? 2.5 : 3.2}
+            ry={isCompact ? 1.8 : 2.4}
             fill="#1f2421"
+            transform={`rotate(-20 ${nx} ${ny})`}
           />
 
           {/* Stem */}
           <line
-            x1={stemDir === 'up' ? nx + (isCompact ? 1.1 : 1.5) : nx - (isCompact ? 1.1 : 1.5)}
+            x1={stemDir === 'up' ? nx + (isCompact ? 2.1 : 2.8) : nx - (isCompact ? 2.1 : 2.8)}
             y1={ny}
-            x2={stemDir === 'up' ? nx + (isCompact ? 1.1 : 1.5) : nx - (isCompact ? 1.1 : 1.5)}
+            x2={stemDir === 'up' ? nx + (isCompact ? 2.1 : 2.8) : nx - (isCompact ? 2.1 : 2.8)}
             y2={stemDir === 'up' ? ny - stemLength : ny + stemLength}
             stroke="#1f2421"
-            strokeWidth={0.7}
+            strokeWidth={isCompact ? 0.8 : 1.1}
           />
         </g>
       );
@@ -134,52 +137,281 @@ const MiniStaff: React.FC<MiniStaffProps> = ({
 
   return (
     <g>
-      {/* 5 Staff lines */}
-      {staffLines.map((ly, idx) => (
+      {/* 5 Staff Lines */}
+      {staffLines.map((yPos, idx) => (
         <line
-          key={`line-${idx}`}
+          key={`staff-line-${idx}`}
           x1={leftX}
-          y1={ly}
+          y1={yPos}
           x2={rightX}
-          y2={ly}
-          stroke="#5a625e"
-          strokeWidth={0.6}
+          y2={yPos}
+          stroke="#b0aba2"
+          strokeWidth={0.7}
         />
       ))}
 
-      {/* Clef symbol on left */}
-      <text
-        x={cx - (isCompact ? 9.5 : 10.5)}
-        y={cy + (clef === 'treble' ? (isCompact ? 1.8 : 2.5) : isCompact ? 1.0 : 1.5)}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize={clef === 'treble' ? (isCompact ? '9.5px' : '14px') : isCompact ? '8px' : '11px'}
-        fontFamily="serif"
-        fill="#1f2421"
-      >
-        {clef === 'treble' ? '𝄞' : '𝄢'}
-      </text>
-
-      {/* Accidental (# or b) right of clef, left of notes */}
+      {/* Accidental / Key Signature Symbol */}
       {accidentalSymbol && (
         <text
-          x={cx - (isCompact ? 2.5 : 2.0)}
-          y={cy + (isCompact ? 1.0 : 1.5)}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize={isCompact ? '7px' : '9.5px'}
+          x={cx - (isCompact ? 9 : 11)}
+          y={cy + (isCompact ? 3.5 : 4.5)}
           fontFamily="serif"
-          fontWeight="bold"
+          fontSize={isCompact ? 10 : 13}
           fill="#1f2421"
+          textAnchor="middle"
         >
           {accidentalSymbol}
         </text>
       )}
 
-      {/* Interval notes */}
+      {/* Render Notes */}
       {notesToDraw}
     </g>
   );
+};
+
+interface MiniRhythmMotifProps {
+  motif: MiniRhythmMotifType;
+  cx: number;
+  cy: number;
+}
+
+const MiniRhythmMotif: React.FC<MiniRhythmMotifProps> = ({ motif, cx, cy }) => {
+  const staffLineY = cy + 3;
+  const staffLine = (
+    <line
+      x1={cx - 15}
+      y1={staffLineY}
+      x2={cx + 15}
+      y2={staffLineY}
+      stroke="#b0aba2"
+      strokeWidth={0.8}
+    />
+  );
+
+  const drawNotehead = (x: number, y: number, fill = '#1f2421') => (
+    <ellipse
+      cx={x}
+      cy={y}
+      rx={2.2}
+      ry={1.5}
+      fill={fill}
+      transform={`rotate(-20 ${x} ${y})`}
+    />
+  );
+
+  const stemTop = cy - 7;
+  const stem = (x: number, yBottom = staffLineY) => (
+    <line x1={x + 1.8} y1={yBottom} x2={x + 1.8} y2={stemTop} stroke="#1f2421" strokeWidth={1.0} />
+  );
+
+  switch (motif) {
+    case 'q_q': {
+      const n1 = cx - 6;
+      const n2 = cx + 6;
+      return (
+        <g>
+          {staffLine}
+          {drawNotehead(n1, staffLineY)}
+          {stem(n1)}
+          {drawNotehead(n2, staffLineY)}
+          {stem(n2)}
+        </g>
+      );
+    }
+    case 'e2_q': {
+      const n1 = cx - 9;
+      const n2 = cx - 3;
+      const n3 = cx + 7;
+      return (
+        <g>
+          {staffLine}
+          {drawNotehead(n1, staffLineY)}
+          {stem(n1)}
+          {drawNotehead(n2, staffLineY)}
+          {stem(n2)}
+          <line x1={n1 + 1.8} y1={stemTop} x2={n2 + 1.8} y2={stemTop} stroke="#1f2421" strokeWidth={2.0} />
+          {drawNotehead(n3, staffLineY)}
+          {stem(n3)}
+        </g>
+      );
+    }
+    case 'q_rest': {
+      const n1 = cx - 6;
+      return (
+        <g>
+          {staffLine}
+          {drawNotehead(n1, staffLineY)}
+          {stem(n1)}
+          <text
+            x={cx + 5}
+            y={cy + 7}
+            fontSize="14"
+            fontFamily="serif"
+            fill="#1f2421"
+            textAnchor="middle"
+          >
+            𝄽
+          </text>
+        </g>
+      );
+    }
+    case 'dotq_e': {
+      const n1 = cx - 7;
+      const n2 = cx + 6;
+      return (
+        <g>
+          {staffLine}
+          {drawNotehead(n1, staffLineY)}
+          {stem(n1)}
+          <circle cx={n1 + 4.5} cy={staffLineY - 1} r={1.0} fill="#1f2421" />
+          {drawNotehead(n2, staffLineY)}
+          {stem(n2)}
+          <path
+            d={`M ${n2 + 1.8} ${stemTop} Q ${n2 + 5.5} ${stemTop + 2} ${n2 + 4.5} ${stemTop + 5}`}
+            fill="none"
+            stroke="#1f2421"
+            strokeWidth={1.2}
+          />
+        </g>
+      );
+    }
+    case 's4': {
+      const notes = [cx - 9, cx - 3, cx + 3, cx + 9];
+      return (
+        <g>
+          {staffLine}
+          {notes.map((nx, i) => (
+            <React.Fragment key={i}>
+              {drawNotehead(nx, staffLineY)}
+              {stem(nx)}
+            </React.Fragment>
+          ))}
+          <line x1={notes[0]! + 1.8} y1={stemTop} x2={notes[3]! + 1.8} y2={stemTop} stroke="#1f2421" strokeWidth={1.8} />
+          <line x1={notes[0]! + 1.8} y1={stemTop + 3.2} x2={notes[3]! + 1.8} y2={stemTop + 3.2} stroke="#1f2421" strokeWidth={1.8} />
+        </g>
+      );
+    }
+    case 'gallop': {
+      const notes = [cx - 8, cx, cx + 7];
+      return (
+        <g>
+          {staffLine}
+          {notes.map((nx, i) => (
+            <React.Fragment key={i}>
+              {drawNotehead(nx, staffLineY)}
+              {stem(nx)}
+            </React.Fragment>
+          ))}
+          <line x1={notes[0]! + 1.8} y1={stemTop} x2={notes[2]! + 1.8} y2={stemTop} stroke="#1f2421" strokeWidth={1.8} />
+          <line x1={notes[1]! + 1.8} y1={stemTop + 3.2} x2={notes[2]! + 1.8} y2={stemTop + 3.2} stroke="#1f2421" strokeWidth={1.8} />
+        </g>
+      );
+    }
+    case 'rev_gallop': {
+      const notes = [cx - 7, cx, cx + 8];
+      return (
+        <g>
+          {staffLine}
+          {notes.map((nx, i) => (
+            <React.Fragment key={i}>
+              {drawNotehead(nx, staffLineY)}
+              {stem(nx)}
+            </React.Fragment>
+          ))}
+          <line x1={notes[0]! + 1.8} y1={stemTop} x2={notes[2]! + 1.8} y2={stemTop} stroke="#1f2421" strokeWidth={1.8} />
+          <line x1={notes[0]! + 1.8} y1={stemTop + 3.2} x2={notes[1]! + 1.8} y2={stemTop + 3.2} stroke="#1f2421" strokeWidth={1.8} />
+        </g>
+      );
+    }
+    case 'dot8_s': {
+      const n1 = cx - 6;
+      const n2 = cx + 6;
+      return (
+        <g>
+          {staffLine}
+          {drawNotehead(n1, staffLineY)}
+          {stem(n1)}
+          <circle cx={n1 + 4.5} cy={staffLineY - 1} r={1.0} fill="#1f2421" />
+          {drawNotehead(n2, staffLineY)}
+          {stem(n2)}
+          <line x1={n1 + 1.8} y1={stemTop} x2={n2 + 1.8} y2={stemTop} stroke="#1f2421" strokeWidth={1.8} />
+          <line x1={n2 - 3.5} y1={stemTop + 3.2} x2={n2 + 1.8} y2={stemTop + 3.2} stroke="#1f2421" strokeWidth={1.8} />
+        </g>
+      );
+    }
+    case 'sync_e_q_e': {
+      const n1 = cx - 8;
+      const n2 = cx;
+      const n3 = cx + 8;
+      return (
+        <g>
+          {staffLine}
+          {drawNotehead(n1, staffLineY)}
+          {stem(n1)}
+          {drawNotehead(n2, staffLineY)}
+          {stem(n2)}
+          {drawNotehead(n3, staffLineY)}
+          {stem(n3)}
+          <path d={`M ${n1 + 1.8} ${stemTop} L ${n3 + 1.8} ${stemTop}`} stroke="#1f2421" strokeWidth={1.2} />
+        </g>
+      );
+    }
+    case 'tie_across': {
+      const n1 = cx - 6;
+      const n2 = cx + 6;
+      return (
+        <g>
+          {staffLine}
+          {drawNotehead(n1, staffLineY)}
+          {stem(n1)}
+          {drawNotehead(n2, staffLineY)}
+          {stem(n2)}
+          <path
+            d={`M ${n1} ${staffLineY + 3.5} Q ${cx} ${staffLineY + 7.5} ${n2} ${staffLineY + 3.5}`}
+            fill="none"
+            stroke="#1f2421"
+            strokeWidth={1.2}
+          />
+        </g>
+      );
+    }
+    case 'compound_6_8': {
+      const notes = [cx - 8, cx, cx + 8];
+      return (
+        <g>
+          {staffLine}
+          {notes.map((nx, i) => (
+            <React.Fragment key={i}>
+              {drawNotehead(nx, staffLineY)}
+              {stem(nx)}
+            </React.Fragment>
+          ))}
+          <line x1={notes[0]! + 1.8} y1={stemTop} x2={notes[2]! + 1.8} y2={stemTop} stroke="#1f2421" strokeWidth={1.8} />
+          <text x={cx} y={stemTop - 2} fontSize="7" fontStyle="italic" fontWeight="bold" textAnchor="middle" fill="#1f2421">
+            3
+          </text>
+        </g>
+      );
+    }
+    case 'rag_sync': {
+      const notes = [cx - 8, cx, cx + 8];
+      return (
+        <g>
+          {staffLine}
+          {notes.map((nx, i) => (
+            <React.Fragment key={i}>
+              {drawNotehead(nx, staffLineY)}
+              {stem(nx)}
+            </React.Fragment>
+          ))}
+          <line x1={notes[0]! + 1.8} y1={stemTop} x2={notes[2]! + 1.8} y2={stemTop} stroke="#1f2421" strokeWidth={1.8} />
+          <line x1={notes[0]! + 1.8} y1={stemTop + 3.2} x2={notes[0]! + 4.5} y2={stemTop + 3.2} stroke="#1f2421" strokeWidth={1.8} />
+          <line x1={notes[2]! - 1.5} y1={stemTop + 3.2} x2={notes[2]! + 1.8} y2={stemTop + 3.2} stroke="#1f2421" strokeWidth={1.8} />
+        </g>
+      );
+    }
+  }
 };
 
 export const LevelGraph: React.FC<LevelGraphProps> = ({
@@ -189,29 +421,29 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
   onOpenAccelerando,
   celebratingLevelId,
 }) => {
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [isTrophyCelebrating, setIsTrophyCelebrating] = useState(false);
 
+  // Auto-scroll on mount to focus around the active/current level
   useEffect(() => {
-    const container = scrollRef.current;
-    if (!container) return;
-    const currentLevel = ALL_LEVELS.find((l) => l.id === currentLevelId);
-    if (!currentLevel) return;
-
-    const { y } = getNodePosition(currentLevel);
-    const targetScrollTop = y - container.clientHeight / 2;
-    if (typeof container.scrollTo === 'function') {
-      container.scrollTo({
-        top: Math.max(0, targetScrollTop),
-        behavior: 'smooth',
-      });
+    if (!scrollRef.current) return;
+    const isRhythm = currentLevelId.startsWith('rhythm-');
+    if (isRhythm) {
+      const tier = parseInt(currentLevelId.replace('rhythm-', ''), 10) || 1;
+      const y = PADDING_TOP + (12 - tier) * TIER_HEIGHT + BOTH_Y_OFFSET;
+      scrollRef.current.scrollTop = Math.max(0, y - 220);
     } else {
-      container.scrollTop = Math.max(0, targetScrollTop);
+      const currentLevel = ALL_LEVELS.find((l) => l.id === currentLevelId);
+      if (currentLevel) {
+        const { y } = getNodePosition(currentLevel);
+        scrollRef.current.scrollTop = Math.max(0, y - 220);
+      }
     }
   }, [currentLevelId]);
 
   const isTrophyCompleted = completedLevelIds.has('both-12');
 
+  // Trigger celebration burst on Trophy click if completed
   const handleTrophyClick = () => {
     if (isTrophyCompleted) {
       setIsTrophyCelebrating(true);
@@ -220,7 +452,7 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
     onSelectLevel('both-12');
   };
 
-  // Generate directed arrows
+  // Build arrow edges
   const arrows: React.JSX.Element[] = [];
 
   // Clean upward arrow connecting both-12 (x=150, y=110) to the base of the standalone Trophy (base at y=62)
@@ -237,73 +469,92 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
     />
   );
 
+  for (let tier = 1; tier <= 11; tier++) {
+    const tierIdxCur = 12 - tier;
+    const tierIdxNext = 12 - (tier + 1);
+
+    const ySingleCur = PADDING_TOP + tierIdxCur * TIER_HEIGHT + BOTH_Y_OFFSET;
+    const ySingleNext = PADDING_TOP + tierIdxNext * TIER_HEIGHT + BOTH_Y_OFFSET;
+
+    // Treble vertical upward arrow
+    arrows.push(
+      <line
+        key={`arrow-treble-${tier}-${tier + 1}`}
+        x1={55}
+        y1={ySingleCur - NODE_RADIUS}
+        x2={55}
+        y2={ySingleNext + NODE_RADIUS + 4}
+        stroke={completedLevelIds.has(`treble-${tier + 1}`) ? 'var(--emerald)' : '#b0aba2'}
+        strokeWidth={1.8}
+        markerEnd="url(#arrowhead)"
+      />
+    );
+
+    // Bass vertical upward arrow
+    arrows.push(
+      <line
+        key={`arrow-bass-${tier}-${tier + 1}`}
+        x1={245}
+        y1={ySingleCur - NODE_RADIUS}
+        x2={245}
+        y2={ySingleNext + NODE_RADIUS + 4}
+        stroke={completedLevelIds.has(`bass-${tier + 1}`) ? 'var(--emerald)' : '#b0aba2'}
+        strokeWidth={1.8}
+        markerEnd="url(#arrowhead)"
+      />
+    );
+
+    // Both vertical upward arrow
+    const yBothCur = ySingleCur - BOTH_Y_OFFSET;
+    const yBothNext = ySingleNext - BOTH_Y_OFFSET;
+    arrows.push(
+      <line
+        key={`arrow-both-${tier}-${tier + 1}`}
+        x1={150}
+        y1={yBothCur - NODE_RADIUS}
+        x2={150}
+        y2={yBothNext + NODE_RADIUS + 4}
+        stroke={completedLevelIds.has(`both-${tier + 1}`) ? 'var(--emerald)' : '#b0aba2'}
+        strokeWidth={1.8}
+        markerEnd="url(#arrowhead)"
+      />
+    );
+
+    // Rhythm vertical upward arrow
+    const yRhythmCur = ySingleCur;
+    const yRhythmNext = ySingleNext;
+    arrows.push(
+      <line
+        key={`arrow-rhythm-${tier}-${tier + 1}`}
+        x1={RHYTHM_X}
+        y1={yRhythmCur - NODE_RADIUS}
+        x2={RHYTHM_X}
+        y2={yRhythmNext + NODE_RADIUS + 4}
+        stroke={completedLevelIds.has(`rhythm-${tier + 1}`) ? 'var(--emerald)' : '#b0aba2'}
+        strokeWidth={1.8}
+        markerEnd="url(#arrowhead)"
+      />
+    );
+  }
+
+  // Cross arrows within each tier: Treble -> Both and Bass -> Both
   for (let tier = 1; tier <= 12; tier++) {
-    const tierIdx = 12 - tier;
-    const ySingleCur = PADDING_TOP + tierIdx * TIER_HEIGHT + BOTH_Y_OFFSET;
+    const tierIdxCur = 12 - tier;
+    const ySingleCur = PADDING_TOP + tierIdxCur * TIER_HEIGHT + BOTH_Y_OFFSET;
     const yBothCur = ySingleCur - BOTH_Y_OFFSET;
 
-    // Upward arrows to next tier (tier -> tier + 1)
-    if (tier < 12) {
-      const ySingleNext = PADDING_TOP + (tierIdx - 1) * TIER_HEIGHT + BOTH_Y_OFFSET;
-      const yBothNext = ySingleNext - BOTH_Y_OFFSET;
-
-      // Treble upward
-      arrows.push(
-        <line
-          key={`arrow-treble-${tier}`}
-          x1={55}
-          y1={ySingleCur - NODE_RADIUS}
-          x2={55}
-          y2={ySingleNext + NODE_RADIUS + 4}
-          stroke={completedLevelIds.has(`treble-${tier + 1}`) ? 'var(--emerald)' : '#b0aba2'}
-          strokeWidth={1.8}
-          markerEnd="url(#arrowhead)"
-        />
-      );
-
-      // Bass upward
-      arrows.push(
-        <line
-          key={`arrow-bass-${tier}`}
-          x1={245}
-          y1={ySingleCur - NODE_RADIUS}
-          x2={245}
-          y2={ySingleNext + NODE_RADIUS + 4}
-          stroke={completedLevelIds.has(`bass-${tier + 1}`) ? 'var(--emerald)' : '#b0aba2'}
-          strokeWidth={1.8}
-          markerEnd="url(#arrowhead)"
-        />
-      );
-
-      // Both upward
-      arrows.push(
-        <line
-          key={`arrow-both-${tier}`}
-          x1={150}
-          y1={yBothCur - NODE_RADIUS}
-          x2={150}
-          y2={yBothNext + NODE_RADIUS + 4}
-          stroke={completedLevelIds.has(`both-${tier + 1}`) ? 'var(--emerald)' : '#b0aba2'}
-          strokeWidth={1.8}
-          markerEnd="url(#arrowhead)"
-        />
-      );
-    }
-
-    // Slanted arrows into Both from Treble and Bass
-    // Treble-k (55, ySingleCur) -> Both-k (150, yBothCur)
-    const dx = 150 - 55; // 95
-    const dy = yBothCur - ySingleCur; // -36 (upward)
-    const len = Math.sqrt(dx * dx + dy * dy);
-    const ux = dx / len;
+    const dxT = 150 - 55; // +95
+    const dy = yBothCur - ySingleCur; // -36
+    const len = Math.sqrt(dxT * dxT + dy * dy);
+    const uxT = dxT / len;
     const uy = dy / len;
 
     arrows.push(
       <line
         key={`arrow-cross-t-both-${tier}`}
-        x1={55 + ux * NODE_RADIUS}
+        x1={55 + uxT * NODE_RADIUS}
         y1={ySingleCur + uy * NODE_RADIUS}
-        x2={150 - ux * (NODE_RADIUS + 4)}
+        x2={150 - uxT * (NODE_RADIUS + 4)}
         y2={yBothCur - uy * (NODE_RADIUS + 4)}
         stroke={completedLevelIds.has(`both-${tier}`) ? 'var(--emerald)' : '#b0aba2'}
         strokeWidth={1.8}
@@ -311,7 +562,6 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
       />
     );
 
-    // Bass-k (245, ySingleCur) -> Both-k (150, yBothCur)
     const dxB = 150 - 245; // -95
     const uxB = dxB / len;
 
@@ -332,9 +582,10 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
   return (
     <div className="nnsr-level-graph-container">
       <div className="nnsr-level-graph-header">
-        <div style={{ width: '33%', textAlign: 'center' }}>Treble</div>
-        <div style={{ width: '33%', textAlign: 'center' }}>Both</div>
-        <div style={{ width: '33%', textAlign: 'center' }}>Bass</div>
+        <div style={{ width: '25%', textAlign: 'center' }}>Treble</div>
+        <div style={{ width: '25%', textAlign: 'center' }}>Both</div>
+        <div style={{ width: '25%', textAlign: 'center' }}>Bass</div>
+        <div style={{ width: '25%', textAlign: 'center' }}>Rhythm</div>
       </div>
 
       <div ref={scrollRef} className="nnsr-level-graph-scroll">
@@ -478,7 +729,6 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
             />
             {/* Speedometer SVG Icon */}
             <g transform="translate(65, 65)">
-              {/* Dial Arc */}
               <path
                 d="M -13 4 A 14 14 0 1 1 13 4"
                 fill="none"
@@ -486,11 +736,9 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
                 strokeWidth={2.2}
                 strokeLinecap="round"
               />
-              {/* Gauge ticks */}
               <line x1="-10" y1="0" x2="-7" y2="0" stroke="var(--emerald)" strokeWidth={1.6} />
               <line x1="0" y1="-12" x2="0" y2="-9" stroke="var(--emerald)" strokeWidth={1.6} />
               <line x1="10" y1="0" x2="7" y2="0" stroke="var(--emerald)" strokeWidth={1.6} />
-              {/* Speedometer Needle pointing up-right */}
               <line
                 x1="0"
                 y1="3"
@@ -500,12 +748,11 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
                 strokeWidth={2}
                 strokeLinecap="round"
               />
-              {/* Center Hub */}
               <circle cx="0" cy="3" r="2.5" fill="#1f2421" />
             </g>
           </g>
 
-          {/* Render Curriculum Level Nodes */}
+          {/* Render Pitch Curriculum Level Nodes (36 total) */}
           {ALL_LEVELS.map((level) => {
             const { x, y } = getNodePosition(level);
             const isCurrent = level.id === currentLevelId;
@@ -527,7 +774,6 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
               strokeWidth = 3;
             }
 
-            // Key signature accidental symbol for scale levels
             let accidentalSymbol: string | undefined;
             if (level.keySignature === 'G_MAJOR') accidentalSymbol = '♯';
             else if (level.keySignature === 'F_MAJOR') accidentalSymbol = '♭';
@@ -552,7 +798,6 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
                   isCompleted ? 'completed' : ''
                 } ${isCelebrating ? 'celebrating-node' : ''}`}
               >
-                {/* Active Outer Ring */}
                 {isCurrent && (
                   <circle
                     cx={x}
@@ -565,7 +810,6 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
                   />
                 )}
 
-                {/* Celebratory Ripple Ring */}
                 {isCelebrating && (
                   <circle
                     cx={x}
@@ -578,7 +822,6 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
                   />
                 )}
 
-                {/* Base Node Circle */}
                 <circle
                   cx={x}
                   cy={y}
@@ -588,7 +831,6 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
                   strokeWidth={strokeWidth}
                 />
 
-                {/* Musical Engraving inside Node */}
                 {level.lane === 'both' ? (
                   <g>
                     <MiniStaff
@@ -622,6 +864,86 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
                     isCompact={false}
                   />
                 )}
+              </g>
+            );
+          })}
+
+          {/* Render Rhythm Curriculum Level Nodes (12 total) */}
+          {RHYTHM_LEVELS.map((rhythmLevel) => {
+            const x = RHYTHM_X;
+            const y = PADDING_TOP + (12 - rhythmLevel.tier) * TIER_HEIGHT + BOTH_Y_OFFSET;
+            const isCurrent = rhythmLevel.id === currentLevelId;
+            const isCompleted = completedLevelIds.has(rhythmLevel.id);
+            const isCelebrating = celebratingLevelId === rhythmLevel.id;
+
+            let fillColor = '#ffffff';
+            let strokeColor = '#8c948f';
+            let strokeWidth = 1.8;
+
+            if (isCompleted) {
+              fillColor = 'var(--light-green)';
+              strokeColor = 'var(--emerald)';
+              strokeWidth = 2.4;
+            }
+
+            if (isCurrent) {
+              strokeColor = 'var(--emerald)';
+              strokeWidth = 3;
+            }
+
+            return (
+              <g
+                key={rhythmLevel.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Level Rhythm - Tier ${rhythmLevel.tier}: ${rhythmLevel.title}`}
+                data-testid={`rhythm-node-${rhythmLevel.tier}`}
+                onClick={() => onSelectLevel(rhythmLevel.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelectLevel(rhythmLevel.id);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
+                className={`nnsr-graph-node nnsr-rhythm-graph-node ${isCurrent ? 'current' : ''} ${
+                  isCompleted ? 'completed' : ''
+                } ${isCelebrating ? 'celebrating-node' : ''}`}
+              >
+                {isCurrent && (
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={NODE_RADIUS + 4.5}
+                    fill="none"
+                    stroke="var(--jasmine)"
+                    strokeWidth={3}
+                    strokeDasharray="4 2"
+                  />
+                )}
+
+                {isCelebrating && (
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={NODE_RADIUS + 6}
+                    fill="none"
+                    stroke="var(--emerald)"
+                    strokeWidth={3}
+                    className="nnsr-celebrate-ring"
+                  />
+                )}
+
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={NODE_RADIUS}
+                  fill={fillColor}
+                  stroke={strokeColor}
+                  strokeWidth={strokeWidth}
+                />
+
+                <MiniRhythmMotif motif={rhythmLevel.motif} cx={x} cy={y} />
               </g>
             );
           })}

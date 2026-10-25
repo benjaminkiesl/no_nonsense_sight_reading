@@ -180,13 +180,15 @@ export function playLeftHandPulseThump(): void {
 export function playCellPreviewWithLanding(cell: RhythmBeatCell, bpm: number): void {
   try {
     const beatSec = 60 / Math.max(30, bpm);
+    let offsetBeats = 0;
 
     for (const evt of cell.events) {
-      if (evt.kind === 'note') {
-        const startSec = evt.offsetBeats * beatSec;
+      if (evt.kind === 'attack') {
+        const startSec = offsetBeats * beatSec;
         const durSec = evt.durationBeats * beatSec;
         playRhythmNoteVoice(durSec, false, startSec);
       }
+      offsetBeats += evt.durationBeats;
     }
 
     // Schedule landing note at beat offset 1.0 (on the next downbeat)

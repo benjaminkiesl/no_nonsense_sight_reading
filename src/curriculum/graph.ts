@@ -22,7 +22,14 @@ export function getTransitiveCompletedLevels(directlyCompletedIds: Iterable<stri
   const queue: string[] = [];
 
   for (const id of directlyCompletedIds) {
-    if (LEVELS_BY_ID.has(id)) {
+    if (id.startsWith('rhythm-')) {
+      const tier = parseInt(id.replace('rhythm-', ''), 10);
+      if (!isNaN(tier) && tier >= 1 && tier <= 12) {
+        for (let t = 1; t <= tier; t++) {
+          result.add(`rhythm-${t}`);
+        }
+      }
+    } else if (LEVELS_BY_ID.has(id)) {
       queue.push(id);
     }
   }
@@ -47,14 +54,20 @@ export function getTransitiveCompletedLevels(directlyCompletedIds: Iterable<stri
 
 /**
  * Determines the next recommended level when currentLevelId is completed:
- * 1. If treble-k was just finished and bass-k is not finished -> bass-k.
- * 2. If bass-k was just finished and treble-k is finished -> both-k (else treble-k).
- * 3. If both-k was just finished -> treble-(k+1) (if k < 12, else stays on both-12).
+ * 1. If rhythm-k was finished -> rhythm-(k+1) (or rhythm-12 if at top).
+ * 2. If treble-k was just finished and bass-k is not finished -> bass-k.
+ * 3. If bass-k was just finished and treble-k is finished -> both-k (else treble-k).
+ * 4. If both-k was just finished -> treble-(k+1) (if k < 12, else stays on both-12).
  */
 export function getNextRecommendedLevel(
   completedLevelId: string,
   finishedSet: ReadonlySet<string>
 ): string {
+  if (completedLevelId.startsWith('rhythm-')) {
+    const tier = Number(completedLevelId.split('-')[1]);
+    return !isNaN(tier) && tier < 12 ? `rhythm-${tier + 1}` : 'rhythm-12';
+  }
+
   const level = getLevelById(completedLevelId);
   const tier = level.tier;
 

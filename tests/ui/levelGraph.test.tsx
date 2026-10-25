@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { LevelGraph } from '../../src/components/LevelGraph';
 
 describe('LevelGraph Component', () => {
-  it('renders the 3 lane headers', () => {
+  it('renders the 4 lane headers: Treble, Both, Bass, Rhythm', () => {
     render(
       <LevelGraph
         currentLevelId="treble-1"
@@ -15,9 +15,10 @@ describe('LevelGraph Component', () => {
     expect(screen.getByText('Treble')).toBeDefined();
     expect(screen.getByText('Both')).toBeDefined();
     expect(screen.getByText('Bass')).toBeDefined();
+    expect(screen.getByText('Rhythm')).toBeDefined();
   });
 
-  it('renders all 36 level nodes, highlights current level, and applies celebratory ring', () => {
+  it('renders all 48 level nodes (36 pitch + 12 rhythm), highlights current level, and applies celebratory ring', () => {
     const { container } = render(
       <LevelGraph
         currentLevelId="treble-3"
@@ -28,7 +29,7 @@ describe('LevelGraph Component', () => {
     );
 
     const nodes = container.querySelectorAll('.nnsr-graph-node');
-    expect(nodes.length).toBe(36);
+    expect(nodes.length).toBe(48);
 
     const currentNode = container.querySelector('.nnsr-graph-node.current');
     expect(currentNode).toBeDefined();
@@ -53,5 +54,9 @@ describe('LevelGraph Component', () => {
     const bassNode = screen.getByLabelText(/Bass Clef - Tier 1\b/);
     fireEvent.click(bassNode);
     expect(onSelectLevel).toHaveBeenCalledWith('bass-1');
+
+    const rhythm1Node = screen.getByTestId('rhythm-node-1');
+    fireEvent.click(rhythm1Node);
+    expect(onSelectLevel).toHaveBeenCalledWith('rhythm-1');
   });
 });

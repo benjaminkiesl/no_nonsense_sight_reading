@@ -1,76 +1,82 @@
-# Implementation-Ready Specification: No-Nonsense Rhythm Training Module
+# No-Nonsense Rhythm Training Module: Radical Simplicity Redesign Spec
 
-## 1. Architectural Overview & Core Principles
+## 1. Core Design Philosophy: Zero Jargon, Zero Controls, Unified Skill Tree
 
-This specification defines the implementation of the **No-Nonsense Rhythm Training Module** on branch `feature/rhythm-module`, grounded in our pedagogical and corpus research ([`docs/rhythm_reading_pedagogy_and_design.md`](file:///home/benjaminkiesl/code/no_nonsense_sight_reading/docs/rhythm_reading_pedagogy_and_design.md) and [`docs/piano_rhythm_corpus_analysis.md`](file:///home/benjaminkiesl/code/no_nonsense_sight_reading/docs/piano_rhythm_corpus_analysis.md)):
-
-1. **Decoupled Data-Driven Curriculum (`src/rhythm/curriculum.ts`)**:
-   - The rhythm engine and UI consume a clean, standalone `RhythmLevelSpec[]` dataset so the curriculum can be updated or expanded independently of the engine.
-   - Ordered by **empirical Pareto/Zipf popularity** from our piano corpus (covering `P80` to `P95` of real piano music).
-2. **The "Closed Gestalt (+1 Landing)" Rule**:
-   - Every rhythmic exercise—whether a short 1-bar introductory word or a 4-bar repertoire phrase—ends on a **final downbeat Landing Note** (e.g., `♩` on Beat 1 of the following bar) so anacrustic patterns (`♩. ♪`, `♪. ♬`, `♪ ♬`, `𝄾 ♪`) are never amputated mid-air and the inter-onset interval of the penultimate note is acoustically closed.
-3. **The 3-Phase "Internalize → Verify" Loop (`SANDBOX` $\rightarrow$ `COUNT_IN` $\rightarrow$ `PERFORM` $\rightarrow$ `FEEDBACK`)**:
-   - **Phase 1 (`SANDBOX`)**: Zero metronome click. The user inspects the notation (grouped into 1-beat visual "words"), freely taps/plays the rhythm at their own pace (`Space`/`J` or any MIDI key, plus optional Left-Hand Pulse key `F`), or clicks any 1-beat cell to hear its acoustic gesture + landing.
-   - **Phase 2A (`COUNT_IN`)**: Triggered by pressing `Enter` or clicking `"Count-In & Play"`. Plays 1 bar of metrically weighted count-in clicks (*Beat 1 Schwer* downbeat gravity $\rightarrow$ *Final Beat Auftakt* lift).
-   - **Phase 2B (`PERFORM`)**: The external metronome **drops out** (or optionally ticks only on Bar downbeats in beginner anchor mode) while the user performs the internalized phrase from their own internal clock. Both **note onset (`keydown`)** and **note hold duration (`keyup`)** are recorded.
-   - **Phase 3 (`FEEDBACK`)**: Evaluates **Local Groove Accuracy (%)** (relative IOI proportions against the user's local pulse), **Hold/Articulation Accuracy (%)** (distinguishing held quarter/half/syncopated notes from rests), and **Internal Pulse Drift (%)**.
-4. **Interactive `2× Metric Zoom` (Scale Invariance Bridge)**:
-   - Pairs 1-beat sixteenth patterns (`♪. ♬ → ♩`, `♪ ♬ → ♩`, `♬ ♪ ♬ → ♩` at $1\times$ tempo) with their acoustically identical 2-beat eighth-level twins (`♩. ♪ → 𝅗𝅥`, `♩ ♫ → 𝅗𝅥`, `♪ ♩ ♪ → 𝅗𝅥` at $2\times$ tempo) so the user can toggle between them and see/hear that they are the exact same physical groove at two metric zoom levels.
+The Rhythm Module must follow the exact same minimalist, self-explanatory visual language as the Pitch Sight-Reading workspace:
+1. **No separate "Rhythm" header button**: The top [`Header`](file:///home/benjaminkiesl/code/no_nonsense_sight_reading/src/components/Header.tsx) returns to its clean single navigation button (`Levels` when practicing, `← Practice` when viewing the Level Graph).
+2. **Unified 4-Lane `LevelGraph` (`Treble | Both | Bass | Rhythm`)**:
+   - In [`LevelGraph.tsx`](file:///home/benjaminkiesl/code/no_nonsense_sight_reading/src/components/LevelGraph.tsx), alongside `Treble`, `Both`, and `Bass`, there is a 4th vertical lane on the right: **`Rhythm`**.
+   - Just like `Treble`, `Both`, and `Bass` have 12 tiers (`tier = 1..12`), the `Rhythm` column has **12 circular level nodes** (`rhythm-1` through `rhythm-12`) connected by upward vertical arrows from Tier 1 (bottom) to Tier 12 (top).
+   - Inside each `rhythm-k` circle is a **Miniature Engraved Rhythm Icon (`MiniRhythmMotif`)** showing the signature rhythmic pattern introduced at that tier (e.g., `♩ ♩`, `♫ ♩`, `♩ 𝄽`, `♩. ♪`, `♬♬`, `♪ ♬`, `♬ ♪`, `♪. ♬`, `♪ ♩ ♪`, `♩. ♪ ‿ ♪`, `6/8 ♫♪`, `♬ ♪ ♬`).
+   - Clicking any `rhythm-k` node in the `LevelGraph` selects that rhythm level and switches to the practice view (`activeView = 'practice'`), which automatically renders the minimalist [`RhythmArena`](file:///home/benjaminkiesl/code/no_nonsense_sight_reading/src/components/RhythmArena.tsx) whenever `currentLevelId.startsWith('rhythm-')`.
+3. **Zero-Control Rhythm Practice Workspace**:
+   - **Remove all dropdowns, tier buttons, phrase selectors, "Word Boxes", "Sandbox / Count-In / Perform" buttons, "Left-Hand Pulse (F)", "Pulse: Silent / Anchor" toggles, "2x Metric Zoom" buttons, and "LANDING" text badges.**
+   - The Rhythm Practice screen contains ONLY:
+     1. **The Rhythm Staff Card** (clean white canvas card matching `GrandStaffCanvas` dimensions and styling) displaying the single-line rhythm staff (`4/4`, `3/4`, `2/2`, or `6/8`) and the engraved 2-bar + 1-downbeat phrase.
+     2. **A subtle, unmistakable active-target indicator on the first note** (a gentle pulsing highlight ring or arrow on Note 1 before you start, paired with a crystal-clear one-line prompt below the staff: **`Play the 1st note (Space or any piano key) to start at your own tempo`**).
+     3. **The Progress Bar** (matching [`ProgressBar.tsx`](file:///home/benjaminkiesl/code/no_nonsense_sight_reading/src/components/ProgressBar.tsx) visually—e.g. advancing across 5 phrases in the level).
+4. **Self-Paced Flow (First Press = Note 1)**:
+   - There is **no count-in** and **no "start button"**.
+   - The user looks at the engraved rhythm phrase for as long as they want.
+   - **Their very first press (`Space`, any letter key, or any MIDI piano key) IS Note 1 (`index = 0`) of the phrase!**
+   - While tapping through the notes from left to right:
+     - Each tapped notehead immediately turns **active/played (`#04724d` / emerald-tinted or ink-active)** and plays the warm marimba/piano sustain voice for as long as the key is held.
+     - A subtle visual playhead dot/ring advances to the next expected note so the user always knows which note they are on.
+   - **The instant the user completes the final note of the phrase**:
+     - The engine runs the **Ordinary Least-Squares Best-Fit Tempo Line** across all taps in the phrase (`slope` clamped to a reasonable human tempo range `[35 BPM, 200 BPM]`) plus hold-duration articulation checks.
+     - **All notes in the phrase light up simultaneously with their evaluation color**:
+       - **Green (`#04724d`)** for notes played in proportion to the user's chosen tempo and held appropriately.
+       - **Coral/Red (`#e05a47`)** for notes played early, late, or clipped too short (with a tiny, clean label below only the missed note: e.g. `early`, `late`, or `short`).
+     - **If the phrase passed (`overallScorePct >= 80` and zero `'missed'` notes)**:
+       - The Progress Bar advances by 1 step!
+       - After a brief `750 ms` green confirmation pause so the user can see their green phrase, the next phrase in the level smoothly appears (or, if all 5 phrases in the level are completed, the level is marked completed and transitions to the Celebration / `LevelGraph` view just like Pitch levels!).
+     - **If a note was missed/out-of-proportion**:
+       - The red/green note highlights remain visible on the staff so the user can inspect exactly which note was early/late/short.
+       - The prompt below reads: **`Missed rhythm proportion — play the 1st note to try this phrase again`** (and pressing `Space` or any piano key immediately starts Note 1 of a fresh attempt on that same phrase!).
 
 ---
 
-## 2. File-by-File Implementation Plan
+## 2. Detailed Component & File Specifications
 
-### 2.1 `src/types/rhythm.ts` (New File)
-
-Define clean, strongly typed interfaces for the rhythm domain:
+### 2.1. `src/types/rhythm.ts`
+Update [`src/types/rhythm.ts`](file:///home/benjaminkiesl/code/no_nonsense_sight_reading/src/types/rhythm.ts) so it supports the 12 Rhythm Levels (`rhythm-1` .. `rhythm-12`) and the streamlined self-paced state machine:
 
 ```ts
 export type TimeSignatureStr = '4/4' | '3/4' | '2/4' | '2/2' | '6/8';
 
-export type RhythmEventKind = 'note' | 'rest';
+export type RhythmEventKind = 'attack' | 'rest' | 'hold';
 
 export interface RhythmSubEvent {
-  /** Offset from the start of the beat cell, in beats (e.g. 0, 0.25, 0.5, 0.75) */
-  readonly offsetBeats: number;
-  /** Duration in beats (e.g. 1.0 = quarter, 0.5 = eighth, 0.25 = sixteenth, 1.5 = dotted quarter) */
-  readonly durationBeats: number;
   readonly kind: RhythmEventKind;
-  /** Whether this note is tied from the previous event */
+  readonly durationBeats: number;
   readonly tiedFromPrev?: boolean;
+  readonly dotted?: boolean;
+  readonly tuplet?: 3;
 }
 
 export interface RhythmBeatCell {
-  readonly cellId: string;       // e.g. 'q', 'e2', 's4', 'dot8_s', 'gallop', 'upbeat_e', 'rest_q', 'sync_16_8_16', 'triplet_e'
-  readonly label: string;        // e.g. 'Quarter (♩)', 'Dotted 8th + 16th (♪. ♬)'
-  readonly symbol: string;       // Compact visual symbol e.g. '♩', '♫', '♬♬', '♪. ♬', '♪ ♬', '𝄾 ♪'
+  readonly cellId: string;
   readonly events: readonly RhythmSubEvent[];
 }
 
 export interface RhythmPhrase {
   readonly id: string;
-  readonly title: string;
-  readonly sourceComposer?: string; // e.g. 'W.A. Mozart — Sonata K. 279'
+  readonly tier: number; // 1..12
   readonly timeSignature: TimeSignatureStr;
-  readonly beatsPerBar: number;     // e.g. 4 for 4/4, 3 for 3/4, 2 for 2/4
-  readonly targetBpm: number;       // Default tempo e.g. 76
-  /** Sequence of 1-beat cells across the bars, PLUS the final landing beat cell */
+  readonly beatsPerBar: number;
+  readonly beatUnit: 4 | 2 | 8;
+  readonly targetBpm: number; // Nominal reference tempo (used to clamp 35..200 BPM range)
   readonly beatCells: readonly RhythmBeatCell[];
-  /** Optional ID of the 2x Metric Zoom twin phrase (same physical timing, 2x note durations & 2x BPM) */
-  readonly zoomTwinPhraseId?: string;
-  readonly zoomScaleLabel?: '1x (Sixteenth Level)' | '2x (Eighth Level)';
 }
 
-export type RhythmExercisePhase = 'SANDBOX' | 'COUNT_IN' | 'PERFORM' | 'FEEDBACK';
-
-export type PulseAutonomyMode = 'SILENT_CONTINUATION' | 'BAR_DOWNBEAT_ANCHOR';
+export type RhythmExercisePhase = 'READY' | 'PLAYING' | 'FEEDBACK' | 'LEVEL_COMPLETE';
 
 export interface FlattenedRhythmNote {
-  readonly index: number;
-  readonly beatIndex: number;
-  readonly startBeat: number;     // Global beat offset from phrase start (0.0, 0.5, 1.0, ...)
-  readonly durationBeats: number; // Written duration including any tied continuations
+  readonly noteIndex: number;
+  readonly startBeat: number;
+  readonly durationBeats: number;
   readonly isLandingNote: boolean;
+  readonly cellIndex: number;
 }
 
 export interface RecordedTap {
@@ -78,190 +84,229 @@ export interface RecordedTap {
   releaseTimeMs: number | null;
 }
 
+export type NoteErrorHint = 'early' | 'late' | 'short' | 'long' | null;
+
 export interface NoteEvaluation {
   readonly noteIndex: number;
   readonly expectedStartBeat: number;
   readonly expectedDurationBeats: number;
-  /** Relative onset error as a fraction of local beat period (-0.05 = 5% early) */
   readonly relativeOnsetError: number;
-  /** Ratio of actual hold duration to expected duration (1.0 = full hold) */
   readonly holdRatio: number;
   readonly status: 'perfect' | 'loose' | 'missed';
+  readonly errorHint: NoteErrorHint;
 }
 
 export interface RhythmFeedbackSummary {
-  readonly grooveScorePct: number;       // 0..100 based on relative IOI accuracy
-  readonly holdScorePct: number;         // 0..100 based on holding sustained/syncopated notes vs rests
-  readonly overallScorePct: number;      // Weighted 80% groove + 20% hold
-  readonly pulseDriftPct: number;        // e.g. +3.2% (rushed) or -2.1% (dragged)
+  readonly grooveScorePct: number;
+  readonly holdScorePct: number;
+  readonly overallScorePct: number;
   readonly estimatedUserBpm: number;
   readonly noteEvaluations: readonly NoteEvaluation[];
-  readonly passed: boolean;              // true if overallScorePct >= 80
+  readonly passed: boolean;
 }
 
+export type MiniRhythmMotifType =
+  | 'q_q'           // Tier 1: ♩ ♩
+  | 'e2_q'          // Tier 2: ♫ ♩
+  | 'q_rest'        // Tier 3: ♩ 𝄽
+  | 'dotq_e'        // Tier 4: ♩. ♪
+  | 's4'            // Tier 5: ♬♬
+  | 'gallop'        // Tier 6: ♪ ♬
+  | 'rev_gallop'    // Tier 7: ♬ ♪
+  | 'dot8_s'        // Tier 8: ♪. ♬
+  | 'sync_e_q_e'    // Tier 9: ♪ ♩ ♪
+  | 'tie_across'    // Tier 10: ♩ ‿ ♪ ♪
+  | 'compound_6_8'  // Tier 11: 6/8 ♫♪
+  | 'rag_sync';     // Tier 12: ♬ ♪ ♬
+
 export interface RhythmLevelSpec {
-  readonly id: string;
-  readonly tier: number;
+  readonly id: string; // 'rhythm-1' .. 'rhythm-12'
+  readonly tier: number; // 1 .. 12
   readonly title: string;
   readonly subtitle: string;
-  readonly description: string;
-  readonly featuredCellSymbols: readonly string[];
+  readonly motif: MiniRhythmMotifType;
+  readonly prerequisiteIds: readonly string[];
+  readonly nextIds: readonly string[];
   readonly phrases: readonly RhythmPhrase[];
 }
 
 export interface RhythmEngineSnapshot {
   readonly levelId: string;
-  readonly phrase: RhythmPhrase;
+  readonly levelTitle: string;
   readonly phase: RhythmExercisePhase;
-  readonly pulseMode: PulseAutonomyMode;
-  readonly countInBeatIndex: number;     // 0..beatsPerBar-1 during COUNT_IN
+  readonly phrase: RhythmPhrase;
   readonly flattenedNotes: readonly FlattenedRhythmNote[];
-  readonly sandboxMatchedCount: number;  // Progress in SANDBOX self-paced tapping
-  readonly performTapCount: number;      // Number of notes tapped so far in PERFORM
+  readonly currentNoteIndex: number;
   readonly activeHoldNoteIndex: number | null;
-  readonly leftHandPulseCount: number;   // Count of self-generated LH pulse taps ('F' key)
-  readonly showWordBoxes: boolean;
+  readonly phrasesCompletedInLevel: number;
+  readonly phrasesRequiredForLevel: number;
   readonly feedback: RhythmFeedbackSummary | null;
 }
 ```
 
 ---
 
-### 2.2 `src/rhythm/curriculum.ts` (New File)
+### 2.2. `src/rhythm/curriculum.ts` (12 Rhythm Levels: `rhythm-1` through `rhythm-12`)
+Provide 12 progressive Rhythm Levels (`rhythm-1` .. `rhythm-12`), each with **5 authentic 2-bar + 1-downbeat phrases**:
+- `rhythm-1` (`motif: 'q_q'`, Title: `Quarter & Half Pulse`): Steady quarters (`♩`), half notes (`𝅗𝅥`), and +1 downbeat landing in `4/4`.
+- `rhythm-2` (`motif: 'e2_q'`, Title: `Eighth-Note Flow`): Paired eighth notes (`♫`) mixed with quarters and halves in `4/4` and `3/4`.
+- `rhythm-3` (`motif: 'q_rest'`, Title: `Rests & Silence`): Quarter rests (`𝄽`) and upbeat eighth rests (`𝄾 ♪`) requiring clean note releases.
+- `rhythm-4` (`motif: 'dotq_e'`, Title: `Dotted Quarter & Eighth`): The classic `♩. ♪` anacrusis resolving onto the next beat (`4/4` and `3/4`).
+- `rhythm-5` (`motif: 's4'`, Title: `Sixteenth-Note Grid`): 4 sixteenth notes (`♬♬`) mixed with eighths and quarters.
+- `rhythm-6` (`motif: 'gallop'`, Title: `Forward Gallop`): Eighth + two sixteenths (`♪ ♬`) driving into the downbeat.
+- `rhythm-7` (`motif: 'rev_gallop'`, Title: `Reverse Gallop`): Two sixteenths + eighth (`♬ ♪`) mixed with forward gallops.
+- `rhythm-8` (`motif: 'dot8_s'`, Title: `Dotted Eighth & Sixteenth`): Crisp `♪. ♬` figures and Scotch snaps (`♬ ♪.`).
+- `rhythm-9` (`motif: 'sync_e_q_e'`, Title: `Off-Beat Syncopation`): `♪ ♩ ♪` (`e + q + e`) and upbeat eighths across the bar.
+- `rhythm-10` (`motif: 'tie_across'`, Title: `Ties Across the Beat`): Notes tied across beats (`♩. ♪ ‿ ♪ ♪` and `♪ ‿ ♪`).
+- `rhythm-11` (`motif: 'compound_6_8'`, Title: `Compound 6/8 & Triplets`): Rolling triplet cells (`triplet_e`) and `6/8` compound feel.
+- `rhythm-12` (`motif: 'rag_sync'`, Title: `Pop & Ragtime Groove`): Intra-beat syncopation (`♬ ♪ ♬` = `sync_16_8_16`), tresillo, and tied anticipations.
 
-Build the initial corpus-backed **6-Tier Rhythm Curriculum** containing the core 1-beat cells (`CELL_LIBRARY`) and a rich set of **Gesture + Landing capsules** and **4-Bar Authentic Repertoire Sentences** (from Bach, Mozart, Beethoven, Chopin, Joplin):
+Export helpers:
+- `RHYTHM_LEVELS: readonly RhythmLevelSpec[]` (12 levels)
+- `RHYTHM_LEVELS_BY_ID: ReadonlyMap<string, RhythmLevelSpec>`
+- `getRhythmLevelById(id: string): RhythmLevelSpec`
+- `isRhythmLevelId(id: string): boolean` (`id.startsWith('rhythm-')`)
 
-1. **`CELL_LIBRARY`**:
-   - `q`: Quarter note `♩` (`[{ offsetBeats: 0, durationBeats: 1, kind: 'note' }]`)
-   - `rest_q`: Quarter rest `𝄽` (`[{ offsetBeats: 0, durationBeats: 1, kind: 'rest' }]`)
-   - `hold_q`: Tied quarter hold (`[{ offsetBeats: 0, durationBeats: 1, kind: 'note', tiedFromPrev: true }]`)
-   - `e2`: Two eighths `♫` (`0.5 + 0.5`)
-   - `upbeat_e`: Eighth rest + eighth `𝄾 ♪` (`0.5 rest + 0.5 note`)
-   - `tie_e_note_e`: Tied eighth + new eighth (`0.5 tiedFromPrev + 0.5 note` — forms `♩. ♪` when placed after `q`, or `♪ ♩ ♪` syncopation when placed after `e2`!)
-   - `s4`: Four sixteenths `♬♬` (`0.25 × 4`)
-   - `gallop`: Eighth + two sixteenths `♪ ♬` (`0.5, 0.25, 0.25`)
-   - `rev_gallop`: Two sixteenths + eighth `♬ ♪` (`0.25, 0.25, 0.5`)
-   - `dot8_s`: Dotted eighth + sixteenth `♪. ♬` (`0.75, 0.25`)
-   - `scotch_snap`: Sixteenth + dotted eighth `♬ ♪.` (`0.25, 0.75`)
-   - `sync_16_8_16`: Intra-beat syncopation `♬ ♪ ♬` (`0.25, 0.5, 0.25`)
-   - `pickup_3s`: Sixteenth rest + three sixteenths `𝄿 ♬♪` (`0.25 rest, 0.25, 0.25, 0.25`)
-   - `rest8_2s`: Eighth rest + two sixteenths `𝄾 ♬` (`0.5 rest, 0.25, 0.25`)
-   - `triplet_e`: Eighth triplet `3♫♪` (`0, 1/3, 2/3`)
-2. **Helper `flattenPhraseToNotes(phrase: RhythmPhrase): FlattenedRhythmNote[]`**:
-   - Iterates through `phrase.beatCells`, merging any `tiedFromPrev: true` event onto the preceding note's `durationBeats` so that `♩. ♪` (`q` + `tie_e_note_e`) produces a single note of duration `1.5` beats followed by an eighth note of duration `0.5` beats at `startBeat: 1.5`!
-   - Marks the final note of the phrase with `isLandingNote: true`.
-3. **6 Tiers in `RHYTHM_LEVELS`** (covering `P50` $\rightarrow$ `P95` of the piano corpus):
-   - **Tier 1 (`rhythm-1`): Pulse, Stride & Space (`♩`, `♫`, `𝅗𝅥`, `𝄽`)** — Covers 62% of corpus beats. Includes 1-bar+landing capsules and 4-bar Mozart/Beethoven phrases.
-   - **Tier 2 (`rhythm-2`): The Upbeat & Dotted Walk (`♩. ♪ → ♩`, `𝄾 ♪ → ♫`)** — Teaches anacrusis $\rightarrow$ crusis landing across beats, including Mozart Sonata K. 279 (mm. 26–29) and Bach Fugue in D♯ minor.
-   - **Tier 3 (`rhythm-3`): Classic Syncopation & Ties (`♪ ♩ ♪ → ♩`)** — Holding across the silent downbeat while feeling the pulse in your body/left hand.
-   - **Tier 4 (`rhythm-4`): Sixteenth Words & 2× Metric Zoom (`♬♬`, `♪ ♬`, `♬ ♪`, `𝄿 ♬♪`)** — Pairs `♩ ♫ → 𝅗𝅥` (at 136 BPM) with its `2× Metric Zoom` twin `♪ ♬ → ♩` (at 68 BPM), plus Bach C-minor Fugue (BWV 847) and Mozart K. 279 (mm. 4–7).
-   - **Tier 5 (`rhythm-5`): Dotted Sixteenth Snaps & Funk Cells (`♪. ♬ → ♩`, `♬ ♪ ♬`)** — Pairs `♩. ♪ → 𝅗𝅥` (at 132 BPM) with `♪. ♬ → ♩` (at 66 BPM), Chopin "Raindrop" Prelude Op. 28 No. 15 (mm. 5–8), and Joplin *The Easy Winners*.
-   - **Tier 6 (`rhythm-6`): Triplet Flow & Two-Hand Groove (`3♫♪`, Beethoven/Chopin Triplets)**.
+Ensure `getTransitiveCompletedLevels` and `getNextRecommendedLevel` in [`src/curriculum/graph.ts`](file:///home/benjaminkiesl/code/no_nonsense_sight_reading/src/curriculum/graph.ts) also support `rhythm-1` .. `rhythm-12` seamlessly without breaking any existing tests in `tests/curriculum/levels.test.ts` or `tests/curriculum/graph.test.ts`!
+- Specifically:
+  - Keep `getAllLevels()` in `src/curriculum/graph.ts` returning the 36 pitch levels (`ALL_LEVELS.length === 36`) so existing tests in `tests/curriculum/levels.test.ts` and `tests/curriculum/graph.test.ts` continue to pass 100% unchanged!
+  - In `getTransitiveCompletedLevels(directlyCompletedIds)`: if an ID is `rhythm-k` (where `k` is `1..12`), transitively add `rhythm-1` through `rhythm-k` to the returned `Set<string>`!
+  - In `getNextRecommendedLevel(completedLevelId, finishedSet)`: if `completedLevelId` starts with `'rhythm-'`, extract `tier = Number(completedLevelId.split('-')[1])` and return `tier < 12 ? 'rhythm-' + (tier + 1) : 'rhythm-12'`.
 
 ---
 
-### 2.3 `src/rhythm/engine.ts` (New File)
-
-Implement `RhythmEngine` managing the state machine and the **Two-Layer Relative-IOI ("Groove") + Hold Duration + Drift** grading algorithm:
-
-1. **State Machine**:
-   - Starts in `phase = 'SANDBOX'`.
-   - **In `SANDBOX`**:
-     - `handleNotePress(nowMs)` & `handleNoteRelease(nowMs)` allow self-paced tapping. Each press advances `sandboxMatchedCount` (wrapping around to `0` after reaching `flattenedNotes.length`, so the user can freely play the phrase as many times as they like!).
-     - `handleLeftHandPulse(nowMs)` increments `leftHandPulseCount` so the user can practice tapping a steady Left-Hand pulse (`F` key) against Right-Hand rhythm (`J` / `Space` key).
-   - **Transition to `COUNT_IN`**:
-     - `startCountIn(nowMs)` sets `phase = 'COUNT_IN'`, records `countInStartMs = nowMs`, and schedules `beatsPerBar` count-in beats at `beatPeriodMs = 60000 / phrase.targetBpm`.
-   - **Transition to `PERFORM`**:
-     - When `nowMs - countInStartMs >= beatsPerBar * beatPeriodMs`, transitions to `phase = 'PERFORM'`, with `performStartMs = countInStartMs + beatsPerBar * beatPeriodMs` (exact Beat 1 downbeat timestamp!).
-     - As the user presses and releases keys in `PERFORM`, records `RecordedTap { pressTimeMs, releaseTimeMs }`.
-     - Automatically completes `PERFORM` and transitions to `FEEDBACK` either:
-       - Shortly after the final note is released (or `350 ms` after the final note is pressed if `flattenedNotes.length` taps have been recorded), OR
-       - If the user's time exceeds `(totalPhraseBeats + 2.0) * beatPeriodMs` (timeout completion).
-2. **Relative-IOI ("Groove") + Hold Duration Grading (`evaluatePerformance()`)**:
-   - Let $N$ be `flattenedNotes.length`.
-   - **Local Beat Period Estimation**:
-     - If the user tapped at least 2 notes, estimate the user's mean beat period $\hat{T}_{\text{user}}$ via linear regression (or total span $\frac{t_{\text{press}}(N-1) - t_{\text{press}}(0)}{b_{N-1} - b_0}$), clamped within $[0.5 \cdot T_{\text{target}}, 2.0 \cdot T_{\text{target}}]$.
-   - **Relative Inter-Onset Interval (IOI) Accuracy**:
-     - For each note $i$, compute its expected onset time on the user's best-fit local grid (or pairwise inter-onset ratio $\frac{\Delta t_i}{\hat{T}_{\text{local}}} - \Delta b_i$).
-     - `relativeOnsetError`:
-       - Within $\pm 0.085$ ($\pm 8.5\%$ of a beat): `'perfect'` ($100\%$ note groove score).
-       - Within $\pm 0.16$ ($\pm 16\%$ of a beat): `'loose'` ($60\%$–$90\%$ linear interpolation).
-       - Beyond $\pm 0.16$ or missing tap: `'missed'` ($0\%$–$30\%$).
-   - **Hold / Gate Articulation Score (`holdRatio`)**:
-     - For each note $i$ (except the final landing note, which only needs a clean attack):
-       - Expected hold duration in ms is $D_i = d_i \cdot \hat{T}_{\text{user}}$.
-       - Actual hold duration is $H_i = t_{\text{release}}(i) - t_{\text{press}}(i)$.
-       - If the note is followed by a rest (or is a long note $d_i \ge 1.0$, such as the quarter in `♪ ♩ ♪`), check whether the user held it for a reasonable duty cycle ($H_i / D_i \in [0.40, 1.35]$) rather than playing a tiny $<80\text{ ms}$ staccato poke on a sustained syncopation or holding straight through a rest!
-   - **Macro-Pulse Drift (%)**:
-     - $\text{PulseDriftPct} = \frac{\text{EstimatedUserBpm} - \text{TargetBpm}}{\text{TargetBpm}} \times 100\%$.
+### 2.3. `src/rhythm/engine.ts` (Self-Paced First-Press Engine)
+Simplify `RhythmEngine` to a clean, rock-solid self-paced flow:
+1. **Phases**:
+   - `'READY'`: Waiting for the user to tap Note 1 (`currentNoteIndex = 0`).
+   - `'PLAYING'`: The user has pressed Note 1 (`index = 0`), and is tapping through `index = 1 .. N - 1`.
+   - `'FEEDBACK'`: All $N$ notes have been tapped and the last note has been released (or `300 ms` has elapsed since the final landing note was pressed). The evaluation is displayed.
+     - **If `feedback.passed === true`**:
+       - Increment `phrasesCompletedInLevel`.
+       - After `750 ms` in `'FEEDBACK'` (checked inside `tick(nowMs)`), automatically advance to the next phrase in the level and reset `phase = 'READY'`! If `phrasesCompletedInLevel >= phrasesRequiredForLevel` (5 phrases), transition `phase = 'LEVEL_COMPLETE'`.
+       - Also if the user presses a key during a passed `'FEEDBACK'` after at least `250 ms`, advance immediately to the next phrase.
+     - **If `feedback.passed === false`**:
+       - Stay in `'FEEDBACK'` showing the red/green note evaluations so the user can see what went wrong.
+       - **As soon as the user presses `Space` or any piano key again (after a `350 ms` debounce from the last note press so an accidental double-tap doesn't trigger it)**, that press immediately starts a fresh retry of the same phrase (`phase = 'PLAYING'`, recording that press as Note 1 `index = 0`!).
+2. **Evaluating Performance (`evaluatePerformance`)**:
+   - Fit the Ordinary Least-Squares regression line $\hat{t}(b_i) = \hat{t}_0 + \hat{T} \cdot b_i$ across all $M = N$ recorded taps.
+   - Clamp $\hat{T}$ (`estimatedUserBeatPeriodMs`) to `[300 ms, 1714 ms]` (i.e. **35 BPM to 200 BPM**), so the user truly can play at any comfortable human tempo they choose, while preventing absurd 10-second pauses from fitting a fake 5-BPM tempo.
+   - For each note $i \in \{0, \dots, N-1\}$:
+     - `onsetErrorMs = tap.pressTimeMs - (t0 + estimatedUserBeatPeriodMs * note.startBeat)`
+     - `relativeOnsetError = onsetErrorMs / estimatedUserBeatPeriodMs`
+     - `absErr = Math.abs(relativeOnsetError)`
+     - Thresholds:
+       - `absErr <= 0.10`: `'perfect'` (`100` groove score)
+       - `0.10 < absErr <= 0.18`: `'loose'` (`60..100` groove score)
+       - `absErr > 0.18`: `'missed'` (`0..30` groove score)
+     - Hold Articulation (for non-landing notes, i.e., `i < N - 1`):
+       - Check how long the note was held (`actualHoldMs / expectedDurationMs`) and also check if a rest follows the note (if a rest follows immediately in the beat cell or next beat cell, holding across the entire rest > `1.45 * expectedDurationMs` is `'long'`; if held `< 0.30 * expectedDurationMs` on a note >= 1 beat, mark `'short'`).
+       - Keep hold grading forgiving on normal keyboard taps (`holdRatio >= 0.25 && holdRatio <= 1.50` -> `100` hold score; if `holdRatio < 0.25` on a sustained note `expectedDurationBeats >= 1.5` -> penalize as `'short'`) so computer-keyboard tappers aren't frustrated on short eighth/sixteenth notes, while half notes (`𝅗𝅥`) and dotted quarters (`♩.`) still require a genuine hold (`>= 0.40`).
+     - Set `errorHint`:
+       - If `status === 'missed'` or `status === 'loose'`: `relativeOnsetError < -0.10 ? 'early' : relativeOnsetError > 0.10 ? 'late' : null`.
+       - Else if `noteHoldScore < 60`: `holdRatio < 0.40 ? 'short' : 'long'`.
+   - Pass criteria: `overallScorePct >= 80` and zero notes with `status === 'missed'`.
 
 ---
 
-### 2.4 `src/audio/rhythmAudio.ts` (New File)
-
-Zero-dependency Web Audio synthesizer for the Rhythm Module (defensively guarded for `jsdom`):
-1. `playMetricCountInClick(beatIndex: number, totalBeatsInBar: number): void`
-   - **Beat 0 (Beat 1 — *Schwer* / Downbeat Gravity)**: Warm woody rim/block at `320 Hz` + body resonance at `160 Hz` (`90 ms` decay, gain `0.28`).
-   - **Middle Beats (*Leicht*)**: Crisp light clave tick at `640 Hz` (`45 ms` decay, gain `0.14`).
-   - **Final Beat (*Auftakt* / Lift)**: Slightly brighter upward-inflected tick at `760 Hz` (`55 ms` decay, gain `0.18`).
-2. `playRhythmNoteVoice(durationSec?: number, isLanding?: boolean): void`
-   - Warm acoustic marimba/rhodes piano tone (`C4 = 261.63 Hz`, or `G4 = 392.00 Hz` on the final landing note) that sustains for `durationSec` so the user *hears* the difference between a short eighth and a held syncopated quarter!
-3. `playLeftHandPulseThump(): void`
-   - Deep, soft bass pulse (`C2 = 65.41 Hz`, `80 ms` decay) when the user taps the Left-Hand Pulse key (`F`).
-4. `playCellPreviewWithLanding(cell: RhythmBeatCell, bpm: number): void`
-   - Plays the clicked 1-beat cell at `bpm` **followed immediately by a soft downbeat Landing Note on the next beat** (obeying the "Closed Gestalt +1 Landing" rule!).
-
----
-
-### 2.5 `src/components/RhythmArena.tsx` (New File) & `src/styles/app.css`
-
-Create a clean, minimalist Rhythm Practice Arena that matches our warm ivory & emerald aesthetic:
-1. **Top Toolbar**:
-   - **Tier / Level Selector** dropdown (`Tier 1` .. `Tier 6`) + **Phrase Selector** (`Phrase 1 of N`, with composer attribution badge e.g. `"W.A. Mozart — Sonata K. 279"`).
-   - **`[2× Metric Zoom]` Button** (rendered whenever `phrase.zoomTwinPhraseId` is defined, e.g., morphing `♩. ♪ → 𝅗𝅥 @ 132 BPM` $\leftrightarrow$ `♪. ♬ → ♩ @ 66 BPM` with one click!).
-   - **`[Word Boxes: On/Off]`** toggle & **`[Pulse: Silent / Bar-1 Anchor]`** toggle.
-2. **SVG Rhythm Notation Score (`viewBox="0 0 840 220"`)**:
-   - Renders clean standard rhythmic engraving: time signature (`4/4`, `3/4`, `2/4`, `2/2`), barlines, double barline after the **"+1 Landing Beat"**, noteheads, stems, **authentic beat-grouped primary and secondary beams** (`♫`, `♬♬`, `♪ ♬`, `♬ ♪`, `♪. ♬` with stub beam, `♬ ♪ ♬`), augmentation dots, ties across beat boundaries, and rests (`𝄽`, `𝄾`, `𝄿`).
-   - **1-Beat Word Boxes**: Subtle rounded pill boxes underneath each beat cell (`Click any beat box in Sandbox to hear its groove + landing`).
-   - **No Chasing Cursor during `PERFORM`**: During performance, the score remains calm and static so the user's Eye-Hand Span reads ahead naturally.
-   - **Feedback Overlay on Notes**: In `FEEDBACK` phase, colors each notehead (`emerald` = locked-in groove, `amber` = slightly loose, `coral` = missed/wrong hold) and shows subtle onset tick marks.
-3. **Interactive Control & Status Bar**:
-   - In **`SANDBOX`**:
-     - Displays: *"Sandbox (No Metronome) — Internalize the pattern at your own pace (`Space`/`J` or MIDI to play, `F` for Left-Hand Pulse, or click any beat word to hear it)."*
-     - Primary CTA button (`data-testid="rhythm-start-perform-btn"`): **`"Count-In & Play (Enter) →"`**.
-   - In **`COUNT_IN`**:
-     - Displays visual metric gravity indicator (`Beat 1 [Heavy] • Beat 2 • Beat 3 • Beat 4 [Lift]`).
-   - In **`PERFORM`**:
-     - Displays calm prompt: *"Internal Pulse Active — Play the phrase (`Space` / `J` / MIDI)"*.
-   - In **`FEEDBACK`**:
-     - Displays three concise metrics:
-       - **Groove Shape**: `{grooveScorePct}%`
-       - **Note Hold / Articulation**: `{holdScorePct}%`
-       - **Internal Clock**: `{estimatedUserBpm} BPM` (`{pulseDriftPct >= 0 ? '+' : ''}{pulseDriftPct}% drift`)
-     - Action buttons: **`"← Sandbox (R)"`** and **`"Next Phrase (Enter) →"`**.
+### 2.4. `src/components/LevelGraph.tsx` (Unified 4-Lane Tree: `Treble | Both | Bass | Rhythm`)
+Update [`src/components/LevelGraph.tsx`](file:///home/benjaminkiesl/code/no_nonsense_sight_reading/src/components/LevelGraph.tsx):
+1. **Header**:
+   - Render 4 column labels in `.nnsr-level-graph-header`:
+     - `Treble` | `Both` | `Bass` | `Rhythm` (each `width: '25%'`, `textAlign: 'center'`).
+2. **SVG Coordinates**:
+   - Widen `SVG_WIDTH` from `300` to `400` (`viewBox="0 0 400 1298"`).
+   - Keep `Treble` at `x = 55`, `Both` at `x = 150`, `Bass` at `x = 245`, and place **`Rhythm` at `x = 345`**!
+   - Widen `.nnsr-level-graph-container` max-width in `src/styles/app.css` from `360px` to `460px` so all 4 columns have generous breathing room.
+3. **Rhythm Lane Nodes & Arrows (`rhythm-1` .. `rhythm-12`)**:
+   - For `tier = 1 .. 12`:
+     - `yRhythmCur = PADDING_TOP + (12 - tier) * TIER_HEIGHT + BOTH_Y_OFFSET` (aligned horizontally with `Treble` and `Bass` at the same tier!).
+     - Draw upward arrow from `(345, yRhythmCur - NODE_RADIUS)` to `(345, yRhythmNext + NODE_RADIUS + 4)` for `tier < 12`, colored `var(--emerald)` if `completedLevelIds.has('rhythm-' + (tier + 1))` else `#b0aba2`.
+     - Render each `rhythm-${tier}` circular node (`r = NODE_RADIUS = 25`) with `className="nnsr-graph-node nnsr-rhythm-graph-node ..."`, `aria-label={"Level Rhythm - Tier " + tier + ": " + rhythmLevel.title}`, `data-testid={"rhythm-node-" + tier}`, and `onClick={() => onSelectLevel(rhythmLevel.id)}`.
+     - **Important**: In `tests/ui/levelGraph.test.tsx`, Test 2 checks `container.querySelectorAll('.nnsr-graph-node')`. Check whether `tests/ui/levelGraph.test.tsx` expects `36` or `48` nodes, and update `tests/ui/levelGraph.test.tsx` to verify the 4 lane headers (`Treble`, `Both`, `Bass`, `Rhythm`) and `48` total nodes (36 pitch + 12 rhythm)!
+4. **`MiniRhythmMotif` SVG Component inside each Rhythm Node**:
+   - Draw a crisp miniature rhythm engraving centered at `(cx, cy)` inside the circle (`r = 25`):
+     - Faint horizontal percussion staff line (`x1 = cx - 16`, `x2 = cx + 16`, `y = cy`, `stroke="#b0aba2"`, `strokeWidth={0.7}`).
+     - Tiny stylized noteheads (`ellipse rx=2.2 ry=1.5 transform="rotate(-20)"`), stems (`strokeWidth=1.0`), beams, dots, or rests representing `rhythmLevel.motif` so every node in the `Rhythm` column is visually distinct and immediately recognizable as rhythm notation without a single word of text!
 
 ---
 
-### 2.6 `src/components/Header.tsx` & `src/App.tsx`
-
-1. In `src/components/Header.tsx`:
-   - Add optional `onToggleRhythm?: () => void` prop and expand `activeView?: 'practice' | 'levels' | 'rhythm'`.
-   - Keep the existing `data-testid="view-toggle-button"` button rendering `'Levels'` when `activeView === 'practice'` and `'← Practice'` otherwise so **all existing integration tests pass unchanged**.
-   - Add a clean button `data-testid="rhythm-mode-button"` labeled `'Rhythm'` (or `'← Pitch'` when `activeView === 'rhythm'`).
-2. In `src/App.tsx`:
-   - Support `activeView: 'practice' | 'levels' | 'rhythm'`.
-   - When `activeView === 'rhythm'`, render `<RhythmArena />` inside `<main className="nnsr-workspace nnsr-practice-workspace">`.
+### 2.5. `src/components/RhythmArena.tsx` (Minimalist, Self-Explanatory Rhythm Practice View)
+Completely replace the cluttered `RhythmArena.tsx` with a clean, self-explanatory component:
+1. **Props**:
+   ```ts
+   export interface RhythmArenaProps {
+     levelId: string;
+     onLevelComplete?: () => void;
+   }
+   ```
+2. **Layout (Matches Pitch Practice View)**:
+   - Renders inside `<section className="nnsr-main-column">`:
+     1. **Rhythm Staff Card (`.nnsr-rhythm-canvas-card`)**:
+        - Clean white card (`background: var(--card-bg)`, `border-radius: 12px`, `border: 1px solid var(--border-subtle)`).
+        - Contains ONLY the SVG rhythm staff (`viewBox="0 0 840 200"`):
+          - Percussion clef (`𝄥` or two vertical bars) + Time Signature (`4/4`, `3/4`, `6/8`) on the left.
+          - Single horizontal staff line (`y = 110`).
+          - Engraved notes, stems, beams (properly grouped by beat), augmentation dots, ties, rests, barlines, and final double barline.
+          - **Visual Guidance on the First / Current Note**:
+            - When `phase === 'READY'`, draw a gentle emerald target ring + downward pointer (`▼ 1st note`) above Note 0 (`index = 0`) so the user's eye is immediately drawn to the starting note.
+            - During `phase === 'PLAYING'`, each already-tapped note (`i < currentNoteIndex`) is colored active emerald (`#04724d`), and the next expected note (`i === currentNoteIndex`) has a subtle target ring.
+            - During `phase === 'FEEDBACK'`, each note is colored **Green (`#04724d`)** (`perfect` / `loose`) or **Coral Red (`#e05a47`)** (`missed` or failed hold). If a note has an `errorHint` (`'early' | 'late' | 'short' | 'long'`), display that single word cleanly in `11px` below that specific notehead.
+        - **Bottom Status Prompt inside the Card**:
+          - When `phase === 'READY'`:
+            `Play the 1st note (Space or any piano key) to start at your own tempo`
+          - When `phase === 'PLAYING'`:
+            `Keep your steady beat through the final note...`
+          - When `phase === 'FEEDBACK'` and `feedback.passed === true`:
+            `✓ Steady rhythm (~${feedback.estimatedUserBpm} BPM)`
+          - When `phase === 'FEEDBACK'` and `feedback.passed === false`:
+            `Timing off on highlighted notes — play the 1st note to try again`
+     2. **Progress Bar (`.nnsr-progress-container`)**:
+        - Reuse the exact same `.nnsr-progress-container` / `.nnsr-progress-track` / `.nnsr-progress-fill` CSS classes as [`ProgressBar.tsx`](file:///home/benjaminkiesl/code/no_nonsense_sight_reading/src/components/ProgressBar.tsx) so the progress bar looks identical to Pitch mode (`width: ${(phrasesCompletedInLevel / phrasesRequiredForLevel) * 100}%`).
+3. **Input Handling**:
+   - Pressing `Space` or any letter/note key (except `Tab`/`Escape`/modifiers) or any MIDI note triggers `handleNotePress` and plays `playRhythmNoteVoice`.
+   - Releasing the key triggers `handleNoteRelease` and stops the sustain voice.
 
 ---
 
-## 3. Test Suite Requirements (`tests/rhythm/rhythmEngine.test.ts` & `tests/ui/rhythmArena.test.tsx`)
+### 2.6. `src/components/Header.tsx` & `src/App.tsx`
+1. **`src/components/Header.tsx`**:
+   - Remove the extra `Rhythm` button from the header. Restore `Header` to its clean single button (`data-testid="view-toggle-button"` showing `'Levels'` when `activeView === 'practice'` and `'← Practice'` when `activeView === 'levels'`).
+2. **`src/App.tsx`**:
+   - `activeView` is simply `'practice' | 'levels'`.
+   - Check `const isRhythmMode = isRhythmLevelId(currentLevelId);`
+   - When `activeView === 'practice'` and `isRhythmMode` is `true`, render:
+     ```tsx
+     <main className="nnsr-workspace nnsr-practice-workspace">
+       <section className="nnsr-main-column">
+         <RhythmArena
+           levelId={currentLevelId}
+           onLevelComplete={() => {
+             markLevelCompleted(currentLevelId);
+             setActiveView('levels');
+           }}
+         />
+       </section>
+     </main>
+     ```
+   - When `activeView === 'practice'` and `isRhythmMode` is `false`, render the existing Pitch workspace (`GrandStaffCanvas`, `ProgressBar`, `PianoKeyboard`).
+   - Guard `getLevelById(currentLevelId)` in `App.tsx` so when `currentLevelId` is `'rhythm-k'`, `currentLevel` falls back to `'treble-1'` for the dormant `SightReadingEngine` ref while `RhythmArena` runs the active rhythm level.
 
-1. **Unit Tests (`tests/rhythm/rhythmEngine.test.ts`)**:
-   - **Test 1 (Phrase Flattening & "+1 Landing" Rule)**: Verify `flattenPhraseToNotes` merges tied cells (`♩. ♪ → ♩`) into `[1.5 beats, 0.5 beats, 1.0 landing beat]` and marks the last note `isLandingNote: true`.
-   - **Test 2 (Sandbox Self-Paced Rehearsal)**: Verify tapping in `SANDBOX` advances `sandboxMatchedCount` without any metronome or timeout penalties, and `handleLeftHandPulse` tracks left-hand pulse taps.
-   - **Test 3 (Count-In to Disappearing-Pulse Perform Transition)**: Verify `startCountIn` ticks through 1 bar of count-in and transitions to `PERFORM`.
-   - **Test 4 (Relative-IOI Groove Grading & Tempo Drift Tolerance)**: Simulate a user playing a rhythm in `PERFORM` at a steady $+5\%$ faster internal tempo (e.g. `80 BPM` vs `76 BPM` target) with accurate relative sub-beat ratios $\rightarrow$ verify `grooveScorePct >= 95%` and `passed === true` (proving the user is NOT penalized with false-positive late/early errors when their internal clock breathes slightly!).
-   - **Test 5 (Hold Duration / Articulation Evaluation)**: Verify holding a sustained/syncopated note across the beat yields a high `holdScorePct`, whereas an ultra-short staccato poke on a sustained note reduces `holdScorePct`.
-2. **UI Tests (`tests/ui/rhythmArena.test.tsx`)**:
-   - Render `<RhythmArena />`, verify Sandbox mode is active by default, test clicking the `[2× Metric Zoom]` toggle on a Tier 4/5 phrase, and test transitioning from `SANDBOX` $\rightarrow$ `COUNT_IN`.
-   - Render `<App />`, click `data-testid="rhythm-mode-button"`, and verify switching to Rhythm view and back to Pitch Practice view.
+---
+
+## 3. Verification & Test Suite Requirements
+
+1. **`tests/rhythm/rhythmEngine.test.ts`**:
+   - Test that `RHYTHM_LEVELS` contains all 12 levels (`rhythm-1` .. `rhythm-12`) and `flattenPhraseToNotes` merges tied subdivisions and sets `isLandingNote: true` on the final note.
+   - Test that `RhythmEngine` starts in `'READY'`, transitions to `'PLAYING'` on the very first key press (recording Note 0 at that timestamp), and transitions to `'FEEDBACK'` when the final note is completed.
+   - Test that tapping a phrase proportionally at *any* human tempo (e.g. `65 BPM` or `115 BPM`) passes with `grooveScorePct === 100` regardless of the nominal `targetBpm`.
+   - Test that rushing/dragging a specific note in the middle of a phrase marks that note `'missed'` with `errorHint: 'early'` or `'late'`, and that the next key press after the debounce starts Note 0 of a fresh retry.
+   - Test that completing 5 phrases advances `phrasesCompletedInLevel` from `0` to `5` and transitions to `'LEVEL_COMPLETE'`.
+2. **`tests/ui/rhythmArena.test.tsx`**:
+   - Test that `RhythmArena` renders the SVG staff, the clear prompt `Play the 1st note (Space or any piano key) to start at your own tempo`, the progress bar, and **zero** dropdowns or mode buttons.
+   - Test that pressing `Space` immediately plays Note 0 and transitions the prompt to `Keep your steady beat through the final note...`.
+   - Test that selecting a Rhythm node (`rhythm-1`) in `LevelGraph` opens `RhythmArena` in `App.tsx`.
+3. **`tests/ui/levelGraph.test.tsx`**:
+   - Verify all 4 lane headers (`Treble`, `Both`, `Bass`, `Rhythm`) and all 48 nodes (36 pitch + 12 rhythm).
+4. Run `npm test` and `npm run build` and ensure 100% pass rate with zero TypeScript or build errors.
+   - **NEVER start any dev or preview server.**

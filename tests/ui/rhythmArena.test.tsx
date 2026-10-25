@@ -4,7 +4,7 @@ import App from '../../src/App';
 import { RhythmArena } from '../../src/components/RhythmArena';
 import { useAppStore } from '../../src/store/useAppStore';
 
-describe('RhythmArena & Rhythm View UI Tests', () => {
+describe('RhythmArena UI Specification Tests (Minimalist Redesign)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     window.localStorage.clear();
@@ -16,113 +16,75 @@ describe('RhythmArena & Rhythm View UI Tests', () => {
     });
   });
 
-  it('renders RhythmArena in Sandbox rehearsal mode by default and supports beat previews', () => {
-    render(<RhythmArena initialLevelId="rhythm-1" initialPhraseIndex={0} />);
+  it('renders clean Rhythm Staff Card with prompt and progress bar, and ZERO dropdowns or mode buttons', () => {
+    const { container } = render(<RhythmArena levelId="rhythm-1" />);
 
-    // Sandbox guidance and start CTA
-    expect(screen.getByText('Sandbox Rehearsal')).toBeDefined();
+    // Unmistakable prompt on Note 0
     expect(
-      screen.getByText(/Internalize the rhythm pattern at your own pace/)
+      screen.getByText('Play the 1st note (Space or any piano key) to start at your own tempo')
     ).toBeDefined();
 
-    const startBtn = screen.getByTestId('rhythm-start-perform-btn');
-    expect(startBtn).toBeDefined();
-    expect(startBtn.textContent).toContain('Count-In & Play (Enter) →');
+    // Visual pointer above Note 0
+    expect(screen.getByText('▼ 1st note')).toBeDefined();
 
-    // 1-Beat Word Boxes are present and clickable
-    const beatBox0 = screen.getByTestId('beat-box-0');
-    expect(beatBox0).toBeDefined();
-    act(() => {
-      fireEvent.click(beatBox0);
-    });
+    // Progress bar showing Phrase 1 of 5
+    expect(screen.getByText(/Phrase 1 of 5/)).toBeDefined();
 
-    // Start Count-In
-    act(() => {
-      fireEvent.click(startBtn);
-    });
-
-    // Count-in view becomes active
-    expect(screen.getByText('Count-In')).toBeDefined();
-    expect(screen.getByText('Schwer')).toBeDefined();
+    // Verify ZERO dropdowns, buttons, or toggles exist inside RhythmArena
+    expect(container.querySelectorAll('select').length).toBe(0);
+    expect(container.querySelectorAll('button').length).toBe(0);
   });
 
-  it('handles 2x Metric Zoom toggle on Tier 4/5 phrases', () => {
-    // Initialized on gallop-1x in Tier 4 (phrase index 1)
-    render(<RhythmArena initialLevelId="rhythm-4" initialPhraseIndex={1} />);
+  it('immediately starts PLAYING on first key press and updates status prompt', () => {
+    render(<RhythmArena levelId="rhythm-1" />);
 
-    const zoomBtn = screen.getByTestId('rhythm-metric-zoom-btn');
-    expect(zoomBtn).toBeDefined();
-    expect(zoomBtn.textContent).toContain('2× Metric Zoom');
+    expect(
+      screen.getByText('Play the 1st note (Space or any piano key) to start at your own tempo')
+    ).toBeDefined();
 
-    // Select box displays Gallop Gesture (68 BPM)
-    const phraseSelect = screen.getByTestId('rhythm-phrase-select') as HTMLSelectElement;
-    expect(phraseSelect.value).toBe('gallop-1x');
-
-    // Click Metric Zoom
-    act(() => {
-      fireEvent.click(zoomBtn);
-    });
-
-    // Should now be on gallop-2x (136 BPM)
-    expect(phraseSelect.value).toBe('gallop-2x');
-
-    // Click Metric Zoom again to toggle back
-    act(() => {
-      fireEvent.click(zoomBtn);
-    });
-    expect(phraseSelect.value).toBe('gallop-1x');
-  });
-
-  it('switches seamlessly between Pitch Practice and Rhythm Module in App', () => {
-    render(<App />);
-
-    // Pitch Practice mode is active initially
-    expect(screen.getByText('Learn')).toBeDefined();
-    expect(screen.getByTestId('rhythm-mode-button')).toBeDefined();
-    expect(screen.getByTestId('rhythm-mode-button').textContent).toBe('Rhythm');
-    expect(screen.getByTestId('view-toggle-button').textContent).toBe('Levels');
-
-    // Click 'Rhythm' to switch to Rhythm Arena
-    act(() => {
-      fireEvent.click(screen.getByTestId('rhythm-mode-button'));
-    });
-
-    // Rhythm view is active
-    expect(screen.getByText('Sandbox Rehearsal')).toBeDefined();
-    expect(screen.getByTestId('rhythm-start-perform-btn')).toBeDefined();
-    expect(screen.getByTestId('rhythm-mode-button').textContent).toBe('← Pitch');
-    expect(screen.getByTestId('view-toggle-button').textContent).toBe('← Practice');
-
-    // Click '← Pitch' to return to Pitch Practice
-    act(() => {
-      fireEvent.click(screen.getByTestId('rhythm-mode-button'));
-    });
-
-    expect(screen.getByText('Learn')).toBeDefined();
-    expect(screen.getByTestId('rhythm-mode-button').textContent).toBe('Rhythm');
-    expect(screen.getByTestId('view-toggle-button').textContent).toBe('Levels');
-  });
-
-  it('supports keyboard tapping Space, F, and Enter in RhythmArena', () => {
-    render(<RhythmArena initialLevelId="rhythm-1" initialPhraseIndex={0} />);
-
-    // Tap Left Hand pulse 'F'
-    act(() => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
-      window.dispatchEvent(new KeyboardEvent('keyup', { key: 'f' }));
-    });
-
-    // Tap Rhythm note 'Space'
+    // Press Space
     act(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
-      window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
     });
 
-    // Press Enter to start count-in
+    // Prompt updates immediately to steady beat instruction
+    expect(screen.getByText('Keep your steady beat through the final note...')).toBeDefined();
+  });
+
+  it('opens RhythmArena in App when a Rhythm node is selected from the LevelGraph', () => {
+    render(<App />);
+
+    // Initially in Pitch view
+    expect(screen.getByText('Learn')).toBeDefined();
+    expect(screen.getByTestId('view-toggle-button')).toBeDefined();
+    expect(screen.getByTestId('view-toggle-button').textContent).toBe('Levels');
+
+    // Go to Levels view
     act(() => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      fireEvent.click(screen.getByTestId('view-toggle-button'));
     });
 
-    expect(screen.getByText('Count-In')).toBeDefined();
+    expect(screen.getByText('Treble')).toBeDefined();
+    expect(screen.getByText('Both')).toBeDefined();
+    expect(screen.getByText('Bass')).toBeDefined();
+    expect(screen.getByText('Rhythm')).toBeDefined();
+
+    // Click Rhythm Tier 1 node
+    const rhythm1Node = screen.getByTestId('rhythm-node-1');
+    act(() => {
+      fireEvent.click(rhythm1Node);
+    });
+
+    // App switches to practice view running RhythmArena!
+    expect(useAppStore.getState().currentLevelId).toBe('rhythm-1');
+    expect(
+      screen.getByText('Play the 1st note (Space or any piano key) to start at your own tempo')
+    ).toBeDefined();
+
+    // Return back to Level Graph
+    act(() => {
+      fireEvent.click(screen.getByTestId('view-toggle-button'));
+    });
+    expect(screen.getByText('Rhythm')).toBeDefined();
   });
 });

@@ -9,6 +9,7 @@ import { ActiveKeyHighlight, PianoKeyboard } from './components/PianoKeyboard';
 import { ProgressBar } from './components/ProgressBar';
 import { RhythmArena } from './components/RhythmArena';
 import { getLevelById, getNextRecommendedLevel } from './curriculum/graph';
+import { isRhythmLevelId } from './rhythm/curriculum';
 import { SightReadingEngine } from './engine/engine';
 import { SpeedController } from './engine/speed';
 import { mapKeyboardEventToInput } from './input/keyboardMapper';
@@ -33,8 +34,10 @@ export default function App(): React.JSX.Element {
     setLastCustomAccelerandoNotes,
   } = useAppStore();
 
-  const [activeView, setActiveView] = useState<'practice' | 'levels' | 'rhythm'>('practice');
-  const currentLevel = getLevelById(currentLevelId);
+  const isRhythmMode = isRhythmLevelId(currentLevelId);
+  const currentLevel = isRhythmMode ? getLevelById('treble-1') : getLevelById(currentLevelId);
+
+  const [activeView, setActiveView] = useState<'practice' | 'levels'>('practice');
   const engineRef = useRef<SightReadingEngine>(new SightReadingEngine(currentLevel));
   const [snapshot, setSnapshot] = useState<EngineSnapshot>(() => engineRef.current.getSnapshot());
   const [activeHighlights, setActiveHighlights] = useState<ActiveKeyHighlight[]>([]);
@@ -43,19 +46,19 @@ export default function App(): React.JSX.Element {
 
   // Transition to Levels view and mark level completed upon LEVEL_COMPLETE phase
   useEffect(() => {
-    if (snapshot.phase === 'LEVEL_COMPLETE') {
+    if (!isRhythmMode && snapshot.phase === 'LEVEL_COMPLETE') {
       markLevelCompleted(currentLevelId);
       setActiveView('levels');
     }
-  }, [snapshot.phase, currentLevelId, markLevelCompleted]);
+  }, [snapshot.phase, currentLevelId, markLevelCompleted, isRhythmMode]);
 
-  // Re-create engine whenever selected level changes (unless in accelerando run)
+  // Re-create engine whenever selected level changes (unless in accelerando run or in rhythm mode)
   useEffect(() => {
-    if (!isAccelerandoActive) {
+    if (!isAccelerandoActive && !isRhythmMode) {
       engineRef.current = new SightReadingEngine(currentLevel);
       setSnapshot(engineRef.current.getSnapshot());
     }
-  }, [currentLevelId, isAccelerandoActive, currentLevel]);
+  }, [currentLevelId, isAccelerandoActive, currentLevel, isRhythmMode]);
 
   // Launch Accelerando Perpetuo mode
   const handleStartAccelerando = useCallback(
@@ -87,9 +90,11 @@ export default function App(): React.JSX.Element {
     (id: string) => {
       setIsAccelerandoActive(false);
       selectLevel(id);
-      const level = getLevelById(id);
-      engineRef.current = new SightReadingEngine(level);
-      setSnapshot(engineRef.current.getSnapshot());
+      if (!isRhythmLevelId(id)) {
+        const level = getLevelById(id);
+        engineRef.current = new SightReadingEngine(level);
+        setSnapshot(engineRef.current.getSnapshot());
+      }
       setActiveView('practice');
     },
     [selectLevel]
@@ -100,9 +105,11 @@ export default function App(): React.JSX.Element {
     const nextId = getNextRecommendedLevel(currentLevelId, allFinishedLevelIds);
     markLevelCompleted(currentLevelId);
     selectLevel(nextId);
-    const nextLevel = getLevelById(nextId);
-    engineRef.current = new SightReadingEngine(nextLevel);
-    setSnapshot(engineRef.current.getSnapshot());
+    if (!isRhythmLevelId(nextId)) {
+      const nextLevel = getLevelById(nextId);
+      engineRef.current = new SightReadingEngine(nextLevel);
+      setSnapshot(engineRef.current.getSnapshot());
+    }
     setActiveView('practice');
   }, [currentLevelId, allFinishedLevelIds, markLevelCompleted, selectLevel]);
 
@@ -114,6 +121,8 @@ export default function App(): React.JSX.Element {
   // Handle note dispatch
   const handleNoteInput = useCallback(
     (input: UserNoteInput) => {
+      if (isRhythmMode) return;
+
       const engine = engineRef.current;
       const result = engine.handleNoteInput(input);
 
@@ -155,10 +164,10 @@ export default function App(): React.JSX.Element {
         setActiveHighlights([]);
       }, 180);
     },
-    [handleCelebrationContinue, updateBestAccelerandoBpm]
+    [handleCelebrationContinue, updateBestAccelerandoBpm, isRhythmMode]
   );
 
-  // Main 60fps Animation Loop - Pauses ticking when viewing map or when modal is open
+  // Main 60fps Animation Loop - Pauses ticking when viewing map, when modal is open, or in rhythm mode
   useEffect(() => {
     let animId: number;
     let lastTime = performance.now();
@@ -167,7 +176,7 @@ export default function App(): React.JSX.Element {
       const deltaMs = time - lastTime;
       lastTime = time;
 
-      if (activeView === 'practice' && !isAccelerandoModalOpen) {
+      if (activeView === 'practice' && !isAccelerandoModalOpen && !isRhythmMode) {
         const prevRecoveryMs = engineRef.current.getSnapshot().recoveryRemainingMs;
         engineRef.current.tick(deltaMs);
         const nextSnap = engineRef.current.getSnapshot();
@@ -185,13 +194,15 @@ export default function App(): React.JSX.Element {
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [activeView, isAccelerandoModalOpen]);
+  }, [activeView, isAccelerandoModalOpen, isRhythmMode]);
 
   // Web MIDI API Initialization
   useEffect(() => {
     const midi = new MidiManager({
       onNoteOn: (midi) => {
-        handleNoteInput({ source: 'midi', midi });
+        if (!isRhythmMode) {
+          handleNoteInput({ source: 'midi', midi });
+        }
       },
       onConnectionChange: (deviceName) => {
         setMidiDeviceName(deviceName);
@@ -200,19 +211,19 @@ export default function App(): React.JSX.Element {
 
     midi.init();
     return () => midi.dispose();
-  }, [handleNoteInput, setMidiDeviceName]);
+  }, [handleNoteInput, setMidiDeviceName, isRhythmMode]);
 
   // Computer Keyboard Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isAccelerandoModalOpen) return;
 
-      if (engineRef.current.getSnapshot().phase === 'LEVEL_COMPLETE') {
+      if (!isRhythmMode && engineRef.current.getSnapshot().phase === 'LEVEL_COMPLETE') {
         handleCelebrationContinue();
         return;
       }
 
-      if (activeView === 'levels' || activeView === 'rhythm') {
+      if (activeView === 'levels' || isRhythmMode) {
         return;
       }
 
@@ -227,7 +238,7 @@ export default function App(): React.JSX.Element {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNoteInput, handleCelebrationContinue, isAccelerandoModalOpen, activeView]);
+  }, [handleNoteInput, handleCelebrationContinue, isAccelerandoModalOpen, activeView, isRhythmMode]);
 
   return (
     <div className="nnsr-app">
@@ -235,28 +246,37 @@ export default function App(): React.JSX.Element {
         midiDeviceName={midiDeviceName}
         activeView={activeView}
         onToggleView={() => setActiveView((v) => (v === 'practice' ? 'levels' : 'practice'))}
-        onToggleRhythm={() => setActiveView((v) => (v === 'rhythm' ? 'practice' : 'rhythm'))}
       />
 
-      {activeView === 'rhythm' ? (
-        <main className="nnsr-workspace nnsr-practice-workspace">
-          <RhythmArena />
-        </main>
-      ) : activeView === 'practice' ? (
-        <main className="nnsr-workspace nnsr-practice-workspace">
-          <section className="nnsr-main-column">
-            <GrandStaffCanvas snapshot={snapshot} level={currentLevel} />
-            <ProgressBar snapshot={snapshot} />
-            <PianoKeyboard
-              onKeyPress={(midi) => handleNoteInput({ source: 'piano_click', midi })}
-              activeHighlights={activeHighlights}
-            />
-          </section>
-        </main>
+      {activeView === 'practice' ? (
+        isRhythmMode ? (
+          <main className="nnsr-workspace nnsr-practice-workspace">
+            <section className="nnsr-main-column">
+              <RhythmArena
+                levelId={currentLevelId}
+                onLevelComplete={() => {
+                  markLevelCompleted(currentLevelId);
+                  setActiveView('levels');
+                }}
+              />
+            </section>
+          </main>
+        ) : (
+          <main className="nnsr-workspace nnsr-practice-workspace">
+            <section className="nnsr-main-column">
+              <GrandStaffCanvas snapshot={snapshot} level={currentLevel} />
+              <ProgressBar snapshot={snapshot} />
+              <PianoKeyboard
+                onKeyPress={(midi) => handleNoteInput({ source: 'piano_click', midi })}
+                activeHighlights={activeHighlights}
+              />
+            </section>
+          </main>
+        )
       ) : (
         <main className="nnsr-workspace nnsr-level-map-container">
           <div className="nnsr-map-view">
-            {snapshot.phase === 'LEVEL_COMPLETE' && (
+            {snapshot.phase === 'LEVEL_COMPLETE' && !isRhythmMode && (
               <CelebrationOverlay
                 level={currentLevel}
                 onContinue={handleCelebrationContinue}
@@ -268,7 +288,7 @@ export default function App(): React.JSX.Element {
               completedLevelIds={allFinishedLevelIds}
               onSelectLevel={handleSelectLevel}
               onOpenAccelerando={() => setIsAccelerandoModalOpen(true)}
-              celebratingLevelId={snapshot.phase === 'LEVEL_COMPLETE' ? currentLevelId : null}
+              celebratingLevelId={snapshot.phase === 'LEVEL_COMPLETE' && !isRhythmMode ? currentLevelId : null}
             />
           </div>
         </main>
