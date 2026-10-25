@@ -44,6 +44,7 @@ export default function App(): React.JSX.Element {
   const [isAccelerandoModalOpen, setIsAccelerandoModalOpen] = useState(false);
   const [isAccelerandoActive, setIsAccelerandoActive] = useState(false);
   const [isRhythmLevelCelebrating, setIsRhythmLevelCelebrating] = useState(false);
+  const [isManuallyPaused, setIsManuallyPaused] = useState(false);
 
   // Transition to Levels view and mark level completed upon LEVEL_COMPLETE phase
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function App(): React.JSX.Element {
     (notes: readonly StaffNoteTarget[], startingBpm: number) => {
       setIsAccelerandoActive(true);
       setIsAccelerandoModalOpen(false);
+      setIsManuallyPaused(false);
       setActiveView('practice');
       engineRef.current = new SightReadingEngine(currentLevel, Math.random, {
         mode: 'accelerando',
@@ -91,6 +93,7 @@ export default function App(): React.JSX.Element {
     (id: string) => {
       setIsAccelerandoActive(false);
       setIsRhythmLevelCelebrating(false);
+      setIsManuallyPaused(false);
       selectLevel(id);
       if (!isRhythmLevelId(id)) {
         const level = getLevelById(id);
@@ -179,7 +182,7 @@ export default function App(): React.JSX.Element {
       const deltaMs = time - lastTime;
       lastTime = time;
 
-      if (activeView === 'practice' && !isAccelerandoModalOpen && !isRhythmMode) {
+      if (activeView === 'practice' && !isAccelerandoModalOpen && !isRhythmMode && !isManuallyPaused) {
         const prevRecoveryMs = engineRef.current.getSnapshot().recoveryRemainingMs;
         engineRef.current.tick(deltaMs);
         const nextSnap = engineRef.current.getSnapshot();
@@ -197,7 +200,7 @@ export default function App(): React.JSX.Element {
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [activeView, isAccelerandoModalOpen, isRhythmMode]);
+  }, [activeView, isAccelerandoModalOpen, isRhythmMode, isManuallyPaused]);
 
   // Web MIDI API Initialization
   useEffect(() => {
@@ -219,7 +222,16 @@ export default function App(): React.JSX.Element {
   // Computer Keyboard Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isAccelerandoModalOpen) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setIsManuallyPaused((prev) => !prev);
+        return;
+      }
+
+      if (isManuallyPaused) {
+        // Any key unpauses
+        setIsManuallyPaused(false);
+      }
 
       if ((!isRhythmMode && engineRef.current.getSnapshot().phase === 'LEVEL_COMPLETE') || isRhythmLevelCelebrating) {
         handleCelebrationContinue();
@@ -267,8 +279,33 @@ export default function App(): React.JSX.Element {
           </main>
         ) : (
           <main className="nnsr-workspace nnsr-practice-workspace">
-            <section className="nnsr-main-column">
+            <section className="nnsr-main-column" style={{ position: 'relative' }}>
               <GrandStaffCanvas snapshot={snapshot} level={currentLevel} />
+              {isManuallyPaused && (
+                <div
+                  data-testid="manual-pause-overlay"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '840px',
+                    height: '280px',
+                    backgroundColor: 'rgba(26, 32, 28, 0.75)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ffffff',
+                    borderRadius: '12px',
+                    zIndex: 20,
+                  }}
+                >
+                  <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Paused</p>
+                  <p style={{ fontSize: '14px', color: '#b0aba2', margin: 0 }}>
+                    Press Esc or any key to resume
+                  </p>
+                </div>
+              )}
               <ProgressBar snapshot={snapshot} />
               <PianoKeyboard
                 onKeyPress={(midi) => handleNoteInput({ source: 'piano_click', midi })}
