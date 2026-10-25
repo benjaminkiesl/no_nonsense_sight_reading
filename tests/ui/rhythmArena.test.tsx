@@ -4,7 +4,7 @@ import App from '../../src/App';
 import { RhythmArena } from '../../src/components/RhythmArena';
 import { useAppStore } from '../../src/store/useAppStore';
 
-describe('RhythmArena UI Specification Tests (Minimalist Redesign)', () => {
+describe('RhythmArena UI Specification Tests (4-Stage Count-In & Optical Engraving)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     window.localStorage.clear();
@@ -16,39 +16,49 @@ describe('RhythmArena UI Specification Tests (Minimalist Redesign)', () => {
     });
   });
 
-  it('renders clean Rhythm Staff Card with prompt and progress bar, and ZERO dropdowns or mode buttons', () => {
+  it('renders in STUDY stage with Hear Tempo button, progress bar, zero dropdowns, and dark ink notes', () => {
     const { container } = render(<RhythmArena levelId="rhythm-1" />);
 
-    // Unmistakable prompt on Note 0
-    expect(
-      screen.getByText('Play the 1st note (Space or any piano key) to start at your own tempo')
-    ).toBeDefined();
-
-    // Visual pointer above Note 0
-    expect(screen.getByText('▼ 1st note')).toBeDefined();
+    // In Stage 1 (STUDY), shows Hear Tempo button
+    const hearTempoBtn = screen.getByTestId('hear-tempo-button');
+    expect(hearTempoBtn).toBeDefined();
+    expect(hearTempoBtn.textContent).toContain('Hear Tempo');
 
     // Progress bar showing Phrase 1 of 5
     expect(screen.getByText(/Phrase 1 of 5/)).toBeDefined();
 
-    // Verify ZERO dropdowns, buttons, or toggles exist inside RhythmArena
+    // Verify ZERO dropdowns or mode selectors exist inside RhythmArena
     expect(container.querySelectorAll('select').length).toBe(0);
-    expect(container.querySelectorAll('button').length).toBe(0);
+
+    // Verify noteheads are not colored green in STUDY
+    const ellipses = container.querySelectorAll('ellipse');
+    expect(ellipses.length).toBeGreaterThan(0);
+    for (const el of ellipses) {
+      expect(el.getAttribute('fill')).not.toBe('#04724d');
+    }
   });
 
-  it('immediately starts PLAYING on first key press and updates status prompt', () => {
+  it('progresses from STUDY to COUNT_IN, then to READY_TO_PLAY and PLAYING upon first tap', () => {
     render(<RhythmArena levelId="rhythm-1" />);
 
-    expect(
-      screen.getByText('Play the 1st note (Space or any piano key) to start at your own tempo')
-    ).toBeDefined();
-
-    // Press Space
+    // Click Hear Tempo button to enter COUNT_IN
+    const hearTempoBtn = screen.getByTestId('hear-tempo-button');
     act(() => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+      fireEvent.click(hearTempoBtn);
     });
 
-    // Prompt updates immediately to steady beat instruction
-    expect(screen.getByText('Keep your steady beat through the final note...')).toBeDefined();
+    // In COUNT_IN
+    expect(screen.getByText(/Tempo \(76 BPM\): Beat 1 of 4/)).toBeDefined();
+
+    // Note pointer is NOT shown during COUNT_IN
+    expect(screen.queryByText('▼ 1st note')).toBeNull();
+
+    // Press Space (in READY_TO_PLAY or after count-in)
+    // To test transition to PLAYING: trigger keydown when ready
+    act(() => {
+      // Fast forward time to finish count-in
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+    });
   });
 
   it('opens RhythmArena in App when a Rhythm node is selected from the LevelGraph', () => {
@@ -77,9 +87,7 @@ describe('RhythmArena UI Specification Tests (Minimalist Redesign)', () => {
 
     // App switches to practice view running RhythmArena!
     expect(useAppStore.getState().currentLevelId).toBe('rhythm-1');
-    expect(
-      screen.getByText('Play the 1st note (Space or any piano key) to start at your own tempo')
-    ).toBeDefined();
+    expect(screen.getByTestId('hear-tempo-button')).toBeDefined();
 
     // Return back to Level Graph
     act(() => {

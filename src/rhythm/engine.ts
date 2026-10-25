@@ -8,10 +8,13 @@ import {
   RhythmFeedbackSummary,
   RhythmLevelSpec,
   RhythmPhrase,
+  ShiftedTap,
 } from '../types/rhythm';
 import { flattenPhraseToNotes } from './curriculum';
+import { playMetricCountInClick } from '../audio/rhythmAudio';
 
 export interface TickResult {
+  readonly transitionedToReadyToPlay?: boolean;
   readonly transitionedToFeedback?: boolean;
   readonly advancedPhrase?: boolean;
   readonly levelComplete?: boolean;
@@ -21,7 +24,7 @@ export class RhythmEngine {
   private levelSpec: RhythmLevelSpec;
   private phraseIndex: number;
   private phrase: RhythmPhrase;
-  private phase: RhythmExercisePhase = 'READY';
+  private phase: RhythmExercisePhase = 'STUDY';
   private flattenedNotes: readonly FlattenedRhythmNote[];
   private currentNoteIndex: number = 0;
   private activeHoldNoteIndex: number | null = null;
@@ -31,6 +34,12 @@ export class RhythmEngine {
   private feedback: RhythmFeedbackSummary | null = null;
   private feedbackEnteredTimeMs: number = 0;
   private lastTapPressTimeMs: number = 0;
+  private firstTapPressMs: number = 0;
+
+  // Count-in state
+  private countInStartTimeMs: number = 0;
+  private countInBeatIndex: number | undefined = undefined;
+  private countInTotalBeats: number | undefined = undefined;
 
   constructor(levelSpec: RhythmLevelSpec, phraseIndex = 0) {
     this.levelSpec = levelSpec;
@@ -57,6 +66,8 @@ export class RhythmEngine {
       phrasesCompletedInLevel: this.phrasesCompletedInLevel,
       phrasesRequiredForLevel: this.phrasesRequiredForLevel,
       feedback: this.feedback,
+      countInBeatIndex: this.countInBeatIndex,
+      countInTotalBeats: this.countInTotalBeats,
     };
   }
 
@@ -85,12 +96,25 @@ export class RhythmEngine {
   }
 
   public resetForPhrase(): void {
-    this.phase = 'READY';
+    this.phase = 'STUDY';
     this.currentNoteIndex = 0;
     this.activeHoldNoteIndex = null;
     this.recordedTaps = [];
     this.feedback = null;
     this.feedbackEnteredTimeMs = 0;
+    this.lastTapPressTimeMs = 0;
+    this.firstTapPressMs = 0;
+    this.countInBeatIndex = undefined;
+    this.countInTotalBeats = undefined;
+    this.countInStartTimeMs = 0;
+  }
+
+  public startCountIn(nowMs: number): void {
+    this.phase = 'COUNT_IN';
+    this.countInStartTimeMs = nowMs;
+    this.countInBeatIndex = 0;
+    this.countInTotalBeats = this.phrase.beatsPerBar;
+    playMetricCountInClick(0, this.countInTotalBeats);
   }
 
   public advanceToNextPhrase(): boolean {
@@ -109,12 +133,10 @@ export class RhythmEngine {
         return true;
       }
     } else {
-      // Loop or complete
       if (this.phrasesCompletedInLevel >= this.phrasesRequiredForLevel) {
         this.phase = 'LEVEL_COMPLETE';
         return false;
       }
-      // Wrap phrase index within the level
       this.phraseIndex = 0;
       const first = this.levelSpec.phrases[0];
       if (first) {
@@ -137,37 +159,46 @@ export class RhythmEngine {
       return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
     }
 
+    // In STUDY phase, pressing Space/Enter can start count-in
+    if (this.phase === 'STUDY') {
+      this.startCountIn(nowMs);
+      return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
+    }
+
+    // In COUNT_IN phase, ignore taps until metronome stops
+    if (this.phase === 'COUNT_IN') {
+      return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
+    }
+
     // In FEEDBACK phase:
     if (this.phase === 'FEEDBACK') {
-      // Require 350ms debounce after finishing the last note so an accidental trailing press
-      // doesn't immediately dismiss the feedback screen before the user sees their green/red score!
+      // Require 350ms debounce after finishing the last note
       if (nowMs - this.feedbackEnteredTimeMs < 350) {
         return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
       }
 
       if (this.feedback?.passed) {
-        // User saw their passed green phrase and pressed a key to load the next phrase (or finish level)
         if (this.phrasesCompletedInLevel >= this.phrasesRequiredForLevel) {
           this.phase = 'LEVEL_COMPLETE';
           return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
         }
         this.advanceToNextPhrase();
-        // Put the new phrase in READY state so the user can look at the new phrase before tapping Note 1!
         return { noteIndex: -1, isLanding: false, durationBeats: 1.0 };
       } else {
-        // Failed phrase: reset to READY (or start Note 0 of retry? Resetting to READY lets user see clean staff, or starting Note 0 directly)
-        // Wait: if they are looking at the SAME phrase on screen and press Space to retry, starting Note 0 directly or resetting?
-        // Actually, starting Note 0 directly when retrying the same phrase is natural porque they are already looking at the same phrase!
+        // Failed phrase: directly begin Note 0 of a fresh retry
         this.resetForPhrase();
         this.phase = 'PLAYING';
+        this.firstTapPressMs = nowMs;
         return this.recordNotePress(nowMs, 0);
       }
     }
 
-    // In READY phase:
-    if (this.phase === 'READY') {
+    // In READY_TO_PLAY phase:
+    // The very first tap IS Note 1 (index 0) and transitions to PLAYING!
+    if (this.phase === 'READY_TO_PLAY') {
       this.phase = 'PLAYING';
       this.recordedTaps = [];
+      this.firstTapPressMs = nowMs;
       this.currentNoteIndex = 0;
       this.feedback = null;
       return this.recordNotePress(nowMs, 0);
@@ -178,6 +209,12 @@ export class RhythmEngine {
       if (this.recordedTaps.length < this.flattenedNotes.length) {
         const nextIndex = this.recordedTaps.length;
         return this.recordNotePress(nowMs, nextIndex);
+      } else {
+        // Extra unmatched tap
+        this.recordedTaps.push({ pressTimeMs: nowMs, releaseTimeMs: null });
+        this.activeHoldNoteIndex = this.recordedTaps.length - 1;
+        this.lastTapPressTimeMs = nowMs;
+        return { noteIndex: this.recordedTaps.length - 1, isLanding: false, durationBeats: 1.0 };
       }
     }
 
@@ -215,24 +252,58 @@ export class RhythmEngine {
     }
 
     // If in PLAYING phase and all notes are tapped, transition to FEEDBACK
-    if (this.phase === 'PLAYING' && this.recordedTaps.length === this.flattenedNotes.length) {
+    if (this.phase === 'PLAYING' && this.recordedTaps.length >= this.flattenedNotes.length) {
       this.finishPhrasePlaying(nowMs);
     }
   }
 
   public tick(nowMs: number): TickResult {
-    // If playing and final note was pressed > 300ms ago, evaluate
+    // Stage 2: COUNT_IN metronome progression
+    if (this.phase === 'COUNT_IN') {
+      const beatPeriodMs = 60000 / this.phrase.targetBpm;
+      const elapsed = nowMs - this.countInStartTimeMs;
+      const totalBeats = this.countInTotalBeats ?? this.phrase.beatsPerBar;
+      const currentBeat = Math.floor((elapsed + 1) / beatPeriodMs);
+
+      if (
+        this.countInBeatIndex !== undefined &&
+        currentBeat > this.countInBeatIndex &&
+        currentBeat < totalBeats
+      ) {
+        this.countInBeatIndex = currentBeat;
+        playMetricCountInClick(currentBeat, totalBeats);
+      }
+
+      if (elapsed >= totalBeats * beatPeriodMs - 1) {
+        this.phase = 'READY_TO_PLAY';
+        this.countInBeatIndex = undefined;
+        return { transitionedToReadyToPlay: true };
+      }
+    }
+
+    // Stage 3: PLAYING completion or time window timeout
     if (this.phase === 'PLAYING') {
-      if (this.recordedTaps.length === this.flattenedNotes.length && this.recordedTaps.length > 0) {
-        if (nowMs - this.lastTapPressTimeMs >= 300) {
+      const beatPeriodMs = 60000 / this.phrase.targetBpm;
+      const totalPhraseBeats = this.phrase.beatCells.length;
+
+      // 1. All notes tapped and 250ms passed since final tap
+      if (this.recordedTaps.length >= this.flattenedNotes.length && this.recordedTaps.length > 0) {
+        if (nowMs - this.lastTapPressTimeMs >= 250) {
           this.finishPhrasePlaying(nowMs);
           return { transitionedToFeedback: true };
         }
       }
+
+      // 2. User missed/skipped notes and phrase time window elapsed
+      if (
+        this.recordedTaps.length > 0 &&
+        nowMs - this.firstTapPressMs >= (totalPhraseBeats + 1.0) * beatPeriodMs
+      ) {
+        this.finishPhrasePlaying(nowMs);
+        return { transitionedToFeedback: true };
+      }
     }
 
-    // Do NOT auto-wipe FEEDBACK on a fast timer! Keep the green/red graded phrase visible
-    // until the user presses a key (or clicks Next Phrase) so they can see how they did.
     return {};
   }
 
@@ -249,184 +320,262 @@ export class RhythmEngine {
   public evaluatePerformance(nowMs?: number): RhythmFeedbackSummary {
     const N = this.flattenedNotes.length;
     const M = this.recordedTaps.length;
-    const targetBeatPeriodMs = 60000 / this.phrase.targetBpm;
+    const targetBpm = this.phrase.targetBpm;
+    const T = 60000 / targetBpm;
 
     if (N === 0) {
       return {
         grooveScorePct: 100,
         holdScorePct: 100,
         overallScorePct: 100,
-        estimatedUserBpm: this.phrase.targetBpm,
+        estimatedUserBpm: targetBpm,
+        targetBpm,
         noteEvaluations: [],
+        shiftedTaps: [],
         passed: true,
       };
     }
 
-    // Fit Ordinary Least-Squares regression line across all recorded taps: t(b_i) = t0 + T * b_i
-    let estimatedUserBeatPeriodMs = targetBeatPeriodMs;
-    let t0 = this.recordedTaps[0]?.pressTimeMs ?? 0;
+    const t0 = this.recordedTaps[0]?.pressTimeMs ?? 0;
+    const approxBeats = this.recordedTaps.map((tap) => (tap.pressTimeMs - t0) / T);
 
-    if (M >= 2) {
-      let sumB = 0;
-      let sumT = 0;
-      let validCount = 0;
+    // Step 1: Chronological Nearest-Note Matching
+    const matchedTapForNote = new Array<number | null>(N).fill(null);
+    const matchedNoteForTap = new Array<number | null>(M).fill(null);
 
-      for (let i = 0; i < M; i++) {
-        const n = this.flattenedNotes[i];
-        const t = this.recordedTaps[i];
-        if (n && t) {
-          sumB += n.startBeat;
-          sumT += t.pressTimeMs;
-          validCount++;
+    if (M > 0) {
+      matchedTapForNote[0] = 0;
+      matchedNoteForTap[0] = 0;
+      let jLastMatched = 0;
+
+      for (let i = 1; i < N; i++) {
+        const b_i = this.flattenedNotes[i]!.startBeat;
+        let bestJ: number | null = null;
+        let bestDiff = Infinity;
+
+        for (let j = jLastMatched + 1; j < M; j++) {
+          const b_tilde_j = approxBeats[j]!;
+          const diff = Math.abs(b_tilde_j - b_i);
+          if (diff <= 0.48 && diff < bestDiff) {
+            // If i + 1 < N, ensure tap is not closer to note i+1
+            if (i + 1 < N) {
+              const b_next = this.flattenedNotes[i + 1]!.startBeat;
+              const diffNext = Math.abs(b_tilde_j - b_next);
+              if (diff > diffNext) {
+                continue;
+              }
+            }
+            bestDiff = diff;
+            bestJ = j;
+          }
         }
-      }
 
-      const meanB = validCount > 0 ? sumB / validCount : 0;
-      const meanT = validCount > 0 ? sumT / validCount : 0;
-
-      let sBB = 0;
-      let sBT = 0;
-      for (let i = 0; i < M; i++) {
-        const n = this.flattenedNotes[i];
-        const t = this.recordedTaps[i];
-        if (n && t) {
-          const diffB = n.startBeat - meanB;
-          const diffT = t.pressTimeMs - meanT;
-          sBB += diffB * diffB;
-          sBT += diffB * diffT;
+        if (bestJ !== null) {
+          matchedTapForNote[i] = bestJ;
+          matchedNoteForTap[bestJ] = i;
+          jLastMatched = bestJ;
         }
-      }
-
-      if (sBB > 1e-6) {
-        const slope = sBT / sBB;
-        // Clamp to human tempo range [35 BPM, 200 BPM] -> [300 ms, 1714 ms]
-        estimatedUserBeatPeriodMs = Math.max(300, Math.min(1714, slope));
-        t0 = meanT - estimatedUserBeatPeriodMs * meanB;
       }
     }
 
-    const estimatedUserBpm = Math.round(60000 / estimatedUserBeatPeriodMs);
+    // Step 2: Global 1-Parameter Least-Squares Shift (t0_hat)
+    const uList: number[] = [];
+    for (let i = 0; i < N; i++) {
+      const j = matchedTapForNote[i];
+      if (j !== null && j !== undefined) {
+        const note = this.flattenedNotes[i]!;
+        const tap = this.recordedTaps[j]!;
+        const u_k = tap.pressTimeMs - T * note.startBeat;
+        uList.push(u_k);
+      }
+    }
+
+    let t0_hat = t0;
+    if (uList.length > 0) {
+      const sortedU = [...uList].sort((a, b) => a - b);
+      const mid = Math.floor(sortedU.length / 2);
+      const uMed =
+        sortedU.length % 2 === 0
+          ? ((sortedU[mid - 1] ?? 0) + (sortedU[mid] ?? 0)) / 2
+          : (sortedU[mid] ?? 0);
+
+      const inliers = uList.filter((u) => Math.abs(u - uMed) <= 0.25 * T);
+      if (inliers.length > 0) {
+        t0_hat = inliers.reduce((sum, val) => sum + val, 0) / inliers.length;
+      } else {
+        t0_hat = uMed;
+      }
+    }
+
+    // Step 3: Compute Globally-Shifted User Taps (ShiftedTap[]) & Note Evaluations
+    const shiftedTaps: ShiftedTap[] = this.recordedTaps.map((tap, j) => {
+      const startBeat = Number(((tap.pressTimeMs - t0_hat) / T).toFixed(4));
+      const releaseMs = tap.releaseTimeMs ?? (nowMs ?? tap.pressTimeMs + 200);
+      const heldMs = Math.max(40, releaseMs - tap.pressTimeMs);
+      const durationBeats = Number((heldMs / T).toFixed(4));
+      const matchedNote = matchedNoteForTap[j] ?? null;
+
+      return {
+        tapIndex: j,
+        matchedNoteIndex: matchedNote,
+        startBeat,
+        durationBeats,
+        status: 'missed',
+      };
+    });
 
     const noteEvaluations: NoteEvaluation[] = [];
     const grooveScores: number[] = [];
     const holdScores: number[] = [];
 
     for (let i = 0; i < N; i++) {
-      const note = this.flattenedNotes[i];
-      if (!note) continue;
+      const note = this.flattenedNotes[i]!;
+      const j = matchedTapForNote[i];
 
-      const expectedStartBeat = note.startBeat;
-      const expectedDurationBeats = note.durationBeats;
-
-      if (i < M) {
-        const tap = this.recordedTaps[i];
-        if (!tap) continue;
-
-        const expectedTimeMs = t0 + estimatedUserBeatPeriodMs * expectedStartBeat;
-        const onsetErrorMs = tap.pressTimeMs - expectedTimeMs;
-        const relativeOnsetError = Number((onsetErrorMs / estimatedUserBeatPeriodMs).toFixed(4));
-        const absErr = Math.abs(relativeOnsetError);
-
-        let status: 'perfect' | 'loose' | 'missed';
-        let noteGrooveScore: number;
-
-        if (absErr <= 0.10) {
-          status = 'perfect';
-          noteGrooveScore = 100;
-        } else if (absErr <= 0.18) {
-          status = 'loose';
-          const factor = (absErr - 0.10) / (0.18 - 0.10);
-          noteGrooveScore = 100 - factor * 40;
-        } else {
-          status = 'missed';
-          const factor = Math.min(1.0, (absErr - 0.18) / 0.18);
-          noteGrooveScore = Math.max(0, 30 - factor * 30);
-        }
-        grooveScores.push(noteGrooveScore);
-
-        // Hold Articulation check
-        const expectedDurationMs = expectedDurationBeats * estimatedUserBeatPeriodMs;
-        const releaseMs = tap.releaseTimeMs ?? (nowMs ?? tap.pressTimeMs + expectedDurationMs);
-        const actualHoldMs = Math.max(0, releaseMs - tap.pressTimeMs);
-
-        let holdRatio: number;
-        let noteHoldScore: number;
-
-        if (note.isLandingNote) {
-          holdRatio = 1.0;
-          noteHoldScore = 100;
-        } else {
-          holdRatio = Number((actualHoldMs / Math.max(1, expectedDurationMs)).toFixed(3));
-          if (expectedDurationBeats >= 1.5) {
-            // Sustained note
-            if (holdRatio >= 0.40 && holdRatio <= 1.45) {
-              noteHoldScore = 100;
-            } else if (holdRatio < 0.40) {
-              noteHoldScore = Math.max(0, (holdRatio / 0.40) * 100);
-            } else {
-              noteHoldScore = Math.max(30, 100 - (holdRatio - 1.45) * 80);
-            }
-          } else {
-            // Standard short note (quarter, eighth, sixteenth)
-            if (holdRatio >= 0.25 && holdRatio <= 1.50) {
-              noteHoldScore = 100;
-            } else if (holdRatio < 0.25) {
-              noteHoldScore = Math.max(0, (holdRatio / 0.25) * 100);
-            } else {
-              noteHoldScore = Math.max(30, 100 - (holdRatio - 1.50) * 80);
-            }
-          }
-        }
-        holdScores.push(noteHoldScore);
-
-        // Determine error hint for this note
-        let errorHint: NoteErrorHint = null;
-        if (status === 'missed' || status === 'loose') {
-          errorHint = relativeOnsetError < -0.10 ? 'early' : relativeOnsetError > 0.10 ? 'late' : null;
-        } else if (noteHoldScore < 60) {
-          errorHint = holdRatio < 0.40 ? 'short' : 'long';
-        }
-
-        noteEvaluations.push({
-          noteIndex: i,
-          expectedStartBeat,
-          expectedDurationBeats,
-          relativeOnsetError,
-          holdRatio,
-          status,
-          errorHint,
-        });
-      } else {
-        // Missing note
+      if (j === null || j === undefined) {
         grooveScores.push(0);
         holdScores.push(0);
         noteEvaluations.push({
           noteIndex: i,
-          expectedStartBeat,
-          expectedDurationBeats,
+          expectedStartBeat: note.startBeat,
+          expectedDurationBeats: note.durationBeats,
           relativeOnsetError: 1.0,
           holdRatio: 0.0,
           status: 'missed',
-          errorHint: 'late',
+          errorHint: 'missed',
+          userStartBeat: null,
+        });
+      } else {
+        const tap = shiftedTaps[j]!;
+        const onsetErrorBeats = Number((tap.startBeat - note.startBeat).toFixed(4));
+        const absErr = Math.abs(onsetErrorBeats);
+
+        let status: 'perfect' | 'loose' | 'missed';
+        let noteGrooveScore: number;
+
+        if (absErr <= 0.12) {
+          status = 'perfect';
+          noteGrooveScore = 100;
+        } else if (absErr <= 0.22) {
+          status = 'loose';
+          const factor = (absErr - 0.12) / (0.22 - 0.12);
+          noteGrooveScore = Math.round(100 - factor * 35);
+        } else {
+          status = 'missed';
+          noteGrooveScore = 0;
+        }
+        grooveScores.push(noteGrooveScore);
+
+        let holdRatio = 1.0;
+        let noteHoldScore = 100;
+        let holdError: NoteErrorHint = null;
+
+        if (note.isLandingNote) {
+          holdRatio = 1.0;
+          noteHoldScore = 100;
+        } else if (note.durationBeats >= 1.5) {
+          holdRatio = Number((tap.durationBeats / note.durationBeats).toFixed(3));
+          if (holdRatio < 0.40) {
+            noteHoldScore = Math.max(0, Math.round((holdRatio / 0.40) * 100));
+            holdError = 'short';
+          } else if (holdRatio > 1.60) {
+            noteHoldScore = Math.max(30, Math.round(100 - (holdRatio - 1.60) * 70));
+            holdError = 'long';
+          } else {
+            noteHoldScore = 100;
+          }
+        } else {
+          holdRatio = Number((tap.durationBeats / note.durationBeats).toFixed(3));
+          noteHoldScore = 100;
+        }
+        holdScores.push(noteHoldScore);
+
+        let errorHint: NoteErrorHint = null;
+        if (status === 'missed' || status === 'loose') {
+          errorHint = onsetErrorBeats < 0 ? 'early' : 'late';
+        } else if (holdError) {
+          errorHint = holdError;
+        }
+
+        // Update mutable copy in shiftedTaps
+        (shiftedTaps[j] as { status: 'perfect' | 'loose' | 'missed' }).status = status;
+
+        noteEvaluations.push({
+          noteIndex: i,
+          expectedStartBeat: note.startBeat,
+          expectedDurationBeats: note.durationBeats,
+          relativeOnsetError: onsetErrorBeats,
+          holdRatio,
+          status,
+          errorHint,
+          userStartBeat: tap.startBeat,
         });
       }
     }
 
-    const meanGroove = grooveScores.length > 0 ? grooveScores.reduce((a, b) => a + b, 0) / N : 0;
-    const meanHold = holdScores.length > 0 ? holdScores.reduce((a, b) => a + b, 0) / N : 0;
+    // Linear regression slope to estimate actual user BPM
+    let estimatedUserBpm = targetBpm;
+    if (uList.length >= 2) {
+      let sumB = 0;
+      let sumT = 0;
+      let count = 0;
+      for (let i = 0; i < N; i++) {
+        const j = matchedTapForNote[i];
+        if (j !== null && j !== undefined) {
+          const note = this.flattenedNotes[i]!;
+          const tap = this.recordedTaps[j]!;
+          sumB += note.startBeat;
+          sumT += tap.pressTimeMs;
+          count++;
+        }
+      }
+      const meanB = sumB / count;
+      const meanT = sumT / count;
+      let sBB = 0;
+      let sBT = 0;
+      for (let i = 0; i < N; i++) {
+        const j = matchedTapForNote[i];
+        if (j !== null && j !== undefined) {
+          const note = this.flattenedNotes[i]!;
+          const tap = this.recordedTaps[j]!;
+          const diffB = note.startBeat - meanB;
+          const diffT = tap.pressTimeMs - meanT;
+          sBB += diffB * diffB;
+          sBT += diffB * diffT;
+        }
+      }
+      if (sBB > 1e-6) {
+        const slope = sBT / sBB;
+        const clampedSlope = Math.max(300, Math.min(1714, slope));
+        estimatedUserBpm = Math.round(60000 / clampedSlope);
+      }
+    }
+
+    const hasMissedNote = noteEvaluations.some((e) => e.status === 'missed');
+    const hasExtraTap = shiftedTaps.some((t) => t.matchedNoteIndex === null);
+
+    const meanGroove =
+      grooveScores.length > 0
+        ? grooveScores.reduce((a, b) => a + b, 0) / Math.max(1, N)
+        : 0;
+    const meanHold =
+      holdScores.length > 0
+        ? holdScores.reduce((a, b) => a + b, 0) / Math.max(1, N)
+        : 0;
 
     const grooveScorePct = Math.round(meanGroove);
     const holdScorePct = Math.round(meanHold);
     const overallScorePct = Math.round(0.8 * grooveScorePct + 0.2 * holdScorePct);
-    const hasMissed = noteEvaluations.some((e) => e.status === 'missed');
-    const passed = overallScorePct >= 80 && !hasMissed;
+    const passed = overallScorePct >= 80 && !hasMissedNote && !hasExtraTap;
 
     return {
       grooveScorePct,
       holdScorePct,
       overallScorePct,
       estimatedUserBpm,
+      targetBpm,
       noteEvaluations,
+      shiftedTaps,
       passed,
     };
   }

@@ -25,7 +25,13 @@ export interface RhythmPhrase {
   readonly beatCells: readonly RhythmBeatCell[];
 }
 
-export type RhythmExercisePhase = 'READY' | 'PLAYING' | 'FEEDBACK' | 'LEVEL_COMPLETE';
+export type RhythmExercisePhase =
+  | 'STUDY'
+  | 'COUNT_IN'
+  | 'READY_TO_PLAY'
+  | 'PLAYING'
+  | 'FEEDBACK'
+  | 'LEVEL_COMPLETE';
 
 export interface FlattenedRhythmNote {
   readonly noteIndex: number;
@@ -40,7 +46,15 @@ export interface RecordedTap {
   releaseTimeMs: number | null;
 }
 
-export type NoteErrorHint = 'early' | 'late' | 'short' | 'long' | null;
+export type NoteErrorHint = 'early' | 'late' | 'short' | 'long' | 'missed' | null;
+
+export interface ShiftedTap {
+  readonly tapIndex: number;
+  readonly matchedNoteIndex: number | null; // null if extra unintended tap
+  readonly startBeat: number; // (t_j - t0_hat) / T
+  readonly durationBeats: number; // (r_j - t_j) / T
+  readonly status: 'perfect' | 'loose' | 'missed';
+}
 
 export interface NoteEvaluation {
   readonly noteIndex: number;
@@ -50,6 +64,7 @@ export interface NoteEvaluation {
   readonly holdRatio: number;
   readonly status: 'perfect' | 'loose' | 'missed';
   readonly errorHint: NoteErrorHint;
+  readonly userStartBeat?: number | null;
 }
 
 export interface RhythmFeedbackSummary {
@@ -57,7 +72,9 @@ export interface RhythmFeedbackSummary {
   readonly holdScorePct: number;
   readonly overallScorePct: number;
   readonly estimatedUserBpm: number;
+  readonly targetBpm: number;
   readonly noteEvaluations: readonly NoteEvaluation[];
+  readonly shiftedTaps: readonly ShiftedTap[];
   readonly passed: boolean;
 }
 
@@ -97,4 +114,6 @@ export interface RhythmEngineSnapshot {
   readonly phrasesCompletedInLevel: number;
   readonly phrasesRequiredForLevel: number;
   readonly feedback: RhythmFeedbackSummary | null;
+  readonly countInBeatIndex?: number;
+  readonly countInTotalBeats?: number;
 }

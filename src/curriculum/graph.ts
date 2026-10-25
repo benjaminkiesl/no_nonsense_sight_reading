@@ -8,6 +8,10 @@ export function getAllLevels(): readonly LevelSpec[] {
 export function getLevelById(id: string): LevelSpec {
   const level = LEVELS_BY_ID.get(id);
   if (!level) {
+    if (id.startsWith('rhythm-')) {
+      const fallback = LEVELS_BY_ID.get('treble-1');
+      if (fallback) return fallback;
+    }
     throw new Error(`Level with ID "${id}" not found.`);
   }
   return level;

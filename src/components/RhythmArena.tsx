@@ -37,14 +37,19 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
     }
   }, [snapshot.phase, onLevelComplete]);
 
-  // Animation / Ticking Loop for auto-advance or timeout
+  // Animation / Ticking Loop for count-in progression and phrase timeout
   useEffect(() => {
     let animId: number;
     const loop = (now: number) => {
       const snap = engineRef.current.getSnapshot();
-      if (snap.phase === 'PLAYING' || snap.phase === 'FEEDBACK') {
+      if (snap.phase === 'COUNT_IN' || snap.phase === 'PLAYING') {
         const res = engineRef.current.tick(now);
-        if (res.transitionedToFeedback || res.advancedPhrase || res.levelComplete) {
+        if (
+          res.transitionedToReadyToPlay ||
+          res.transitionedToFeedback ||
+          res.advancedPhrase ||
+          res.levelComplete
+        ) {
           updateSnapshot();
         }
       }
@@ -55,10 +60,22 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
     return () => cancelAnimationFrame(animId);
   }, [updateSnapshot]);
 
+  const handleStartCountIn = useCallback(() => {
+    engineRef.current.startCountIn(performance.now());
+    updateSnapshot();
+  }, [updateSnapshot]);
+
+  const handleNextPhrase = useCallback(() => {
+    const advanced = engineRef.current.advanceToNextPhrase();
+    if (!advanced && engineRef.current.getSnapshot().phase === 'LEVEL_COMPLETE') {
+      onLevelComplete?.();
+    }
+    updateSnapshot();
+  }, [onLevelComplete, updateSnapshot]);
+
   // Keyboard Event Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore modifier keys and function keys
       if (e.ctrlKey || e.metaKey || e.altKey || e.key === 'Tab' || e.key === 'Escape') {
         return;
       }
@@ -70,7 +87,35 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
         return;
       }
 
-      // Space, Enter, or any letter/number/punctuation note key
+      const snap = engineRef.current.getSnapshot();
+
+      // In STUDY phase, Enter or Space starts count-in
+      if (snap.phase === 'STUDY') {
+        if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          handleStartCountIn();
+          return;
+        }
+      }
+
+      // In FEEDBACK phase:
+      if (snap.phase === 'FEEDBACK') {
+        if (snap.feedback?.passed) {
+          if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            handleNextPhrase();
+            return;
+          }
+        } else {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleStartCountIn();
+            return;
+          }
+        }
+      }
+
+      // Play keys for READY_TO_PLAY or PLAYING (or retry on feedback)
       const isPlayKey =
         e.code === 'Space' ||
         e.key === ' ' ||
@@ -105,21 +150,52 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [updateSnapshot]);
+  }, [handleStartCountIn, handleNextPhrase, updateSnapshot]);
 
-  // SVG Layout Calculations
+  // Staff Layout: Authentic Optical Engraving Spacing
   const beats = snapshot.phrase.beatCells;
   const totalBeats = beats.length;
   const xStart = 85;
   const scoreWidth = 720;
-  const wBeat = scoreWidth / Math.max(1, totalBeats);
   const baselineY = 100;
+  const beatsPerBar = snapshot.phrase.beatsPerBar;
+
+  const numBarlines = Math.floor((totalBeats - 1) / beatsPerBar);
+  const barlinePaddingTotal = numBarlines * 32; // 14px before + 18px after
+  const availableStaffWidth = Math.max(100, scoreWidth - barlinePaddingTotal);
+
+  // Compute optical weight for each cell: sum (d_e^0.65)
+  const cellWeights = beats.map((cell) => {
+    if (cell.cellId === 'hold_q') return 1.0;
+    let sum = 0;
+    for (const evt of cell.events) {
+      sum += Math.pow(evt.durationBeats, 0.65);
+    }
+    return Math.max(0.4, sum);
+  });
+  const totalWeight = cellWeights.reduce((a, b) => a + b, 0);
+
+  const beatX: number[] = [];
+  const cellW: number[] = [];
+  const barlinePositions: number[] = [];
+
+  let curStaffX = xStart;
+  for (let b = 0; b < totalBeats; b++) {
+    if (b > 0 && b % beatsPerBar === 0) {
+      curStaffX += 14;
+      barlinePositions.push(curStaffX);
+      curStaffX += 18;
+    }
+    beatX.push(curStaffX);
+    const w = ((cellWeights[b] ?? 1.0) / totalWeight) * availableStaffWidth;
+    cellW.push(w);
+    curStaffX += w;
+  }
 
   const timeSigParts = snapshot.phrase.timeSignature.split('/');
   const timeSigTop = timeSigParts[0] ?? '4';
   const timeSigBottom = timeSigParts[1] ?? '4';
 
-  // Compute positions of noteheads to render guidance and feedback
   const renderedNotePositions: {
     noteIndex: number;
     x: number;
@@ -130,32 +206,9 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
 
   let noteCounter = 0;
 
-  // Bottom Status Prompt
-  let statusPrompt = '';
-  let statusTone: 'neutral' | 'passed' | 'failed' = 'neutral';
-  if (snapshot.phase === 'READY') {
-    statusPrompt = 'Play the 1st note (Space or any piano key) to start at your own tempo';
-  } else if (snapshot.phase === 'PLAYING') {
-    statusPrompt = 'Keep your steady beat through the final note...';
-  } else if (snapshot.phase === 'FEEDBACK') {
-    if (snapshot.feedback?.passed) {
-      statusTone = 'passed';
-      const isLastPhrase = snapshot.phrasesCompletedInLevel >= snapshot.phrasesRequiredForLevel;
-      statusPrompt = isLastPhrase
-        ? `✓ Phrase ${snapshot.phrasesCompletedInLevel}/${snapshot.phrasesRequiredForLevel} Passed (${snapshot.feedback.overallScorePct}% at ~${snapshot.feedback.estimatedUserBpm} BPM) — Press Space or any key to finish level`
-        : `✓ Phrase ${snapshot.phrasesCompletedInLevel}/${snapshot.phrasesRequiredForLevel} Passed (${snapshot.feedback.overallScorePct}% at ~${snapshot.feedback.estimatedUserBpm} BPM) — Press Space or any key for next phrase`;
-    } else {
-      statusTone = 'failed';
-      statusPrompt = `✗ Timing off on red notes (${snapshot.feedback?.overallScorePct ?? 0}% score) — Play the 1st note to try this phrase again`;
-    }
-  } else if (snapshot.phase === 'LEVEL_COMPLETE') {
-    statusTone = 'passed';
-    statusPrompt = '✓ Level Complete!';
-  }
-
   return (
     <div className="nnsr-rhythm-practice-container" style={{ width: '840px' }}>
-      {/* 1. Rhythm Staff Card */}
+      {/* 1. Rhythm Staff Card (Optically Engraved) */}
       <div className="nnsr-rhythm-canvas-card">
         <svg
           className="nnsr-rhythm-svg"
@@ -163,7 +216,7 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
           role="img"
           aria-label={`Rhythm notation for ${snapshot.phrase.id}`}
         >
-          {/* Percussion Clef (two vertical parallel bars) */}
+          {/* Percussion Clef */}
           <rect x="34" y="78" width="4.5" height="44" rx="1.5" fill="var(--ink-primary)" />
           <rect x="43" y="78" width="4.5" height="44" rx="1.5" fill="var(--ink-primary)" />
 
@@ -195,45 +248,39 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
           <line
             x1="22"
             y1={baselineY}
-            x2={xStart + scoreWidth + 18}
+            x2={curStaffX + 18}
             y2={baselineY}
             stroke="var(--ink-primary)"
             strokeWidth="2.5"
             strokeLinecap="round"
           />
 
-          {/* Barlines across measures */}
-          {Array.from({ length: totalBeats }).map((_, b) => {
-            const isBarStart = b > 0 && b % snapshot.phrase.beatsPerBar === 0;
-            if (!isBarStart) return null;
-            const xBar = xStart + b * wBeat;
-
-            return (
-              <line
-                key={`barline-${b}`}
-                x1={xBar}
-                y1={65}
-                x2={xBar}
-                y2={135}
-                stroke="var(--ink-primary)"
-                strokeWidth="1.6"
-              />
-            );
-          })}
+          {/* Optical Barlines across measures */}
+          {barlinePositions.map((xBar, bIdx) => (
+            <line
+              key={`barline-${bIdx}`}
+              x1={xBar}
+              y1={65}
+              x2={xBar}
+              y2={135}
+              stroke="var(--ink-primary)"
+              strokeWidth="1.6"
+            />
+          ))}
 
           {/* Final Double Barline */}
           <line
-            x1={xStart + scoreWidth + 12}
+            x1={curStaffX + 12}
             y1={65}
-            x2={xStart + scoreWidth + 12}
+            x2={curStaffX + 12}
             y2={135}
             stroke="var(--ink-primary)"
             strokeWidth="1.5"
           />
           <line
-            x1={xStart + scoreWidth + 17}
+            x1={curStaffX + 17}
             y1={65}
-            x2={xStart + scoreWidth + 17}
+            x2={curStaffX + 17}
             y2={135}
             stroke="var(--ink-primary)"
             strokeWidth="3.5"
@@ -241,8 +288,8 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
 
           {/* Beat Cells: Notes, Stems, Beams & Rests */}
           {beats.map((cell, b) => {
-            const xBeat = xStart + b * wBeat;
-            const innerW = wBeat;
+            const xBeat = beatX[b] ?? xStart;
+            const innerW = cellW[b] ?? 60;
 
             const cellNotes: {
               xNote: number;
@@ -252,8 +299,6 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
               hasFlag: boolean;
             }[] = [];
 
-            // If this beat cell is pure hold (2nd beat of a half note), render nothing!
-            // A half note is already drawn as a hollow 2-beat notehead on its starting beat.
             if (cell.cellId === 'hold_q') {
               return <g key={`beat-cell-${b}`} />;
             }
@@ -263,13 +308,10 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
               cell.cellId === 'q' && nextCell?.cellId === 'tie_e_note_e';
 
             const renderedEvents = cell.events.map((evt, eIdx) => {
-              // If this event is the hidden first half of a dotted quarter's 2nd beat,
-              // do not draw a phantom tied notehead—the previous quarter note has a dot!
               if (cell.cellId === 'tie_e_note_e' && eIdx === 0 && beats[b - 1]?.cellId === 'q') {
                 return null;
               }
 
-              // Position inside beat
               let relPos = 0.5;
               const nEvt = cell.events.length;
               if (nEvt === 2) {
@@ -318,7 +360,6 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                 );
               }
 
-              // Note Attack or visible tie continuation (e.g. syncopation e + tie_e_note_e)
               const currentNoteIndex = evt.tiedFromPrev
                 ? Math.max(0, noteCounter - 1)
                 : noteCounter++;
@@ -326,23 +367,17 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
               const xNote = xEvt;
               const xStem = xNote + 5.5;
 
-              // Color determination
+              // Color determination: NEVER color green until FEEDBACK!
               let noteColor = 'var(--ink-primary)';
               let errorHint: string | null = null;
 
-              if (snapshot.phase === 'READY') {
-                noteColor = 'var(--ink-primary)';
-              } else if (snapshot.phase === 'PLAYING') {
-                if (currentNoteIndex < snapshot.currentNoteIndex) {
-                  noteColor = '#04724d'; // Already tapped
-                }
-              } else if (snapshot.phase === 'FEEDBACK' && snapshot.feedback) {
+              if (snapshot.phase === 'FEEDBACK' && snapshot.feedback) {
                 const evalRes = snapshot.feedback.noteEvaluations[currentNoteIndex];
                 if (evalRes) {
                   if (evalRes.status === 'perfect' || evalRes.status === 'loose') {
-                    noteColor = '#04724d'; // Green
+                    noteColor = '#04724d';
                   } else {
-                    noteColor = '#e05a47'; // Coral Red
+                    noteColor = '#e05a47';
                   }
                   errorHint = evalRes.errorHint;
                 }
@@ -358,7 +393,6 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                 });
               }
 
-              // Determine if this note is a standalone eighth note needing an eighth flag
               const needsEighthFlag =
                 evt.durationBeats === 0.5 &&
                 (cell.cellId === 'upbeat_e' ||
@@ -374,14 +408,11 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
               });
 
               const isHalfNote = cell.cellId === 'h_start';
-
-              // Compute tie start X from previous notehead when rendering a genuine tie (e.g. syncopation)
               const prevNotePos = renderedNotePositions[renderedNotePositions.length - 1];
               const tieStartX = prevNotePos ? prevNotePos.x + 4 : xNote - 28;
 
               return (
                 <g key={`note-${b}-${eIdx}`}>
-                  {/* Tie Arc from previous notehead when genuinely tied across beats */}
                   {evt.tiedFromPrev && (
                     <path
                       d={`M ${tieStartX} ${baselineY + 8} Q ${(tieStartX + xNote - 4) / 2} ${baselineY + 18} ${xNote - 4} ${baselineY + 8}`}
@@ -391,7 +422,6 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                     />
                   )}
 
-                  {/* Notehead */}
                   {isHalfNote ? (
                     <ellipse
                       cx={xNote}
@@ -414,14 +444,12 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                     />
                   )}
 
-                  {/* Dot if dotted note (including dotted quarter `♩.`) */}
                   {(evt.dotted ||
                     isDottedQuarterStart ||
                     (cell.cellId === 'dot8_s' && eIdx === 0)) && (
                     <circle cx={xNote + 13} cy={baselineY - 5} r="2.5" fill={noteColor} />
                   )}
 
-                  {/* Error hint below note in FEEDBACK */}
                   {!evt.tiedFromPrev && errorHint && (
                     <text
                       x={xNote}
@@ -439,7 +467,6 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
               );
             });
 
-            // Stems and Beams
             const yStemTop = 55;
             const stemsAndBeams = (() => {
               if (cellNotes.length === 0) return null;
@@ -487,7 +514,6 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                       strokeWidth="1.8"
                     />
                   ))}
-                  {/* Primary Beam */}
                   <line
                     x1={firstStem - 1}
                     y1={yStemTop}
@@ -496,7 +522,6 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                     stroke="var(--ink-primary)"
                     strokeWidth="3.8"
                   />
-                  {/* Secondary Beam for Sixteenths */}
                   {cell.cellId === 's4' && (
                     <line
                       x1={firstStem - 1}
@@ -563,16 +588,16 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
             );
           })}
 
-          {/* Visual Guidance on Note 0 in READY phase */}
-          {snapshot.phase === 'READY' && renderedNotePositions[0] && (
+          {/* Visual Guidance on Note 0 in READY_TO_PLAY phase (Subtle dark ink, NOT green) */}
+          {snapshot.phase === 'READY_TO_PLAY' && renderedNotePositions[0] && (
             <g className="nnsr-rhythm-start-guide">
               <circle
                 cx={renderedNotePositions[0].x}
                 cy={baselineY}
                 r={13}
                 fill="none"
-                stroke="var(--emerald)"
-                strokeWidth={2.2}
+                stroke="var(--ink-primary)"
+                strokeWidth={2}
                 strokeDasharray="4 3"
               />
               <text
@@ -581,51 +606,269 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                 fontFamily="var(--font-sans)"
                 fontSize="12"
                 fontWeight="700"
-                fill="var(--emerald)"
+                fill="var(--ink-primary)"
                 textAnchor="middle"
               >
                 ▼ 1st note
               </text>
             </g>
           )}
-
-          {/* Active Target Ring on Current Note during PLAYING */}
-          {snapshot.phase === 'PLAYING' &&
-            renderedNotePositions[snapshot.currentNoteIndex] && (
-              <circle
-                cx={renderedNotePositions[snapshot.currentNoteIndex]!.x}
-                cy={baselineY}
-                r={12}
-                fill="none"
-                stroke="var(--emerald)"
-                strokeWidth={2}
-              />
-            )}
         </svg>
 
-        {/* Clear bottom status prompt */}
+        {/* 2. Linear Time-Proportion Comparison Bar (Visible ONLY in FEEDBACK) */}
+        {snapshot.phase === 'FEEDBACK' && snapshot.feedback && (
+          <div
+            className="nnsr-rhythm-linear-comparison"
+            style={{
+              padding: '10px 16px 14px 16px',
+              borderTop: '1px solid #e0ded8',
+              backgroundColor: '#faf9f6',
+            }}
+          >
+            <svg
+              data-testid="rhythm-linear-comparison-bar"
+              viewBox="0 0 840 96"
+              style={{ width: '100%', height: '96px', display: 'block' }}
+              role="img"
+              aria-label="Linear Time-Proportion Comparison"
+            >
+              {(() => {
+                const timelineStart = 110;
+                const timelineWidth = 690;
+                const wBeatLinear = timelineWidth / Math.max(1, totalBeats);
+
+                // Grid lines & ticks
+                const gridElements: React.JSX.Element[] = [];
+                for (let b = 0; b <= totalBeats; b++) {
+                  const x = timelineStart + b * wBeatLinear;
+                  const isBar = b % beatsPerBar === 0;
+                  gridElements.push(
+                    <line
+                      key={`lin-beat-${b}`}
+                      x1={x}
+                      y1={14}
+                      x2={x}
+                      y2={82}
+                      stroke={isBar ? '#1f2421' : '#b0aba2'}
+                      strokeWidth={isBar ? 1.6 : 1.0}
+                      strokeDasharray={isBar ? undefined : '2 3'}
+                    />
+                  );
+
+                  if (b < totalBeats) {
+                    for (const sub of [0.25, 0.5, 0.75]) {
+                      const xSub = timelineStart + (b + sub) * wBeatLinear;
+                      gridElements.push(
+                        <line
+                          key={`lin-sub-${b}-${sub}`}
+                          x1={xSub}
+                          y1={44}
+                          x2={xSub}
+                          y2={52}
+                          stroke="#dcdad5"
+                          strokeWidth={1}
+                        />
+                      );
+                    }
+                  }
+                }
+
+                // Row 1: Expected Notes
+                const expectedElements = snapshot.flattenedNotes.map((n) => {
+                  const xExp = timelineStart + n.startBeat * wBeatLinear;
+                  const wExp = Math.max(6, n.durationBeats * wBeatLinear - 3);
+                  return (
+                    <g key={`exp-note-${n.noteIndex}`}>
+                      <rect x={xExp} y={24} width={wExp} height={12} rx={3} fill="#5a625d" />
+                      <circle cx={xExp + 3.5} cy={30} r={3.5} fill="#1f2421" />
+                    </g>
+                  );
+                });
+
+                // Row 2: You Played (Shifted Taps) + Connector Lines
+                const tapElements: React.JSX.Element[] = [];
+                snapshot.feedback.shiftedTaps.forEach((tap) => {
+                  const xTap = timelineStart + tap.startBeat * wBeatLinear;
+                  const wTap = Math.max(6, tap.durationBeats * wBeatLinear - 3);
+                  const color = tap.status === 'missed' ? '#e05a47' : '#04724d';
+
+                  if (tap.matchedNoteIndex !== null) {
+                    const matched = snapshot.flattenedNotes[tap.matchedNoteIndex];
+                    if (matched) {
+                      const xMatched = timelineStart + matched.startBeat * wBeatLinear + 3.5;
+                      tapElements.push(
+                        <line
+                          key={`connector-${tap.tapIndex}`}
+                          x1={xMatched}
+                          y1={36}
+                          x2={xTap + 3.5}
+                          y2={60}
+                          stroke={color}
+                          strokeWidth={1.2}
+                          strokeDasharray="2 2"
+                        />
+                      );
+                    }
+                  }
+
+                  tapElements.push(
+                    <g key={`played-tap-${tap.tapIndex}`}>
+                      <rect x={xTap} y={60} width={wTap} height={12} rx={3} fill={color} />
+                      <circle cx={xTap + 3.5} cy={66} r={3.5} fill={color} />
+                    </g>
+                  );
+                });
+
+                return (
+                  <g>
+                    {/* Row Labels */}
+                    <text
+                      x={100}
+                      y={33}
+                      textAnchor="end"
+                      fontSize="11"
+                      fontWeight="700"
+                      fill="var(--ink-primary)"
+                      fontFamily="var(--font-sans)"
+                    >
+                      Expected
+                    </text>
+                    <text
+                      x={100}
+                      y={69}
+                      textAnchor="end"
+                      fontSize="11"
+                      fontWeight="700"
+                      fill="var(--ink-primary)"
+                      fontFamily="var(--font-sans)"
+                    >
+                      You Played
+                    </text>
+
+                    {gridElements}
+                    {expectedElements}
+                    {tapElements}
+                  </g>
+                );
+              })()}
+            </svg>
+          </div>
+        )}
+
+        {/* 3. Action Controls Across the 4 Stages */}
         <div
           className="nnsr-rhythm-status-prompt"
           style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
             backgroundColor:
-              statusTone === 'passed'
-                ? '#e6f5ee'
-                : statusTone === 'failed'
-                ? '#fdecea'
+              snapshot.phase === 'FEEDBACK'
+                ? snapshot.feedback?.passed
+                  ? '#e6f5ee'
+                  : '#fdecea'
                 : undefined,
             color:
-              statusTone === 'passed'
-                ? '#04724d'
-                : statusTone === 'failed'
-                ? '#c0392b'
+              snapshot.phase === 'FEEDBACK'
+                ? snapshot.feedback?.passed
+                  ? '#04724d'
+                  : '#c0392b'
                 : undefined,
           }}
         >
-          <span>{statusPrompt}</span>
+          {snapshot.phase === 'STUDY' && (
+            <button
+              data-testid="hear-tempo-button"
+              onClick={handleStartCountIn}
+              style={{
+                border: 'none',
+                background: 'var(--emerald)',
+                color: '#ffffff',
+                padding: '6px 16px',
+                borderRadius: '6px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '13px',
+              }}
+            >
+              Hear Tempo ({snapshot.phrase.beatsPerBar} Beats) [Enter / Space]
+            </button>
+          )}
+
+          {snapshot.phase === 'COUNT_IN' && (
+            <span>
+              Tempo ({snapshot.phrase.targetBpm} BPM): Beat{' '}
+              {(snapshot.countInBeatIndex ?? 0) + 1} of {snapshot.phrase.beatsPerBar}...
+            </span>
+          )}
+
+          {snapshot.phase === 'READY_TO_PLAY' && (
+            <span>Play the 1st note (Space or any piano key) whenever you&apos;re ready</span>
+          )}
+
+          {snapshot.phase === 'PLAYING' && (
+            <span>Playing... keep the tempo steady through the final note</span>
+          )}
+
+          {snapshot.phase === 'FEEDBACK' && snapshot.feedback && (
+            <>
+              {snapshot.feedback.passed ? (
+                <>
+                  <span>
+                    ✓ Phrase {snapshot.phrasesCompletedInLevel} of{' '}
+                    {snapshot.phrasesRequiredForLevel} Passed ({snapshot.feedback.overallScorePct}%)
+                  </span>
+                  <button
+                    data-testid="next-phrase-button"
+                    onClick={handleNextPhrase}
+                    style={{
+                      border: 'none',
+                      background: '#04724d',
+                      color: '#ffffff',
+                      padding: '6px 16px',
+                      borderRadius: '6px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                    }}
+                  >
+                    {snapshot.phrasesCompletedInLevel >= snapshot.phrasesRequiredForLevel
+                      ? 'Complete Level →'
+                      : 'Next Phrase [Enter / Space]'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span>
+                    ✗ Compare your timing on the linear grid below — Play 1st note to try again, or
+                  </span>
+                  <button
+                    data-testid="hear-tempo-button"
+                    onClick={handleStartCountIn}
+                    style={{
+                      border: 'none',
+                      background: '#1f2421',
+                      color: '#ffffff',
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                    }}
+                  >
+                    Hear Tempo Again [Enter]
+                  </button>
+                </>
+              )}
+            </>
+          )}
+
+          {snapshot.phase === 'LEVEL_COMPLETE' && <span>✓ Level Complete!</span>}
         </div>
       </div>
 
-      {/* 2. Progress Bar (Matches Sight-Reading ProgressBar) */}
+      {/* 4. Progress Bar */}
       <div className="nnsr-progress-bar-container" style={{ width: '840px', marginTop: '12px' }}>
         <div className="nnsr-progress-section" style={{ width: '100%', borderRight: 'none' }}>
           <div className="nnsr-progress-label">
