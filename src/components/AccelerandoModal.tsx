@@ -739,6 +739,7 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
             className="nnsr-modal-start-btn"
             onClick={handleStart}
             disabled={selectedTargets.length === 0}
+            data-testid="start-accelerando-button"
           >
             Start
           </button>

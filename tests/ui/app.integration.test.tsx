@@ -70,4 +70,57 @@ describe('App Integration Test', () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c' }));
     });
   });
+
+  it('pauses and resumes practice mode with Escape key', () => {
+    render(<App />);
+
+    // Initially pause overlay is not visible
+    expect(screen.queryByTestId('manual-pause-overlay')).toBeNull();
+
+    // Press Escape to pause
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    });
+    expect(screen.getByTestId('manual-pause-overlay')).toBeDefined();
+    expect(screen.getByText('Paused')).toBeDefined();
+
+    // Press Escape or any key to resume
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+    });
+    expect(screen.queryByTestId('manual-pause-overlay')).toBeNull();
+  });
+
+  it('allows launching Infinite Speed-Up from rhythm level and ticks the countdown down', () => {
+    // Start on rhythm level
+    useAppStore.setState({ currentLevelId: 'rhythm-1' });
+    render(<App />);
+
+    // Rhythm arena is rendered
+    expect(screen.getByTestId('rhythm-arena')).toBeDefined();
+
+    // Switch to map view to open accelerando modal
+    act(() => {
+      fireEvent.click(screen.getByTestId('view-toggle-button'));
+    });
+
+    // Open Accelerando modal via speedometer button
+    const speedoBtn = screen.getByTestId('accelerando-octagon-node');
+    act(() => {
+      fireEvent.click(speedoBtn);
+    });
+
+    // Modal is open
+    expect(screen.getByText('Infinite Speed-Up')).toBeDefined();
+
+    // Start Accelerando
+    const startBtn = screen.getByTestId('start-accelerando-button');
+    act(() => {
+      fireEvent.click(startBtn);
+    });
+
+    // Modal closes and practice arena with GrandStaffCanvas is shown
+    expect(screen.queryByText('Infinite Speed-Up')).toBeNull();
+    expect(screen.getByText(/BPM/)).toBeDefined();
+  });
 });

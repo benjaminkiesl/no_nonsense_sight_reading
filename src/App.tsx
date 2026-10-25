@@ -223,6 +223,11 @@ export default function App(): React.JSX.Element {
   // Computer Keyboard Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // In rhythm mode, RhythmArena handles all keyboard input
+      if (isRhythmMode) {
+        return;
+      }
+
       if (e.key === 'Escape') {
         e.preventDefault();
         setIsManuallyPaused((prev) => !prev);
@@ -230,16 +235,18 @@ export default function App(): React.JSX.Element {
       }
 
       if (isManuallyPaused) {
-        // Any key unpauses
+        // Any key unpauses without registering as a note input
+        e.preventDefault();
         setIsManuallyPaused(false);
+        return;
       }
 
-      if ((!isRhythmMode && engineRef.current.getSnapshot().phase === 'LEVEL_COMPLETE') || isRhythmLevelCelebrating) {
+      if (engineRef.current.getSnapshot().phase === 'LEVEL_COMPLETE' || isRhythmLevelCelebrating) {
         handleCelebrationContinue();
         return;
       }
 
-      if (activeView === 'levels' || isRhythmMode) {
+      if (activeView === 'levels') {
         return;
       }
 
@@ -254,7 +261,7 @@ export default function App(): React.JSX.Element {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNoteInput, handleCelebrationContinue, isAccelerandoModalOpen, activeView, isRhythmMode]);
+  }, [handleNoteInput, handleCelebrationContinue, isAccelerandoModalOpen, activeView, isRhythmMode, isManuallyPaused, isRhythmLevelCelebrating]);
 
   return (
     <div className="nnsr-app">

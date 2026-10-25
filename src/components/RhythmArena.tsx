@@ -222,7 +222,7 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
   let noteCounter = 0;
 
   return (
-    <div className="nnsr-rhythm-practice-container" style={{ width: '840px' }}>
+    <div className="nnsr-rhythm-practice-container" data-testid="rhythm-arena" style={{ width: '840px' }}>
       {/* 1. Rhythm Staff Card (Optically Engraved) */}
       <div className="nnsr-rhythm-canvas-card">
         <svg
