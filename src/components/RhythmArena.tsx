@@ -246,9 +246,26 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
               xStem: number;
               durationBeats: number;
               noteIndex: number;
+              hasFlag: boolean;
             }[] = [];
 
+            // If this beat cell is pure hold (2nd beat of a half note), render nothing!
+            // A half note is already drawn as a hollow 2-beat notehead on its starting beat.
+            if (cell.cellId === 'hold_q') {
+              return <g key={`beat-cell-${b}`} />;
+            }
+
+            const nextCell = beats[b + 1];
+            const isDottedQuarterStart =
+              cell.cellId === 'q' && nextCell?.cellId === 'tie_e_note_e';
+
             const renderedEvents = cell.events.map((evt, eIdx) => {
+              // If this event is the hidden first half of a dotted quarter's 2nd beat,
+              // do not draw a phantom tied notehead—the previous quarter note has a dot!
+              if (cell.cellId === 'tie_e_note_e' && eIdx === 0 && beats[b - 1]?.cellId === 'q') {
+                return null;
+              }
+
               // Position inside beat
               let relPos = 0.5;
               const nEvt = cell.events.length;
@@ -298,7 +315,7 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                 );
               }
 
-              // Note Attack
+              // Note Attack or visible tie continuation (e.g. syncopation e + tie_e_note_e)
               const currentNoteIndex = evt.tiedFromPrev
                 ? Math.max(0, noteCounter - 1)
                 : noteCounter++;
@@ -328,29 +345,43 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                 }
               }
 
-              renderedNotePositions.push({
-                noteIndex: currentNoteIndex,
-                x: xNote,
-                y: baselineY,
-                color: noteColor,
-                errorHint,
-              });
+              if (!evt.tiedFromPrev) {
+                renderedNotePositions.push({
+                  noteIndex: currentNoteIndex,
+                  x: xNote,
+                  y: baselineY,
+                  color: noteColor,
+                  errorHint,
+                });
+              }
+
+              // Determine if this note is a standalone eighth note needing an eighth flag
+              const needsEighthFlag =
+                evt.durationBeats === 0.5 &&
+                (cell.cellId === 'upbeat_e' ||
+                  cell.cellId === 'note_e_rest_e' ||
+                  (cell.cellId === 'tie_e_note_e' && beats[b - 1]?.cellId === 'q'));
 
               cellNotes.push({
                 xNote,
                 xStem,
                 durationBeats: evt.durationBeats,
                 noteIndex: currentNoteIndex,
+                hasFlag: needsEighthFlag,
               });
 
               const isHalfNote = cell.cellId === 'h_start';
 
+              // Compute tie start X from previous notehead when rendering a genuine tie (e.g. syncopation)
+              const prevNotePos = renderedNotePositions[renderedNotePositions.length - 1];
+              const tieStartX = prevNotePos ? prevNotePos.x + 4 : xNote - 28;
+
               return (
                 <g key={`note-${b}-${eIdx}`}>
-                  {/* Tie Arc from previous beat if tied */}
+                  {/* Tie Arc from previous notehead when genuinely tied across beats */}
                   {evt.tiedFromPrev && (
                     <path
-                      d={`M ${xNote - 22} ${baselineY + 7} Q ${xNote - 11} ${baselineY + 16} ${xNote - 2} ${baselineY + 7}`}
+                      d={`M ${tieStartX} ${baselineY + 8} Q ${(tieStartX + xNote - 4) / 2} ${baselineY + 18} ${xNote - 4} ${baselineY + 8}`}
                       fill="none"
                       stroke={noteColor}
                       strokeWidth="2"
@@ -380,13 +411,15 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                     />
                   )}
 
-                  {/* Dot if dotted note */}
-                  {(evt.dotted || (cell.cellId === 'dot8_s' && eIdx === 0)) && (
+                  {/* Dot if dotted note (including dotted quarter `♩.`) */}
+                  {(evt.dotted ||
+                    isDottedQuarterStart ||
+                    (cell.cellId === 'dot8_s' && eIdx === 0)) && (
                     <circle cx={xNote + 13} cy={baselineY - 5} r="2.5" fill={noteColor} />
                   )}
 
                   {/* Error hint below note in FEEDBACK */}
-                  {errorHint && (
+                  {!evt.tiedFromPrev && errorHint && (
                     <text
                       x={xNote}
                       y={baselineY + 28}
@@ -412,14 +445,25 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                 const singleNote = cellNotes[0];
                 if (!singleNote) return null;
                 return (
-                  <line
-                    x1={singleNote.xStem}
-                    y1={baselineY}
-                    x2={singleNote.xStem}
-                    y2={yStemTop}
-                    stroke="var(--ink-primary)"
-                    strokeWidth="1.8"
-                  />
+                  <g key={`single-stem-${b}`}>
+                    <line
+                      x1={singleNote.xStem}
+                      y1={baselineY}
+                      x2={singleNote.xStem}
+                      y2={yStemTop}
+                      stroke="var(--ink-primary)"
+                      strokeWidth="1.8"
+                    />
+                    {singleNote.hasFlag && (
+                      <path
+                        d={`M ${singleNote.xStem} ${yStemTop} C ${singleNote.xStem + 7} ${yStemTop + 5}, ${singleNote.xStem + 10} ${yStemTop + 12}, ${singleNote.xStem + 7} ${yStemTop + 21}`}
+                        fill="none"
+                        stroke="var(--ink-primary)"
+                        strokeWidth="2.4"
+                        strokeLinecap="round"
+                      />
+                    )}
+                  </g>
                 );
               }
 
