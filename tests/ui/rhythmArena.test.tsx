@@ -24,8 +24,8 @@ describe('RhythmArena UI Specification Tests (4-Stage Count-In & Optical Engravi
     expect(hearTempoBtn).toBeDefined();
     expect(hearTempoBtn.textContent).toContain('Hear Tempo');
 
-    // Progress bar showing Phrase 1 of 5
-    expect(screen.getByText(/Phrase 1 of 5/)).toBeDefined();
+    // Progress bar showing Phrase 1 of 10
+    expect(screen.getByText(/Phrase 1 of 10/)).toBeDefined();
 
     // Verify ZERO dropdowns or mode selectors exist inside RhythmArena
     expect(container.querySelectorAll('select').length).toBe(0);

@@ -19,7 +19,16 @@ describe('RhythmEngine & Curriculum Tests (4-Stage Count-In & Global Shift Flow)
       expect(isRhythmLevelId(id)).toBe(true);
       const lvl = getRhythmLevelById(id);
       expect(lvl.tier).toBe(i);
-      expect(lvl.phrases.length).toBe(5);
+      expect(lvl.phrases.length).toBe(10);
+
+      // Verify all phrases flatten cleanly with valid landing downbeat
+      for (const phrase of lvl.phrases) {
+        const flattened = flattenPhraseToNotes(phrase);
+        expect(flattened.length).toBeGreaterThan(0);
+        const lastNote = flattened[flattened.length - 1]!;
+        expect(lastNote.isLandingNote).toBe(true);
+        expect(lastNote.startBeat).toBe(phrase.beatsPerBar * 2);
+      }
     }
 
     // Verify tied event flattening
@@ -213,17 +222,17 @@ describe('RhythmEngine & Curriculum Tests (4-Stage Count-In & Global Shift Flow)
     expect(engine.getSnapshot().phase).toBe('COUNT_IN');
   });
 
-  // Test 5: Debounce Retry on Failed Phrase & 5-Phrase Progression
-  it('debounces retry presses after feedback and transitions to LEVEL_COMPLETE on 5 passed phrases', () => {
+  // Test 5: Debounce Retry on Failed Phrase & 10-Phrase Progression
+  it('debounces retry presses after feedback and transitions to LEVEL_COMPLETE on 10 passed phrases', () => {
     const level1 = RHYTHM_LEVELS[0]!;
     const engine = new RhythmEngine(level1, 0);
 
     expect(engine.getSnapshot().phrasesCompletedInLevel).toBe(0);
-    expect(engine.getSnapshot().phrasesRequiredForLevel).toBe(5);
+    expect(engine.getSnapshot().phrasesRequiredForLevel).toBe(10);
 
     let currentTime = 1000;
 
-    for (let p = 0; p < 5; p++) {
+    for (let p = 0; p < 10; p++) {
       const phrase = engine.getSnapshot().phrase;
       const beatMs = 60000 / phrase.targetBpm;
 
@@ -252,7 +261,7 @@ describe('RhythmEngine & Curriculum Tests (4-Stage Count-In & Global Shift Flow)
 
       currentTime = lastRelease + 400;
 
-      if (p < 4) {
+      if (p < 9) {
         // Advance to next phrase
         engine.advanceToNextPhrase();
         expect(engine.getSnapshot().phase).toBe('STUDY');

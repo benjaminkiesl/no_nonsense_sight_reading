@@ -51,7 +51,7 @@ export class RhythmEngine {
     }
     this.phrase = initialPhrase;
     this.flattenedNotes = flattenPhraseToNotes(this.phrase);
-    this.phrasesRequiredForLevel = Math.min(5, levelSpec.phrases.length);
+    this.phrasesRequiredForLevel = Math.min(10, levelSpec.phrases.length);
   }
 
   public getSnapshot(): RhythmEngineSnapshot {
@@ -80,7 +80,7 @@ export class RhythmEngine {
       this.phrase = selected;
       this.flattenedNotes = flattenPhraseToNotes(this.phrase);
       this.phrasesCompletedInLevel = 0;
-      this.phrasesRequiredForLevel = Math.min(5, levelSpec.phrases.length);
+      this.phrasesRequiredForLevel = Math.min(10, levelSpec.phrases.length);
       this.resetForPhrase();
     }
   }
