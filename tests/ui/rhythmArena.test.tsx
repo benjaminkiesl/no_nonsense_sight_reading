@@ -95,4 +95,73 @@ describe('RhythmArena UI Specification Tests (4-Stage Count-In & Optical Engravi
     });
     expect(screen.getByText('Rhythm')).toBeDefined();
   });
+
+  it('renders Infinite Stream Mode banner and triggers onExitStream on Esc', () => {
+    const handleExit = vi.fn();
+    render(
+      <RhythmArena
+        levelId="rhythm-1"
+        streamOptions={{
+          concepts: ['quarter_half', 'eighths'],
+          targetBpm: 84,
+          accelerandoOnPass: true,
+        }}
+        onExitStream={handleExit}
+      />
+    );
+
+    // Verify stream mode header is rendered
+    expect(screen.getByTestId('rhythm-stream-header')).toBeDefined();
+    expect(screen.getByTestId('rhythm-stream-streak-val').textContent).toBe('0');
+    expect(screen.getByTestId('rhythm-stream-tempo-val').textContent).toBe('84 BPM');
+    expect(screen.getByTestId('exit-rhythm-stream-btn')).toBeDefined();
+
+    // Press Escape
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    });
+    expect(handleExit).toHaveBeenCalledTimes(1);
+  });
+
+  it('launches Infinite Rhythm Stream from LevelGraph octagon and exits cleanly', () => {
+    render(<App />);
+
+    // Go to Levels view
+    act(() => {
+      fireEvent.click(screen.getByTestId('view-toggle-button'));
+    });
+
+    // Rhythm Stream Octagon Node exists
+    const streamNode = screen.getByTestId('rhythm-stream-octagon-node');
+    expect(streamNode).toBeDefined();
+
+    // Click octagon node -> Opens Rhythm Stream modal
+    act(() => {
+      fireEvent.click(streamNode);
+    });
+    expect(screen.getByTestId('rhythm-stream-modal')).toBeDefined();
+
+    // Select preset
+    const presetBtn = screen.getByTestId('rhythm-preset-syncopation-bootcamp');
+    act(() => {
+      fireEvent.click(presetBtn);
+    });
+
+    // Start stream
+    const startBtn = screen.getByTestId('start-rhythm-stream-btn');
+    act(() => {
+      fireEvent.click(startBtn);
+    });
+
+    // App switches to practice view in Stream Mode!
+    expect(screen.getByTestId('rhythm-stream-header')).toBeDefined();
+
+    // Click Exit Stream
+    act(() => {
+      fireEvent.click(screen.getByTestId('exit-rhythm-stream-btn'));
+    });
+
+    // Returned to Levels view
+    expect(screen.getByTestId('rhythm-stream-octagon-node')).toBeDefined();
+  });
 });

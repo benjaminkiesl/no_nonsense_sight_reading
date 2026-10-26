@@ -1,19 +1,32 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { getRhythmLevelById } from '../rhythm/curriculum';
+import { getRhythmLevelById, isRhythmLevelId, RHYTHM_LEVELS } from '../rhythm/curriculum';
 import { RhythmEngine } from '../rhythm/engine';
-import { RhythmEngineSnapshot } from '../types/rhythm';
+import { RhythmEngineSnapshot, RhythmLevelSpec } from '../types/rhythm';
+import { generateRhythmPhrase, RhythmConceptId } from '../rhythm/generator';
+
+export interface RhythmStreamOptionsProp {
+  readonly concepts: readonly RhythmConceptId[];
+  readonly targetBpm: number;
+  readonly accelerandoOnPass: boolean;
+}
 
 export interface RhythmArenaProps {
   levelId: string;
   onLevelComplete?: () => void;
+  streamOptions?: RhythmStreamOptionsProp | null;
+  onExitStream?: () => void;
 }
 
 export const RhythmArena: React.FC<RhythmArenaProps> = ({
   levelId,
   onLevelComplete,
+  streamOptions,
+  onExitStream,
 }) => {
-  const levelSpec = getRhythmLevelById(levelId);
-  const engineRef = useRef<RhythmEngine>(new RhythmEngine(levelSpec, 0));
+  const initialSpec = isRhythmLevelId(levelId)
+    ? getRhythmLevelById(levelId)
+    : RHYTHM_LEVELS[0]!;
+  const engineRef = useRef<RhythmEngine>(new RhythmEngine(initialSpec, 0));
   const [snapshot, setSnapshot] = useState<RhythmEngineSnapshot>(() =>
     engineRef.current.getSnapshot()
   );
@@ -23,12 +36,39 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
     setSnapshot(engineRef.current.getSnapshot());
   }, []);
 
-  // When levelId prop changes, update engine
+  // When levelId or streamOptions prop changes, update engine
   useEffect(() => {
-    const spec = getRhythmLevelById(levelId);
-    engineRef.current.selectLevel(spec, 0);
-    updateSnapshot();
-  }, [levelId, updateSnapshot]);
+    if (streamOptions) {
+      const supplier = () =>
+        generateRhythmPhrase({
+          concepts: streamOptions.concepts,
+          targetBpm: streamOptions.targetBpm,
+        });
+      const initialPhrase = supplier();
+      const streamSpec: RhythmLevelSpec = {
+        id: 'rhythm-stream',
+        tier: 1,
+        title: 'Infinite Rhythm Stream',
+        subtitle: 'Procedural non-repeating groove stream',
+        motif: 'rag_sync',
+        prerequisiteIds: [],
+        nextIds: [],
+        phrases: [initialPhrase],
+      };
+      engineRef.current.selectLevel(streamSpec, 0);
+      engineRef.current.setStreamOptions({
+        isStreamMode: true,
+        phraseSupplier: supplier,
+        accelerandoOnPass: streamOptions.accelerandoOnPass,
+      });
+      updateSnapshot();
+    } else if (isRhythmLevelId(levelId)) {
+      const spec = getRhythmLevelById(levelId);
+      engineRef.current.setStreamOptions({ isStreamMode: false });
+      engineRef.current.selectLevel(spec, 0);
+      updateSnapshot();
+    }
+  }, [levelId, streamOptions, updateSnapshot]);
 
   // Check if level completed
   useEffect(() => {
@@ -76,9 +116,13 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
   // Keyboard Event Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape: stop / cancel current play and reset immediately
+      // Escape: exit stream if in stream mode, or reset phrase in standard practice
       if (e.key === 'Escape') {
         e.preventDefault();
+        if (streamOptions && onExitStream) {
+          onExitStream();
+          return;
+        }
         engineRef.current.resetForPhrase();
         updateSnapshot();
         return;
@@ -168,7 +212,7 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [handleStartCountIn, handleNextPhrase, updateSnapshot]);
+  }, [handleStartCountIn, handleNextPhrase, updateSnapshot, streamOptions, onExitStream]);
 
   // Staff Layout: Authentic Optical Engraving Spacing
   const beats = snapshot.phrase.beatCells;
@@ -226,6 +270,71 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
 
   return (
     <div className="nnsr-rhythm-practice-container" data-testid="rhythm-arena" style={{ width: '840px' }}>
+      {/* Stream Mode Top Bar */}
+      {snapshot.isStreamMode && (
+        <div
+          data-testid="rhythm-stream-header"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 16px',
+            marginBottom: '10px',
+            background: '#ffffff',
+            borderRadius: '10px',
+            border: '1px solid #e0ded8',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                background: 'var(--emerald)',
+                color: '#ffffff',
+                padding: '3px 8px',
+                borderRadius: '6px',
+              }}
+            >
+              Stream Mode
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink-primary)' }}>
+              🔥 Streak:{' '}
+              <strong data-testid="rhythm-stream-streak-val" style={{ color: 'var(--emerald)' }}>
+                {snapshot.streamStreak ?? 0}
+              </strong>
+            </span>
+            <span style={{ fontSize: '13px', color: 'var(--ink-subtle)' }}>•</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink-primary)' }}>
+              Tempo:{' '}
+              <strong data-testid="rhythm-stream-tempo-val" style={{ color: 'var(--emerald)' }}>
+                {snapshot.streamBpm ?? snapshot.phrase.targetBpm} BPM
+              </strong>
+            </span>
+          </div>
+
+          <button
+            onClick={onExitStream}
+            data-testid="exit-rhythm-stream-btn"
+            style={{
+              border: '1px solid #d4d0c7',
+              background: '#faf9f6',
+              color: 'var(--ink-primary)',
+              padding: '4px 12px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Exit Stream [Esc]
+          </button>
+        </div>
+      )}
+
       {/* 1. Rhythm Staff Card (Optically Engraved) */}
       <div className="nnsr-rhythm-canvas-card">
         <svg
@@ -826,8 +935,18 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
               {snapshot.feedback.passed ? (
                 <>
                   <span>
-                    ✓ Phrase {snapshot.phrasesCompletedInLevel} of{' '}
-                    {snapshot.phrasesRequiredForLevel} Passed ({snapshot.feedback.overallScorePct}%)
+                    {snapshot.isStreamMode ? (
+                      <>
+                        ✓ Phrase Passed! Streak:{' '}
+                        <strong>{snapshot.streamStreak ?? snapshot.phrasesCompletedInLevel}</strong> (
+                        {snapshot.feedback.overallScorePct}%)
+                      </>
+                    ) : (
+                      <>
+                        ✓ Phrase {snapshot.phrasesCompletedInLevel} of{' '}
+                        {snapshot.phrasesRequiredForLevel} Passed ({snapshot.feedback.overallScorePct}%)
+                      </>
+                    )}
                   </span>
                   <button
                     data-testid="next-phrase-button"
@@ -843,7 +962,8 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                       fontSize: '13px',
                     }}
                   >
-                    {snapshot.phrasesCompletedInLevel >= snapshot.phrasesRequiredForLevel
+                    {!snapshot.isStreamMode &&
+                    snapshot.phrasesCompletedInLevel >= snapshot.phrasesRequiredForLevel
                       ? 'Complete Level →'
                       : 'Next Phrase [Enter / Space]'}
                   </button>
@@ -879,27 +999,40 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
       {/* 4. Progress Bar */}
       <div className="nnsr-progress-bar-container" style={{ width: '840px', marginTop: '12px' }}>
         <div className="nnsr-progress-section" style={{ width: '100%', borderRight: 'none' }}>
-          <div className="nnsr-progress-label">
-            {snapshot.levelTitle} — Phrase{' '}
-            {Math.min(snapshot.phrasesCompletedInLevel + 1, snapshot.phrasesRequiredForLevel)} of{' '}
-            {snapshot.phrasesRequiredForLevel}
-          </div>
-          <div className="nnsr-progress-track">
-            {Array.from({ length: snapshot.phrasesRequiredForLevel }).map((_, idx) => (
-              <div
-                key={`rhythm-step-${idx}`}
-                className={`nnsr-progress-step ${
-                  idx < snapshot.phrasesCompletedInLevel ? 'filled' : ''
-                }`}
-                style={{
-                  backgroundColor:
-                    idx < snapshot.phrasesCompletedInLevel
-                      ? 'var(--emerald)'
-                      : 'var(--surface-subtle)',
-                }}
-              />
-            ))}
-          </div>
+          {snapshot.isStreamMode ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="nnsr-progress-label">
+                Infinite Stream — Current Streak: {snapshot.streamStreak ?? 0}
+              </div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--emerald)' }}>
+                {snapshot.streamBpm ?? snapshot.phrase.targetBpm} BPM
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="nnsr-progress-label">
+                {snapshot.levelTitle} — Phrase{' '}
+                {Math.min(snapshot.phrasesCompletedInLevel + 1, snapshot.phrasesRequiredForLevel)} of{' '}
+                {snapshot.phrasesRequiredForLevel}
+              </div>
+              <div className="nnsr-progress-track">
+                {Array.from({ length: snapshot.phrasesRequiredForLevel }).map((_, idx) => (
+                  <div
+                    key={`rhythm-step-${idx}`}
+                    className={`nnsr-progress-step ${
+                      idx < snapshot.phrasesCompletedInLevel ? 'filled' : ''
+                    }`}
+                    style={{
+                      backgroundColor:
+                        idx < snapshot.phrasesCompletedInLevel
+                          ? 'var(--emerald)'
+                          : 'var(--surface-subtle)',
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

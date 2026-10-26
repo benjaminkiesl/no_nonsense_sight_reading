@@ -12,6 +12,7 @@ export interface LevelGraphProps {
   completedLevelIds: ReadonlySet<string>;
   onSelectLevel: (levelId: string) => void;
   onOpenAccelerando?: () => void;
+  onOpenRhythmStream?: () => void;
   celebratingLevelId?: string | null;
 }
 
@@ -419,6 +420,7 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
   completedLevelIds,
   onSelectLevel,
   onOpenAccelerando,
+  onOpenRhythmStream,
   celebratingLevelId,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -749,6 +751,53 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
                 strokeLinecap="round"
               />
               <circle cx="0" cy="3" r="2.5" fill="#1f2421" />
+            </g>
+          </g>
+
+          {/* Infinite Rhythm Stream Octagon Node (X=RHYTHM_X=345, Y=65) */}
+          <g
+            className="nnsr-graph-octagon-node"
+            role="button"
+            tabIndex={0}
+            aria-label="Infinite Rhythm Stream"
+            data-testid="rhythm-stream-octagon-node"
+            onClick={() => onOpenRhythmStream?.()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onOpenRhythmStream?.();
+              }
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <polygon
+              points={getOctagonPoints(RHYTHM_X, 65, 23)}
+              fill="#ffffff"
+              stroke="var(--emerald)"
+              strokeWidth={2.2}
+            />
+            {/* Metronome SVG Icon */}
+            <g transform={`translate(${RHYTHM_X}, 65)`}>
+              {/* Metronome Body */}
+              <path
+                d="M -7 11 L -4 -9 L 4 -9 L 7 11 Z"
+                fill="none"
+                stroke="#1f2421"
+                strokeWidth={2}
+                strokeLinejoin="round"
+              />
+              {/* Pendulum arm */}
+              <line
+                x1="0"
+                y1="9"
+                x2="6"
+                y2="-6"
+                stroke="var(--emerald)"
+                strokeWidth={2}
+                strokeLinecap="round"
+              />
+              {/* Sliding weight bead */}
+              <circle cx="4.5" cy="-3.5" r="2.2" fill="var(--vibrant-coral)" />
             </g>
           </g>
 

@@ -20,6 +20,12 @@ export interface TickResult {
   readonly levelComplete?: boolean;
 }
 
+export interface RhythmEngineOptions {
+  readonly isStreamMode?: boolean;
+  readonly phraseSupplier?: () => RhythmPhrase;
+  readonly accelerandoOnPass?: boolean;
+}
+
 export class RhythmEngine {
   private levelSpec: RhythmLevelSpec;
   private phraseIndex: number;
@@ -41,7 +47,13 @@ export class RhythmEngine {
   private countInBeatIndex: number | undefined = undefined;
   private countInTotalBeats: number | undefined = undefined;
 
-  constructor(levelSpec: RhythmLevelSpec, phraseIndex = 0) {
+  // Stream mode state
+  private isStreamMode: boolean = false;
+  private phraseSupplier?: () => RhythmPhrase;
+  private accelerandoOnPass: boolean = false;
+  private streamStreak: number = 0;
+
+  constructor(levelSpec: RhythmLevelSpec, phraseIndex = 0, options?: RhythmEngineOptions) {
     this.levelSpec = levelSpec;
     const clampedIndex = Math.max(0, Math.min(phraseIndex, levelSpec.phrases.length - 1));
     this.phraseIndex = clampedIndex;
@@ -52,22 +64,38 @@ export class RhythmEngine {
     this.phrase = initialPhrase;
     this.flattenedNotes = flattenPhraseToNotes(this.phrase);
     this.phrasesRequiredForLevel = Math.min(10, levelSpec.phrases.length);
+
+    if (options) {
+      this.isStreamMode = options.isStreamMode ?? false;
+      this.phraseSupplier = options.phraseSupplier;
+      this.accelerandoOnPass = options.accelerandoOnPass ?? false;
+    }
+  }
+
+  public setStreamOptions(options: RhythmEngineOptions): void {
+    this.isStreamMode = options.isStreamMode ?? false;
+    this.phraseSupplier = options.phraseSupplier;
+    this.accelerandoOnPass = options.accelerandoOnPass ?? false;
+    this.streamStreak = 0;
   }
 
   public getSnapshot(): RhythmEngineSnapshot {
     return {
       levelId: this.levelSpec.id,
-      levelTitle: this.levelSpec.title,
+      levelTitle: this.isStreamMode ? 'Infinite Rhythm Stream' : this.levelSpec.title,
       phase: this.phase,
       phrase: this.phrase,
       flattenedNotes: this.flattenedNotes,
       currentNoteIndex: this.currentNoteIndex,
       activeHoldNoteIndex: this.activeHoldNoteIndex,
-      phrasesCompletedInLevel: this.phrasesCompletedInLevel,
-      phrasesRequiredForLevel: this.phrasesRequiredForLevel,
+      phrasesCompletedInLevel: this.isStreamMode ? this.streamStreak : this.phrasesCompletedInLevel,
+      phrasesRequiredForLevel: this.isStreamMode ? Infinity : this.phrasesRequiredForLevel,
       feedback: this.feedback,
       countInBeatIndex: this.countInBeatIndex,
       countInTotalBeats: this.countInTotalBeats,
+      isStreamMode: this.isStreamMode,
+      streamStreak: this.streamStreak,
+      streamBpm: this.phrase.targetBpm,
     };
   }
 
@@ -119,6 +147,21 @@ export class RhythmEngine {
   }
 
   public advanceToNextPhrase(): boolean {
+    if (this.isStreamMode && this.phraseSupplier) {
+      let nextBpm = this.phrase.targetBpm;
+      if (this.accelerandoOnPass && this.feedback?.passed) {
+        nextBpm = Math.min(180, nextBpm + 2);
+      }
+      const next = this.phraseSupplier();
+      this.phrase = {
+        ...next,
+        targetBpm: nextBpm,
+      };
+      this.flattenedNotes = flattenPhraseToNotes(this.phrase);
+      this.resetForPhrase();
+      return true;
+    }
+
     if (this.phrasesCompletedInLevel >= this.phrasesRequiredForLevel) {
       this.phase = 'LEVEL_COMPLETE';
       return false;
@@ -323,6 +366,13 @@ export class RhythmEngine {
 
     if (this.feedback.passed) {
       this.phrasesCompletedInLevel++;
+      if (this.isStreamMode) {
+        this.streamStreak++;
+      }
+    } else {
+      if (this.isStreamMode) {
+        this.streamStreak = 0;
+      }
     }
   }
 

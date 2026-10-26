@@ -116,4 +116,7 @@ export interface RhythmEngineSnapshot {
   readonly feedback: RhythmFeedbackSummary | null;
   readonly countInBeatIndex?: number;
   readonly countInTotalBeats?: number;
+  readonly isStreamMode?: boolean;
+  readonly streamStreak?: number;
+  readonly streamBpm?: number;
 }

@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { playMutedFeltThud, playSanctuaryRestChime, playSanctuaryWakeChime } from './audio/recoveryAudio';
 import { AccelerandoModal } from './components/AccelerandoModal';
+import { RhythmStreamModal } from './components/RhythmStreamModal';
 import { CelebrationOverlay } from './components/CelebrationOverlay';
 import { GrandStaffCanvas } from './components/GrandStaffCanvas';
 import { Header } from './components/Header';
 import { LevelGraph } from './components/LevelGraph';
 import { ActiveKeyHighlight, PianoKeyboard } from './components/PianoKeyboard';
 import { ProgressBar } from './components/ProgressBar';
-import { RhythmArena } from './components/RhythmArena';
+import { RhythmArena, RhythmStreamOptionsProp } from './components/RhythmArena';
 import { getLevelById, getNextRecommendedLevel } from './curriculum/graph';
 import { getRhythmLevelById, isRhythmLevelId } from './rhythm/curriculum';
 import { SightReadingEngine } from './engine/engine';
@@ -36,10 +37,13 @@ export default function App(): React.JSX.Element {
 
   const [isAccelerandoModalOpen, setIsAccelerandoModalOpen] = useState(false);
   const [isAccelerandoActive, setIsAccelerandoActive] = useState(false);
+  const [isRhythmStreamModalOpen, setIsRhythmStreamModalOpen] = useState(false);
+  const [isRhythmStreamActive, setIsRhythmStreamActive] = useState(false);
+  const [rhythmStreamOptions, setRhythmStreamOptions] = useState<RhythmStreamOptionsProp | null>(null);
   const [isRhythmLevelCelebrating, setIsRhythmLevelCelebrating] = useState(false);
   const [isManuallyPaused, setIsManuallyPaused] = useState(false);
 
-  const isRhythmMode = !isAccelerandoActive && isRhythmLevelId(currentLevelId);
+  const isRhythmMode = (!isAccelerandoActive && isRhythmLevelId(currentLevelId)) || isRhythmStreamActive;
   const currentLevel = isRhythmMode ? getLevelById('treble-1') : getLevelById(currentLevelId);
 
   const [activeView, setActiveView] = useState<'practice' | 'levels'>('practice');
@@ -93,6 +97,8 @@ export default function App(): React.JSX.Element {
   const handleSelectLevel = useCallback(
     (id: string) => {
       setIsAccelerandoActive(false);
+      setIsRhythmStreamActive(false);
+      setRhythmStreamOptions(null);
       setIsRhythmLevelCelebrating(false);
       setIsManuallyPaused(false);
       selectLevel(id);
@@ -105,6 +111,25 @@ export default function App(): React.JSX.Element {
     },
     [selectLevel]
   );
+
+  // Launch Infinite Rhythm Stream mode
+  const handleStartRhythmStream = useCallback(
+    (options: RhythmStreamOptionsProp) => {
+      setRhythmStreamOptions(options);
+      setIsRhythmStreamActive(true);
+      setIsAccelerandoActive(false);
+      setIsRhythmStreamModalOpen(false);
+      setIsManuallyPaused(false);
+      setActiveView('practice');
+    },
+    []
+  );
+
+  const handleExitRhythmStream = useCallback(() => {
+    setIsRhythmStreamActive(false);
+    setRhythmStreamOptions(null);
+    setActiveView('levels');
+  }, []);
 
   // Manual advance on celebration continue
   const handleCelebrationContinue = useCallback(() => {
@@ -277,6 +302,8 @@ export default function App(): React.JSX.Element {
             <section className="nnsr-main-column">
               <RhythmArena
                 levelId={currentLevelId}
+                streamOptions={isRhythmStreamActive ? rhythmStreamOptions : null}
+                onExitStream={handleExitRhythmStream}
                 onLevelComplete={() => {
                   markLevelCompleted(currentLevelId);
                   setIsRhythmLevelCelebrating(true);
@@ -335,7 +362,7 @@ export default function App(): React.JSX.Element {
             {isRhythmLevelCelebrating && isRhythmMode && (
               <CelebrationOverlay
                 customTitle={`Rhythm — ${getRhythmLevelById(currentLevelId).title}`}
-                customDescription="Outstanding rhythm sight-reading! You played all 5 two-bar phrases in steady proportion."
+                customDescription="Outstanding rhythm sight-reading! You played all 10 two-bar phrases in steady proportion."
                 onContinue={handleCelebrationContinue}
               />
             )}
@@ -344,6 +371,7 @@ export default function App(): React.JSX.Element {
               completedLevelIds={allFinishedLevelIds}
               onSelectLevel={handleSelectLevel}
               onOpenAccelerando={() => setIsAccelerandoModalOpen(true)}
+              onOpenRhythmStream={() => setIsRhythmStreamModalOpen(true)}
               celebratingLevelId={
                 (snapshot.phase === 'LEVEL_COMPLETE' && !isRhythmMode) ||
                 (isRhythmLevelCelebrating && isRhythmMode)
@@ -361,6 +389,12 @@ export default function App(): React.JSX.Element {
         onStart={handleStartCustomAccelerando}
         bestAccelerandoBpm={bestAccelerandoBpm}
         lastCustomNotes={lastCustomAccelerandoNotes}
+      />
+
+      <RhythmStreamModal
+        isOpen={isRhythmStreamModalOpen}
+        onClose={() => setIsRhythmStreamModalOpen(false)}
+        onStart={handleStartRhythmStream}
       />
     </div>
   );
