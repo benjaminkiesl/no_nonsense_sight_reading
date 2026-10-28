@@ -458,9 +458,11 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
               const xEvt = xBeat + relPos * innerW;
 
               if (evt.kind === 'rest') {
+                const isSixteenthRest = evt.durationBeats <= 0.25;
+                const isQuarterOrLonger = evt.durationBeats >= 1.0;
                 return (
                   <g key={`rest-${b}-${eIdx}`}>
-                    {evt.durationBeats >= 1.0 ? (
+                    {isQuarterOrLonger ? (
                       <text
                         x={xEvt}
                         y={baselineY + 11}
@@ -470,6 +472,17 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                         textAnchor="middle"
                       >
                         𝄽
+                      </text>
+                    ) : isSixteenthRest ? (
+                      <text
+                        x={xEvt}
+                        y={baselineY + 8}
+                        fontSize="22"
+                        fontFamily="serif"
+                        fill="var(--ink-primary)"
+                        textAnchor="middle"
+                      >
+                        𝄿
                       </text>
                     ) : (
                       <text
@@ -635,7 +648,7 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                     stroke="var(--ink-primary)"
                     strokeWidth="3.8"
                   />
-                  {cell.cellId === 's4' && (
+                  {(cell.cellId === 's4' || cell.cellId === 'pickup_3s') && (
                     <line
                       x1={firstStem - 1}
                       y1={yStemTop + 6.5}
@@ -674,6 +687,36 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                       stroke="var(--ink-primary)"
                       strokeWidth="3.8"
                     />
+                  )}
+                  {cell.cellId === 'scotch_snap' && (
+                    <line
+                      x1={firstStem - 1}
+                      y1={yStemTop + 6.5}
+                      x2={firstStem + 10}
+                      y2={yStemTop + 6.5}
+                      stroke="var(--ink-primary)"
+                      strokeWidth="3.8"
+                    />
+                  )}
+                  {cell.cellId === 'sync_16_8_16' && (
+                    <>
+                      <line
+                        x1={firstStem - 1}
+                        y1={yStemTop + 6.5}
+                        x2={firstStem + 10}
+                        y2={yStemTop + 6.5}
+                        stroke="var(--ink-primary)"
+                        strokeWidth="3.8"
+                      />
+                      <line
+                        x1={lastStem - 10}
+                        y1={yStemTop + 6.5}
+                        x2={lastStem + 1}
+                        y2={yStemTop + 6.5}
+                        stroke="var(--ink-primary)"
+                        strokeWidth="3.8"
+                      />
+                    </>
                   )}
                   {cell.cellId === 'triplet_e' && (
                     <text

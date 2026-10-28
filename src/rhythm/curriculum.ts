@@ -271,7 +271,7 @@ export const RHYTHM_LEVELS: readonly RhythmLevelSpec[] = [
         beatUnit: 4,
         targetBpm: 84,
         beatCells: [
-          CELLS.q, CELLS.h_start, CELLS.hold_q, CELLS.q,
+          CELLS.q, CELLS.q, CELLS.h_start, CELLS.hold_q,
           CELLS.h_start, CELLS.hold_q, CELLS.q, CELLS.q,
           CELLS.q,
         ],
@@ -713,7 +713,7 @@ export const RHYTHM_LEVELS: readonly RhythmLevelSpec[] = [
         beatUnit: 4,
         targetBpm: 76,
         beatCells: [
-          CELLS.e2, CELLS.q, CELLS.tie_e_note_e, CELLS.q,
+          CELLS.q, CELLS.tie_e_note_e, CELLS.e2, CELLS.q,
           CELLS.q, CELLS.tie_e_note_e, CELLS.q, CELLS.q,
           CELLS.q,
         ],

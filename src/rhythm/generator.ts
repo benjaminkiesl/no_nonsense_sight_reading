@@ -151,7 +151,7 @@ const CONCEPT_TWO_BEAT_MODULES: Record<RhythmConceptId, RhythmBeatCell[][]> = {
   ],
   dotted_quarter: [
     [CELLS.q, CELLS.tie_e_note_e], // ♩. ♪
-    [CELLS.tie_e_note_e, CELLS.q],
+    [CELLS.q, CELLS.e2],
   ],
   sixteenths: [
     [CELLS.s4, CELLS.q],
@@ -190,7 +190,7 @@ const CONCEPT_TWO_BEAT_MODULES: Record<RhythmConceptId, RhythmBeatCell[][]> = {
   ],
   ties: [
     [CELLS.e2, CELLS.tie_e_note_e],
-    [CELLS.q, CELLS.hold_q],
+    [CELLS.h_start, CELLS.hold_q],
   ],
   triplets: [
     [CELLS.triplet_e, CELLS.q],
