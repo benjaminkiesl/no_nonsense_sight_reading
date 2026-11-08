@@ -255,8 +255,8 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
         </div>
       </div>
 
-      {/* Main Grand Staff Vector Engraving (840 x 260) */}
-      <div className="nnsr-staff-container" style={{ position: 'relative' }}>
+      {/* Main Bass Staff Vector Engraving (840 x 200) */}
+      <div className="nnsr-staff-container" style={{ position: 'relative', height: '200px' }}>
         <svg
           viewBox="0 0 840 200"
           width="840"
