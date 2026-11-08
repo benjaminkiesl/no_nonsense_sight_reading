@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { CHORD_LEVELS } from '../chord/curriculum';
+import { formatChordLabel } from '../chord/chords';
 import { getAllLevels } from '../curriculum/graph';
 import { getLedgerLines, getStemDirection } from '../music/notation';
 import { getStaffStepOffset } from '../music/pitch';
 import { RHYTHM_LEVELS } from '../rhythm/curriculum';
+import { useAppStore } from '../store/useAppStore';
+import { ChordLevelSpec, ChordNotationSystem } from '../types/chord';
 import { LevelSpec } from '../types/curriculum';
 import { StaffNoteTarget } from '../types/music';
 import { MiniRhythmMotifType } from '../types/rhythm';
@@ -14,6 +18,7 @@ export interface LevelGraphProps {
   onOpenAccelerando?: () => void;
   onOpenRhythmStream?: () => void;
   celebratingLevelId?: string | null;
+  chordNotationSystem?: ChordNotationSystem;
 }
 
 const ALL_LEVELS = getAllLevels();
@@ -21,7 +26,7 @@ const ALL_LEVELS = getAllLevels();
 const PADDING_TOP = 110;
 const TIER_HEIGHT = 96;
 const BOTH_Y_OFFSET = 36; // "both" is positioned 36px higher up than single clefs
-const SVG_WIDTH = 400;
+const SVG_WIDTH = 500;
 const SVG_HEIGHT = PADDING_TOP + 11 * TIER_HEIGHT + BOTH_Y_OFFSET + 70;
 const NODE_RADIUS = 25;
 
@@ -31,6 +36,7 @@ const LANE_X: Record<string, number> = {
   bass: 245,
 };
 const RHYTHM_X = 345;
+const CHORDS_X = 440;
 
 export function getNodePosition(level: LevelSpec): { x: number; y: number } {
   const x = LANE_X[level.lane]!;
@@ -415,6 +421,64 @@ const MiniRhythmMotif: React.FC<MiniRhythmMotifProps> = ({ motif, cx, cy }) => {
   }
 };
 
+function getChordMotifBadgeText(level: ChordLevelSpec, notation: ChordNotationSystem): string {
+  switch (level.tier) {
+    case 1:
+      return `${formatChordLabel('C', notation)} · ${formatChordLabel('F/C', notation)}`;
+    case 2:
+      return `${formatChordLabel('G/B', notation)}`;
+    case 3:
+      return `${formatChordLabel('G', notation)} · ${formatChordLabel('C', notation)} · ${formatChordLabel('D7', notation)}`;
+    case 4:
+      return `${formatChordLabel('C/G', notation)} · ${formatChordLabel('D7', notation)}`;
+    case 5:
+      return `${formatChordLabel('Bb', notation)} · ${formatChordLabel('C7', notation)}`;
+    case 6:
+      return `${formatChordLabel('Am', notation)} · ${formatChordLabel('Em', notation)}`;
+    case 7:
+      return `${formatChordLabel('E7', notation)} · ${formatChordLabel('A7', notation)}`;
+    case 8:
+      return `${formatChordLabel('D', notation)} · ${formatChordLabel('Bm', notation)}`;
+    case 9:
+      return `${formatChordLabel('Cmaj7', notation)}`;
+    case 10:
+      return `${formatChordLabel('Dm7', notation)} · ${formatChordLabel('Am7', notation)}`;
+    case 11:
+      return `${formatChordLabel('B7', notation)} · ${formatChordLabel('Bb7', notation)}`;
+    case 12:
+      return `${formatChordLabel('Bbm', notation)} · ${formatChordLabel('Fm', notation)}`;
+    default:
+      return level.newChords.map((c) => formatChordLabel(c, notation)).slice(0, 2).join(' · ');
+  }
+}
+
+interface MiniChordMotifProps {
+  level: ChordLevelSpec;
+  notationSystem: ChordNotationSystem;
+  cx: number;
+  cy: number;
+}
+
+const MiniChordMotif: React.FC<MiniChordMotifProps> = ({ level, notationSystem, cx, cy }) => {
+  const badgeText = getChordMotifBadgeText(level, notationSystem);
+  const fontSize = badgeText.length > 9 ? 7.5 : badgeText.length > 5 ? 8.5 : 10;
+
+  return (
+    <text
+      x={cx}
+      y={cy}
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={fontSize}
+      fontWeight="700"
+      fontFamily="var(--font-sans, sans-serif)"
+      fill="#1f2421"
+    >
+      {badgeText}
+    </text>
+  );
+};
+
 export const LevelGraph: React.FC<LevelGraphProps> = ({
   currentLevelId,
   completedLevelIds,
@@ -422,9 +486,12 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
   onOpenAccelerando,
   onOpenRhythmStream,
   celebratingLevelId,
+  chordNotationSystem,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isTrophyCelebrating, setIsTrophyCelebrating] = useState(false);
+  const storeNotation = useAppStore((state) => state.chordNotationSystem);
+  const activeNotationSystem: ChordNotationSystem = chordNotationSystem || storeNotation || 'international';
 
   // Auto-scroll on mount to focus around the active/current level
   useEffect(() => {
@@ -537,6 +604,22 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
         markerEnd="url(#arrowhead)"
       />
     );
+
+    // Chords vertical upward arrow
+    const yChordCur = ySingleCur;
+    const yChordNext = ySingleNext;
+    arrows.push(
+      <line
+        key={`arrow-chord-${tier}-${tier + 1}`}
+        x1={CHORDS_X}
+        y1={yChordCur - NODE_RADIUS}
+        x2={CHORDS_X}
+        y2={yChordNext + NODE_RADIUS + 4}
+        stroke={completedLevelIds.has(`chord-${tier + 1}`) ? 'var(--emerald)' : '#b0aba2'}
+        strokeWidth={1.8}
+        markerEnd="url(#arrowhead)"
+      />
+    );
   }
 
   // Cross arrows within each tier: Treble -> Both and Bass -> Both
@@ -584,10 +667,11 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
   return (
     <div className="nnsr-level-graph-container">
       <div className="nnsr-level-graph-header">
-        <div style={{ width: '25%', textAlign: 'center' }}>Treble</div>
-        <div style={{ width: '25%', textAlign: 'center' }}>Both</div>
-        <div style={{ width: '25%', textAlign: 'center' }}>Bass</div>
-        <div style={{ width: '25%', textAlign: 'center' }}>Rhythm</div>
+        <div style={{ width: '20%', textAlign: 'center' }}>Treble</div>
+        <div style={{ width: '20%', textAlign: 'center' }}>Both</div>
+        <div style={{ width: '20%', textAlign: 'center' }}>Bass</div>
+        <div style={{ width: '20%', textAlign: 'center' }}>Rhythm</div>
+        <div style={{ width: '20%', textAlign: 'center' }}>Chords</div>
       </div>
 
       <div ref={scrollRef} className="nnsr-level-graph-scroll">
@@ -993,6 +1077,91 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
                 />
 
                 <MiniRhythmMotif motif={rhythmLevel.motif} cx={x} cy={y} />
+              </g>
+            );
+          })}
+
+          {/* Render Chord Curriculum Level Nodes (12 total) */}
+          {CHORD_LEVELS.map((chordLevel) => {
+            const x = CHORDS_X;
+            const y = PADDING_TOP + (12 - chordLevel.tier) * TIER_HEIGHT + BOTH_Y_OFFSET;
+            const isCurrent = chordLevel.id === currentLevelId;
+            const isCompleted = completedLevelIds.has(chordLevel.id);
+            const isCelebrating = celebratingLevelId === chordLevel.id;
+
+            let fillColor = '#ffffff';
+            let strokeColor = '#8c948f';
+            let strokeWidth = 1.8;
+
+            if (isCompleted) {
+              fillColor = 'var(--light-green)';
+              strokeColor = 'var(--emerald)';
+              strokeWidth = 2.4;
+            }
+
+            if (isCurrent) {
+              strokeColor = 'var(--emerald)';
+              strokeWidth = 3;
+            }
+
+            return (
+              <g
+                key={chordLevel.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Level Chords - Tier ${chordLevel.tier}: ${chordLevel.title}`}
+                data-testid={`chord-node-${chordLevel.tier}`}
+                onClick={() => onSelectLevel(chordLevel.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelectLevel(chordLevel.id);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
+                className={`nnsr-graph-node nnsr-chord-graph-node ${isCurrent ? 'current' : ''} ${
+                  isCompleted ? 'completed' : ''
+                } ${isCelebrating ? 'celebrating-node' : ''}`}
+              >
+                {isCurrent && (
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={NODE_RADIUS + 4.5}
+                    fill="none"
+                    stroke="var(--jasmine)"
+                    strokeWidth={3}
+                    strokeDasharray="4 2"
+                  />
+                )}
+
+                {isCelebrating && (
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={NODE_RADIUS + 6}
+                    fill="none"
+                    stroke="var(--emerald)"
+                    strokeWidth={3}
+                    className="nnsr-celebrate-ring"
+                  />
+                )}
+
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={NODE_RADIUS}
+                  fill={fillColor}
+                  stroke={strokeColor}
+                  strokeWidth={strokeWidth}
+                />
+
+                <MiniChordMotif
+                  level={chordLevel}
+                  notationSystem={activeNotationSystem}
+                  cx={x}
+                  cy={y}
+                />
               </g>
             );
           })}

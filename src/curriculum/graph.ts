@@ -8,7 +8,7 @@ export function getAllLevels(): readonly LevelSpec[] {
 export function getLevelById(id: string): LevelSpec {
   const level = LEVELS_BY_ID.get(id);
   if (!level) {
-    if (id.startsWith('rhythm-')) {
+    if (id.startsWith('rhythm-') || id.startsWith('chord-')) {
       const fallback = LEVELS_BY_ID.get('treble-1');
       if (fallback) return fallback;
     }
@@ -31,6 +31,13 @@ export function getTransitiveCompletedLevels(directlyCompletedIds: Iterable<stri
       if (!isNaN(tier) && tier >= 1 && tier <= 12) {
         for (let t = 1; t <= tier; t++) {
           result.add(`rhythm-${t}`);
+        }
+      }
+    } else if (id.startsWith('chord-')) {
+      const tier = parseInt(id.replace('chord-', ''), 10);
+      if (!isNaN(tier) && tier >= 1 && tier <= 12) {
+        for (let t = 1; t <= tier; t++) {
+          result.add(`chord-${t}`);
         }
       }
     } else if (LEVELS_BY_ID.has(id)) {
@@ -70,6 +77,11 @@ export function getNextRecommendedLevel(
   if (completedLevelId.startsWith('rhythm-')) {
     const tier = Number(completedLevelId.split('-')[1]);
     return !isNaN(tier) && tier < 12 ? `rhythm-${tier + 1}` : 'rhythm-12';
+  }
+
+  if (completedLevelId.startsWith('chord-')) {
+    const tier = Number(completedLevelId.split('-')[1]);
+    return !isNaN(tier) && tier < 12 ? `chord-${tier + 1}` : 'chord-12';
   }
 
   const level = getLevelById(completedLevelId);

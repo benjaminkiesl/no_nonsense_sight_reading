@@ -3,12 +3,14 @@ import { playMutedFeltThud, playSanctuaryRestChime, playSanctuaryWakeChime } fro
 import { AccelerandoModal } from './components/AccelerandoModal';
 import { RhythmStreamModal } from './components/RhythmStreamModal';
 import { CelebrationOverlay } from './components/CelebrationOverlay';
+import { ChordArena } from './components/ChordArena';
 import { GrandStaffCanvas } from './components/GrandStaffCanvas';
 import { Header } from './components/Header';
 import { LevelGraph } from './components/LevelGraph';
 import { ActiveKeyHighlight, PianoKeyboard } from './components/PianoKeyboard';
 import { ProgressBar } from './components/ProgressBar';
 import { RhythmArena, RhythmStreamOptionsProp } from './components/RhythmArena';
+import { getChordLevelById, isChordLevelId } from './chord/curriculum';
 import { getLevelById, getNextRecommendedLevel } from './curriculum/graph';
 import { getRhythmLevelById, isRhythmLevelId } from './rhythm/curriculum';
 import { SightReadingEngine } from './engine/engine';
@@ -28,11 +30,13 @@ export default function App(): React.JSX.Element {
     midiDeviceName,
     bestAccelerandoBpm,
     lastCustomAccelerandoNotes,
+    chordNotationSystem,
     selectLevel,
     markLevelCompleted,
     setMidiDeviceName,
     updateBestAccelerandoBpm,
     setLastCustomAccelerandoNotes,
+    setChordNotationSystem,
   } = useAppStore();
 
   const [isAccelerandoModalOpen, setIsAccelerandoModalOpen] = useState(false);
@@ -41,10 +45,13 @@ export default function App(): React.JSX.Element {
   const [isRhythmStreamActive, setIsRhythmStreamActive] = useState(false);
   const [rhythmStreamOptions, setRhythmStreamOptions] = useState<RhythmStreamOptionsProp | null>(null);
   const [isRhythmLevelCelebrating, setIsRhythmLevelCelebrating] = useState(false);
+  const [isChordLevelCelebrating, setIsChordLevelCelebrating] = useState(false);
   const [isManuallyPaused, setIsManuallyPaused] = useState(false);
 
+  const isChordMode = !isAccelerandoActive && isChordLevelId(currentLevelId);
   const isRhythmMode = (!isAccelerandoActive && isRhythmLevelId(currentLevelId)) || isRhythmStreamActive;
-  const currentLevel = isRhythmMode ? getLevelById('treble-1') : getLevelById(currentLevelId);
+  const isPitchMode = !isChordMode && !isRhythmMode;
+  const currentLevel = isPitchMode ? getLevelById(currentLevelId) : getLevelById('treble-1');
 
   const [activeView, setActiveView] = useState<'practice' | 'levels'>('practice');
   const engineRef = useRef<SightReadingEngine>(new SightReadingEngine(currentLevel));
@@ -53,19 +60,19 @@ export default function App(): React.JSX.Element {
 
   // Transition to Levels view and mark level completed upon LEVEL_COMPLETE phase
   useEffect(() => {
-    if (!isRhythmMode && snapshot.phase === 'LEVEL_COMPLETE') {
+    if (isPitchMode && snapshot.phase === 'LEVEL_COMPLETE') {
       markLevelCompleted(currentLevelId);
       setActiveView('levels');
     }
-  }, [snapshot.phase, currentLevelId, markLevelCompleted, isRhythmMode]);
+  }, [snapshot.phase, currentLevelId, markLevelCompleted, isPitchMode]);
 
-  // Re-create engine whenever selected level changes (unless in accelerando run or in rhythm mode)
+  // Re-create engine whenever selected level changes (unless in accelerando run or in rhythm/chord mode)
   useEffect(() => {
-    if (!isAccelerandoActive && !isRhythmMode) {
+    if (!isAccelerandoActive && isPitchMode) {
       engineRef.current = new SightReadingEngine(currentLevel);
       setSnapshot(engineRef.current.getSnapshot());
     }
-  }, [currentLevelId, isAccelerandoActive, currentLevel, isRhythmMode]);
+  }, [currentLevelId, isAccelerandoActive, currentLevel, isPitchMode]);
 
   // Launch Accelerando Perpetuo mode
   const handleStartAccelerando = useCallback(
@@ -100,9 +107,10 @@ export default function App(): React.JSX.Element {
       setIsRhythmStreamActive(false);
       setRhythmStreamOptions(null);
       setIsRhythmLevelCelebrating(false);
+      setIsChordLevelCelebrating(false);
       setIsManuallyPaused(false);
       selectLevel(id);
-      if (!isRhythmLevelId(id)) {
+      if (!isRhythmLevelId(id) && !isChordLevelId(id)) {
         const level = getLevelById(id);
         engineRef.current = new SightReadingEngine(level);
         setSnapshot(engineRef.current.getSnapshot());
@@ -136,8 +144,9 @@ export default function App(): React.JSX.Element {
     const nextId = getNextRecommendedLevel(currentLevelId, allFinishedLevelIds);
     markLevelCompleted(currentLevelId);
     setIsRhythmLevelCelebrating(false);
+    setIsChordLevelCelebrating(false);
     selectLevel(nextId);
-    if (!isRhythmLevelId(nextId)) {
+    if (!isRhythmLevelId(nextId) && !isChordLevelId(nextId)) {
       const nextLevel = getLevelById(nextId);
       engineRef.current = new SightReadingEngine(nextLevel);
       setSnapshot(engineRef.current.getSnapshot());
@@ -153,7 +162,7 @@ export default function App(): React.JSX.Element {
   // Handle note dispatch
   const handleNoteInput = useCallback(
     (input: UserNoteInput) => {
-      if (isRhythmMode) return;
+      if (isRhythmMode || isChordMode) return;
 
       const engine = engineRef.current;
       const result = engine.handleNoteInput(input);
@@ -196,10 +205,10 @@ export default function App(): React.JSX.Element {
         setActiveHighlights([]);
       }, 180);
     },
-    [handleCelebrationContinue, updateBestAccelerandoBpm, isRhythmMode]
+    [handleCelebrationContinue, updateBestAccelerandoBpm, isRhythmMode, isChordMode]
   );
 
-  // Main 60fps Animation Loop - Pauses ticking when viewing map, when modal is open, or in rhythm mode
+  // Main 60fps Animation Loop - Pauses ticking when viewing map, when modal is open, or in rhythm/chord mode
   useEffect(() => {
     let animId: number;
     let lastTime = performance.now();
@@ -208,7 +217,7 @@ export default function App(): React.JSX.Element {
       const deltaMs = time - lastTime;
       lastTime = time;
 
-      if (activeView === 'practice' && !isAccelerandoModalOpen && !isRhythmMode && !isManuallyPaused) {
+      if (activeView === 'practice' && !isAccelerandoModalOpen && isPitchMode && !isManuallyPaused) {
         const prevRecoveryMs = engineRef.current.getSnapshot().recoveryRemainingMs;
         engineRef.current.tick(deltaMs);
         const nextSnap = engineRef.current.getSnapshot();
@@ -226,14 +235,26 @@ export default function App(): React.JSX.Element {
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [activeView, isAccelerandoModalOpen, isRhythmMode, isManuallyPaused]);
+  }, [activeView, isAccelerandoModalOpen, isPitchMode, isManuallyPaused]);
+
+  const chordMidiHandlersRef = useRef<{
+    onNoteOn: (midi: number) => void;
+    onNoteOff: (midi: number) => void;
+  } | null>(null);
 
   // Web MIDI API Initialization
   useEffect(() => {
     const midi = new MidiManager({
       onNoteOn: (midi) => {
-        if (!isRhythmMode) {
+        if (isPitchMode) {
           handleNoteInput({ source: 'midi', midi });
+        } else if (isChordMode) {
+          chordMidiHandlersRef.current?.onNoteOn(midi);
+        }
+      },
+      onNoteOff: (midi) => {
+        if (isChordMode) {
+          chordMidiHandlersRef.current?.onNoteOff(midi);
         }
       },
       onConnectionChange: (deviceName) => {
@@ -243,16 +264,11 @@ export default function App(): React.JSX.Element {
 
     midi.init();
     return () => midi.dispose();
-  }, [handleNoteInput, setMidiDeviceName, isRhythmMode]);
+  }, [handleNoteInput, setMidiDeviceName, isPitchMode, isChordMode]);
 
   // Computer Keyboard Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // In rhythm mode, RhythmArena handles all keyboard input
-      if (isRhythmMode) {
-        return;
-      }
-
       if (e.key === 'Escape') {
         e.preventDefault();
         setIsManuallyPaused((prev) => !prev);
@@ -266,12 +282,16 @@ export default function App(): React.JSX.Element {
         return;
       }
 
-      if (engineRef.current.getSnapshot().phase === 'LEVEL_COMPLETE' || isRhythmLevelCelebrating) {
+      if (
+        (snapshot.phase === 'LEVEL_COMPLETE' && isPitchMode) ||
+        isRhythmLevelCelebrating ||
+        isChordLevelCelebrating
+      ) {
         handleCelebrationContinue();
         return;
       }
 
-      if (activeView === 'levels') {
+      if (isRhythmMode || isChordMode || activeView === 'levels') {
         return;
       }
 
@@ -286,7 +306,19 @@ export default function App(): React.JSX.Element {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNoteInput, handleCelebrationContinue, isAccelerandoModalOpen, activeView, isRhythmMode, isManuallyPaused, isRhythmLevelCelebrating]);
+  }, [
+    handleNoteInput,
+    handleCelebrationContinue,
+    isAccelerandoModalOpen,
+    activeView,
+    isPitchMode,
+    isRhythmMode,
+    isChordMode,
+    isManuallyPaused,
+    isRhythmLevelCelebrating,
+    isChordLevelCelebrating,
+    snapshot.phase,
+  ]);
 
   return (
     <div className="nnsr-app">
@@ -294,10 +326,56 @@ export default function App(): React.JSX.Element {
         midiDeviceName={midiDeviceName}
         activeView={activeView}
         onToggleView={() => setActiveView((v) => (v === 'practice' ? 'levels' : 'practice'))}
+        chordNotationSystem={chordNotationSystem}
+        onToggleChordNotation={() =>
+          setChordNotationSystem(chordNotationSystem === 'international' ? 'german' : 'international')
+        }
       />
 
       {activeView === 'practice' ? (
-        !isAccelerandoActive && isRhythmMode ? (
+        !isAccelerandoActive && isChordMode ? (
+          <main className="nnsr-workspace nnsr-practice-workspace">
+            <section className="nnsr-main-column" style={{ position: 'relative' }}>
+              <ChordArena
+                levelId={currentLevelId}
+                isPaused={isManuallyPaused}
+                onMidiRegister={(handlers) => {
+                  chordMidiHandlersRef.current = handlers;
+                }}
+                onLevelComplete={() => {
+                  markLevelCompleted(currentLevelId);
+                  setIsChordLevelCelebrating(true);
+                  setActiveView('levels');
+                }}
+              />
+              {isManuallyPaused && (
+                <div
+                  data-testid="manual-pause-overlay"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '840px',
+                    height: '280px',
+                    backgroundColor: 'rgba(26, 32, 28, 0.75)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ffffff',
+                    borderRadius: '12px',
+                    zIndex: 20,
+                  }}
+                >
+                  <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Paused</p>
+                  <p style={{ fontSize: '14px', color: '#b0aba2', margin: 0 }}>
+                    Press Esc or any key to resume
+                  </p>
+                </div>
+              )}
+            </section>
+          </main>
+        ) : !isAccelerandoActive && isRhythmMode ? (
           <main className="nnsr-workspace nnsr-practice-workspace">
             <section className="nnsr-main-column">
               <RhythmArena
@@ -352,7 +430,7 @@ export default function App(): React.JSX.Element {
       ) : (
         <main className="nnsr-workspace nnsr-level-map-container">
           <div className="nnsr-map-view">
-            {snapshot.phase === 'LEVEL_COMPLETE' && !isRhythmMode && (
+            {snapshot.phase === 'LEVEL_COMPLETE' && isPitchMode && (
               <CelebrationOverlay
                 level={currentLevel}
                 onContinue={handleCelebrationContinue}
@@ -366,15 +444,24 @@ export default function App(): React.JSX.Element {
                 onContinue={handleCelebrationContinue}
               />
             )}
+            {isChordLevelCelebrating && isChordMode && (
+              <CelebrationOverlay
+                customTitle={`Chord Symbols — ${getChordLevelById(currentLevelId).title}`}
+                customDescription={`Incredible work! You mastered the harmony and cadential flow of ${getChordLevelById(currentLevelId).title}.`}
+                onContinue={handleCelebrationContinue}
+              />
+            )}
             <LevelGraph
               currentLevelId={currentLevelId}
               completedLevelIds={allFinishedLevelIds}
               onSelectLevel={handleSelectLevel}
               onOpenAccelerando={() => setIsAccelerandoModalOpen(true)}
               onOpenRhythmStream={() => setIsRhythmStreamModalOpen(true)}
+              chordNotationSystem={chordNotationSystem}
               celebratingLevelId={
-                (snapshot.phase === 'LEVEL_COMPLETE' && !isRhythmMode) ||
-                (isRhythmLevelCelebrating && isRhythmMode)
+                (snapshot.phase === 'LEVEL_COMPLETE' && isPitchMode) ||
+                (isRhythmLevelCelebrating && isRhythmMode) ||
+                (isChordLevelCelebrating && isChordMode)
                   ? currentLevelId
                   : null
               }

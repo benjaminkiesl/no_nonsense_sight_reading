@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getTransitiveCompletedLevels } from '../curriculum/graph';
+import { ChordNotationSystem } from '../types/chord';
 import { StaffNoteTarget } from '../types/music';
 
 export const STORAGE_KEY = 'nnsr_progress_v1';
@@ -10,6 +11,7 @@ export interface PersistedProgress {
   readonly directlyCompletedLevelIds: string[];
   readonly bestAccelerandoBpm?: number | null;
   readonly lastCustomAccelerandoNotes?: StaffNoteTarget[] | null;
+  readonly chordNotationSystem?: ChordNotationSystem;
 }
 
 export interface AppState {
@@ -19,11 +21,13 @@ export interface AppState {
   midiDeviceName: string | null;
   bestAccelerandoBpm: number | null;
   lastCustomAccelerandoNotes: StaffNoteTarget[] | null;
+  chordNotationSystem: ChordNotationSystem;
   selectLevel: (levelId: string) => void;
   markLevelCompleted: (levelId: string) => void;
   setMidiDeviceName: (name: string | null) => void;
   updateBestAccelerandoBpm: (bpm: number) => void;
   setLastCustomAccelerandoNotes: (notes: StaffNoteTarget[] | null) => void;
+  setChordNotationSystem: (system: ChordNotationSystem) => void;
 }
 
 function loadInitialProgress(): {
@@ -31,6 +35,7 @@ function loadInitialProgress(): {
   directlyCompletedLevelIds: string[];
   bestAccelerandoBpm: number | null;
   lastCustomAccelerandoNotes: StaffNoteTarget[] | null;
+  chordNotationSystem: ChordNotationSystem;
 } {
   if (typeof window === 'undefined' || !window.localStorage) {
     return {
@@ -38,6 +43,7 @@ function loadInitialProgress(): {
       directlyCompletedLevelIds: [],
       bestAccelerandoBpm: null,
       lastCustomAccelerandoNotes: null,
+      chordNotationSystem: 'international',
     };
   }
 
@@ -46,6 +52,11 @@ function loadInitialProgress(): {
     if (raw) {
       const parsed = JSON.parse(raw) as PersistedProgress;
       if (parsed && parsed.version === 1 && typeof parsed.currentLevelId === 'string') {
+        const chordNotation: ChordNotationSystem =
+          parsed.chordNotationSystem === 'german' || parsed.chordNotationSystem === 'international'
+            ? parsed.chordNotationSystem
+            : 'international';
+
         return {
           currentLevelId: parsed.currentLevelId,
           directlyCompletedLevelIds: Array.isArray(parsed.directlyCompletedLevelIds)
@@ -59,6 +70,7 @@ function loadInitialProgress(): {
             Array.isArray(parsed.lastCustomAccelerandoNotes) && parsed.lastCustomAccelerandoNotes.length > 0
               ? parsed.lastCustomAccelerandoNotes
               : null,
+          chordNotationSystem: chordNotation,
         };
       }
     }
@@ -71,6 +83,7 @@ function loadInitialProgress(): {
     directlyCompletedLevelIds: [],
     bestAccelerandoBpm: null,
     lastCustomAccelerandoNotes: null,
+    chordNotationSystem: 'international',
   };
 }
 
@@ -78,7 +91,8 @@ function saveProgress(
   currentLevelId: string,
   directlyCompletedLevelIds: string[],
   bestAccelerandoBpm: number | null,
-  lastCustomAccelerandoNotes: StaffNoteTarget[] | null
+  lastCustomAccelerandoNotes: StaffNoteTarget[] | null,
+  chordNotationSystem: ChordNotationSystem
 ): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
@@ -88,6 +102,7 @@ function saveProgress(
       directlyCompletedLevelIds,
       bestAccelerandoBpm: bestAccelerandoBpm ?? undefined,
       lastCustomAccelerandoNotes: lastCustomAccelerandoNotes ?? undefined,
+      chordNotationSystem,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch {
@@ -104,6 +119,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   midiDeviceName: null,
   bestAccelerandoBpm: initialProgress.bestAccelerandoBpm,
   lastCustomAccelerandoNotes: initialProgress.lastCustomAccelerandoNotes,
+  chordNotationSystem: initialProgress.chordNotationSystem,
 
   selectLevel: (levelId: string) => {
     set({ currentLevelId: levelId });
@@ -111,7 +127,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       levelId,
       get().directlyCompletedLevelIds,
       get().bestAccelerandoBpm,
-      get().lastCustomAccelerandoNotes
+      get().lastCustomAccelerandoNotes,
+      get().chordNotationSystem
     );
   },
 
@@ -131,7 +148,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().currentLevelId,
       updated,
       get().bestAccelerandoBpm,
-      get().lastCustomAccelerandoNotes
+      get().lastCustomAccelerandoNotes,
+      get().chordNotationSystem
     );
   },
 
@@ -148,7 +166,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         get().currentLevelId,
         get().directlyCompletedLevelIds,
         rounded,
-        get().lastCustomAccelerandoNotes
+        get().lastCustomAccelerandoNotes,
+        get().chordNotationSystem
       );
     }
   },
@@ -159,7 +178,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().currentLevelId,
       get().directlyCompletedLevelIds,
       get().bestAccelerandoBpm,
-      notes
+      notes,
+      get().chordNotationSystem
+    );
+  },
+
+  setChordNotationSystem: (system: ChordNotationSystem) => {
+    set({ chordNotationSystem: system });
+    saveProgress(
+      get().currentLevelId,
+      get().directlyCompletedLevelIds,
+      get().bestAccelerandoBpm,
+      get().lastCustomAccelerandoNotes,
+      system
     );
   },
 }));

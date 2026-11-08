@@ -1,13 +1,14 @@
 import React from 'react';
 import { SpeedController } from '../engine/speed';
+import { ChordEngineSnapshot } from '../types/chord';
 import { EngineSnapshot } from '../types/engine';
 
 export interface ProgressBarProps {
-  snapshot: EngineSnapshot;
+  snapshot: EngineSnapshot | ChordEngineSnapshot;
 }
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({ snapshot }) => {
-  if (snapshot.isAccelerando) {
+  if ('isAccelerando' in snapshot && snapshot.isAccelerando) {
     const minBpm = SpeedController.V_MIN_START;
     const maxBpm = SpeedController.V_ACCELERANDO_MAX;
     const currentBpm = snapshot.targetBpm;

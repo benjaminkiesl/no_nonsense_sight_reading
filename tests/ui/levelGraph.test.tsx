@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { LevelGraph } from '../../src/components/LevelGraph';
 
 describe('LevelGraph Component', () => {
-  it('renders the 4 lane headers: Treble, Both, Bass, Rhythm', () => {
+  it('renders the 5 lane headers: Treble, Both, Bass, Rhythm, Chords', () => {
     render(
       <LevelGraph
         currentLevelId="treble-1"
@@ -16,9 +16,10 @@ describe('LevelGraph Component', () => {
     expect(screen.getByText('Both')).toBeDefined();
     expect(screen.getByText('Bass')).toBeDefined();
     expect(screen.getByText('Rhythm')).toBeDefined();
+    expect(screen.getByText('Chords')).toBeDefined();
   });
 
-  it('renders all 48 level nodes (36 pitch + 12 rhythm), highlights current level, and applies celebratory ring', () => {
+  it('renders all 60 level nodes (36 pitch + 12 rhythm + 12 chords), highlights current level, and applies celebratory ring', () => {
     const { container } = render(
       <LevelGraph
         currentLevelId="treble-3"
@@ -29,7 +30,7 @@ describe('LevelGraph Component', () => {
     );
 
     const nodes = container.querySelectorAll('.nnsr-graph-node');
-    expect(nodes.length).toBe(48);
+    expect(nodes.length).toBe(60);
 
     const currentNode = container.querySelector('.nnsr-graph-node.current');
     expect(currentNode).toBeDefined();
@@ -58,5 +59,39 @@ describe('LevelGraph Component', () => {
     const rhythm1Node = screen.getByTestId('rhythm-node-1');
     fireEvent.click(rhythm1Node);
     expect(onSelectLevel).toHaveBeenCalledWith('rhythm-1');
+
+    const chord1Node = screen.getByTestId('chord-node-1');
+    fireEvent.click(chord1Node);
+    expect(onSelectLevel).toHaveBeenCalledWith('chord-1');
+  });
+
+  it('formats mini motif badges on chord nodes with international vs german notation', () => {
+    const { rerender } = render(
+      <LevelGraph
+        currentLevelId="treble-1"
+        completedLevelIds={new Set()}
+        onSelectLevel={vi.fn()}
+        chordNotationSystem="international"
+      />
+    );
+
+    // Tier 2: G/B in international
+    expect(screen.getByText('G/B')).toBeDefined();
+    // Tier 5: Bb · C7 in international
+    expect(screen.getByText('Bb · C7')).toBeDefined();
+
+    rerender(
+      <LevelGraph
+        currentLevelId="treble-1"
+        completedLevelIds={new Set()}
+        onSelectLevel={vi.fn()}
+        chordNotationSystem="german"
+      />
+    );
+
+    // Tier 2: G/H in German
+    expect(screen.getByText('G/H')).toBeDefined();
+    // Tier 5: B · C7 in German
+    expect(screen.getByText('B · C7')).toBeDefined();
   });
 });
