@@ -16,7 +16,7 @@ export const CHORD_ENGINE_GEOMETRY = {
   HIT_ZONE_RIGHT_X: 170,
   HIT_ZONE_CENTER_X: 145,
   EARLY_GRACE_PX: 35,
-  CHORD_SPACING_PX: 180,
+  CHORD_SPACING_PX: 240,
 } as const;
 
 export interface ChordNoteInputResult {
@@ -114,7 +114,7 @@ export class ChordEngine {
     this.rng = randomFn;
 
     this.targetBpm = level.targetBpm;
-    this.actualBpm = Math.max(38, Math.round(level.targetBpm * 0.72));
+    this.actualBpm = Math.max(24, Math.round(level.targetBpm * 0.55));
 
     this.learnChords =
       level.newChords.length > 0 ? level.newChords : level.targetChords;
@@ -194,7 +194,8 @@ export class ChordEngine {
 
       if (this.substate === 'NORMAL') {
         // Scroll velocity in px/s
-        const scrollVx = CHORD_ENGINE_GEOMETRY.CHORD_SPACING_PX * (this.actualBpm / 60.0);
+        const beatsPerChord = 2.0;
+        const scrollVx = (CHORD_ENGINE_GEOMETRY.CHORD_SPACING_PX * (this.actualBpm / 60.0)) / beatsPerChord;
         const deltaX = scrollVx * deltaSec;
 
         for (const chord of this.activeChords) {
@@ -214,7 +215,7 @@ export class ChordEngine {
         while (maxX < CHORD_ENGINE_GEOMETRY.CANVAS_WIDTH + CHORD_ENGINE_GEOMETRY.CHORD_SPACING_PX) {
           const spawnX =
             maxX === 0
-              ? CHORD_ENGINE_GEOMETRY.CANVAS_WIDTH
+              ? 380
               : maxX + CHORD_ENGINE_GEOMETRY.CHORD_SPACING_PX;
 
           const lastChordId =
@@ -319,7 +320,7 @@ export class ChordEngine {
         if (this.phase === 'SPEED_UP') {
           this.speedStepIndex++;
           const fraction = Math.min(1, this.speedStepIndex / this.speedTotalSteps);
-          const startBpm = Math.max(38, Math.round(this.targetBpm * 0.72));
+          const startBpm = Math.max(24, Math.round(this.targetBpm * 0.55));
           this.actualBpm = Math.round(startBpm + fraction * (this.targetBpm - startBpm));
 
           if (this.speedStepIndex >= this.speedTotalSteps || this.actualBpm >= this.targetBpm) {
@@ -370,7 +371,7 @@ export class ChordEngine {
     this.activeChords = [];
 
     // Pre-populate timeline with initial scrolling chords
-    let x = CHORD_ENGINE_GEOMETRY.CANVAS_WIDTH;
+    let x = 380;
     let lastChordId = this.learnChords.length > 0 ? this.learnChords[0]!.id : this.level.targetChords[0]!.id;
 
     for (let i = 0; i < 4; i++) {

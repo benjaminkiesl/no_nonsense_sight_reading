@@ -258,8 +258,8 @@ function createChord(params: {
 
 /**
  * Standard chord library covering all 12 curriculum tiers.
- * Canonical reference voicings are designed with bass note in bass clef (around E2-D3)
- * and close-position voicings in treble clef (around G3-A4).
+ * Canonical reference voicings are designed with compact single-hand voicings in the Bass Clef
+ * (F2–E4, MIDI 41–64, mostly G2–D4).
  */
 export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
   // Tier 1: The Tonic Anchor
@@ -269,7 +269,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     rootPitchClass: 0,
     quality: 'major',
     requiredPitchClasses: [0, 4, 7], // C, E, G
-    referenceVoicing: createCanonicalVoicing(48, [60, 64, 67]), // LH C3, RH [C4, E4, G4]
+    referenceVoicing: createCanonicalVoicing(48, [52, 55]), // C3, E3, G3
   }),
   'F/C': createChord({
     id: 'F/C',
@@ -280,7 +280,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     bassLetter: 'C',
     bassPitchClass: 0,
     requiredPitchClasses: [5, 9, 0], // F, A, C
-    referenceVoicing: createCanonicalVoicing(48, [60, 65, 69]), // LH C3, RH [C4, F4, A4]
+    referenceVoicing: createCanonicalVoicing(48, [53, 57]), // C3, F3, A3
   }),
 
   // Tier 2: The Stepwise Leading Tone
@@ -293,7 +293,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     bassLetter: 'B',
     bassPitchClass: 11,
     requiredPitchClasses: [7, 11, 2], // G, B, D
-    referenceVoicing: createCanonicalVoicing(47, [59, 62, 67]), // LH B2, RH [B3, D4, G4]
+    referenceVoicing: createCanonicalVoicing(47, [50, 55]), // B2, D3, G3
   }),
   'G7/B': createChord({
     id: 'G7/B',
@@ -305,7 +305,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     bassPitchClass: 11,
     requiredPitchClasses: [7, 11, 5], // G, B, F (5th D is optional)
     optionalPitchClasses: [2],
-    referenceVoicing: createCanonicalVoicing(47, [59, 62, 65, 67]), // LH B2, RH [B3, D4, F4, G4]
+    referenceVoicing: createCanonicalVoicing(47, [53, 55]), // B2, F3, G3
   }),
 
   // Tier 3: The Root-Position Cadence
@@ -315,7 +315,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     rootPitchClass: 5,
     quality: 'major',
     requiredPitchClasses: [5, 9, 0], // F, A, C
-    referenceVoicing: createCanonicalVoicing(41, [60, 65, 69]), // LH F2, RH [C4, F4, A4]
+    referenceVoicing: createCanonicalVoicing(41, [45, 48]), // F2, A2, C3
   }),
   G: createChord({
     id: 'G',
@@ -323,7 +323,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     rootPitchClass: 7,
     quality: 'major',
     requiredPitchClasses: [7, 11, 2], // G, B, D
-    referenceVoicing: createCanonicalVoicing(43, [59, 62, 67]), // LH G2, RH [B3, D4, G4]
+    referenceVoicing: createCanonicalVoicing(43, [47, 50]), // G2, B2, D3
   }),
   G7: createChord({
     id: 'G7',
@@ -332,7 +332,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'dominant7',
     requiredPitchClasses: [7, 11, 5], // G, B, F (5th D is optional)
     optionalPitchClasses: [2],
-    referenceVoicing: createCanonicalVoicing(43, [59, 62, 65, 67]), // LH G2, RH [B3, D4, F4, G4]
+    referenceVoicing: createCanonicalVoicing(43, [47, 53]), // G2, B2, F3
   }),
 
   // Tier 4: The Volkslieder Singing Key (G Major)
@@ -345,7 +345,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     bassLetter: 'G',
     bassPitchClass: 7,
     requiredPitchClasses: [0, 4, 7], // C, E, G
-    referenceVoicing: createCanonicalVoicing(43, [55, 60, 64]), // LH G2, RH [G3, C4, E4]
+    referenceVoicing: createCanonicalVoicing(43, [48, 52]), // G2, C3, E3
   }),
   'D7/F#': createChord({
     id: 'D7/F#',
@@ -357,7 +357,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     bassPitchClass: 6,
     requiredPitchClasses: [2, 6, 0], // D, F#, C (5th A is optional)
     optionalPitchClasses: [9],
-    referenceVoicing: createCanonicalVoicing(42, [60, 62, 66]), // LH F#2, RH [C4, D4, F#4]
+    referenceVoicing: createCanonicalVoicing(42, [48, 50]), // F#2, C3, D3
   }),
   D7: createChord({
     id: 'D7',
@@ -366,7 +366,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'dominant7',
     requiredPitchClasses: [2, 6, 0], // D, F#, C
     optionalPitchClasses: [9],
-    referenceVoicing: createCanonicalVoicing(50, [60, 62, 66]), // LH D3, RH [C4, D4, F#4]
+    referenceVoicing: createCanonicalVoicing(50, [54, 60]), // D3, F#3, C4
   }),
 
   // Tier 5: The Flat Key & German B/H Pivot (F Major)
@@ -379,7 +379,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     bassLetter: 'F',
     bassPitchClass: 5,
     requiredPitchClasses: [10, 2, 5], // Bb, D, F
-    referenceVoicing: createCanonicalVoicing(41, [58, 62, 65]), // LH F2, RH [Bb3, D4, F4]
+    referenceVoicing: createCanonicalVoicing(41, [46, 50]), // F2, Bb2, D3
   }),
   'C7/E': createChord({
     id: 'C7/E',
@@ -391,7 +391,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     bassPitchClass: 4,
     requiredPitchClasses: [0, 4, 10], // C, E, Bb (5th G is optional)
     optionalPitchClasses: [7],
-    referenceVoicing: createCanonicalVoicing(40, [58, 60, 64]), // LH E2, RH [Bb3, C4, E4]
+    referenceVoicing: createCanonicalVoicing(40, [46, 48]), // E2, Bb2, C3
   }),
   Bb: createChord({
     id: 'Bb',
@@ -399,7 +399,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     rootPitchClass: 10,
     quality: 'major',
     requiredPitchClasses: [10, 2, 5], // Bb, D, F
-    referenceVoicing: createCanonicalVoicing(46, [58, 62, 65]), // LH Bb2, RH [Bb3, D4, F4]
+    referenceVoicing: createCanonicalVoicing(46, [50, 53]), // Bb2, D3, F3
   }),
   C7: createChord({
     id: 'C7',
@@ -408,7 +408,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'dominant7',
     requiredPitchClasses: [0, 4, 10], // C, E, Bb
     optionalPitchClasses: [7],
-    referenceVoicing: createCanonicalVoicing(48, [58, 60, 64]), // LH C3, RH [Bb3, C4, E4]
+    referenceVoicing: createCanonicalVoicing(48, [52, 58]), // C3, E3, Bb3
   }),
 
   // Tier 6: The Relative Minor (vi, ii, iii)
@@ -418,7 +418,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     rootPitchClass: 9,
     quality: 'minor',
     requiredPitchClasses: [9, 0, 4], // A, C, E
-    referenceVoicing: createCanonicalVoicing(45, [60, 64, 69]), // LH A2, RH [C4, E4, A4]
+    referenceVoicing: createCanonicalVoicing(45, [48, 52]), // A2, C3, E3
   }),
   Dm: createChord({
     id: 'Dm',
@@ -426,7 +426,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     rootPitchClass: 2,
     quality: 'minor',
     requiredPitchClasses: [2, 5, 9], // D, F, A
-    referenceVoicing: createCanonicalVoicing(50, [62, 65, 69]), // LH D3, RH [D4, F4, A4]
+    referenceVoicing: createCanonicalVoicing(50, [53, 57]), // D3, F3, A3
   }),
   Em: createChord({
     id: 'Em',
@@ -434,7 +434,15 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     rootPitchClass: 4,
     quality: 'minor',
     requiredPitchClasses: [4, 7, 11], // E, G, B
-    referenceVoicing: createCanonicalVoicing(40, [59, 64, 67]), // LH E2, RH [B3, E4, G4]
+    referenceVoicing: createCanonicalVoicing(40, [43, 47]), // E2, G2, B2
+  }),
+  Gm: createChord({
+    id: 'Gm',
+    rootLetter: 'G',
+    rootPitchClass: 7,
+    quality: 'minor',
+    requiredPitchClasses: [7, 10, 2], // G, Bb, D
+    referenceVoicing: createCanonicalVoicing(43, [46, 50]), // G2, Bb2, D3
   }),
 
   // Tier 7: Minor-Key Dominant Drive
@@ -445,7 +453,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'dominant7',
     requiredPitchClasses: [4, 8, 2], // E, G#, D (5th B is optional)
     optionalPitchClasses: [11],
-    referenceVoicing: createCanonicalVoicing(40, [59, 62, 68]), // LH E2, RH [B3, D4, G#4]
+    referenceVoicing: createCanonicalVoicing(40, [44, 50]), // E2, G#2, D3
   }),
   A7: createChord({
     id: 'A7',
@@ -454,7 +462,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'dominant7',
     requiredPitchClasses: [9, 1, 7], // A, C#, G (5th E is optional)
     optionalPitchClasses: [4],
-    referenceVoicing: createCanonicalVoicing(45, [55, 61, 64]), // LH A2, RH [G3, C#4, E4]
+    referenceVoicing: createCanonicalVoicing(45, [49, 55]), // A2, C#3, G3
   }),
 
   // Tier 8: The Bright 2-Sharp Key (D Major & Bm)
@@ -464,7 +472,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     rootPitchClass: 2,
     quality: 'major',
     requiredPitchClasses: [2, 6, 9], // D, F#, A
-    referenceVoicing: createCanonicalVoicing(50, [57, 62, 66]), // LH D3, RH [A3, D4, F#4]
+    referenceVoicing: createCanonicalVoicing(50, [54, 57]), // D3, F#3, A3
   }),
   Bm: createChord({
     id: 'Bm',
@@ -472,7 +480,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     rootPitchClass: 11,
     quality: 'minor',
     requiredPitchClasses: [11, 2, 6], // B, D, F#
-    referenceVoicing: createCanonicalVoicing(47, [54, 59, 62]), // LH B2, RH [F#3, B3, D4]
+    referenceVoicing: createCanonicalVoicing(47, [50, 54]), // B2, D3, F#3
   }),
 
   // Tier 11: Modern Pop & Jazz Color (maj7 & m7)
@@ -483,7 +491,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'major7',
     requiredPitchClasses: [0, 4, 11], // C, E, B (5th G is optional)
     optionalPitchClasses: [7],
-    referenceVoicing: createCanonicalVoicing(48, [59, 64, 67]), // LH C3, RH [B3, E4, G4]
+    referenceVoicing: createCanonicalVoicing(48, [52, 59]), // C3, E3, B3
   }),
   Fmaj7: createChord({
     id: 'Fmaj7',
@@ -492,7 +500,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'major7',
     requiredPitchClasses: [5, 9, 4], // F, A, E (5th C is optional)
     optionalPitchClasses: [0],
-    referenceVoicing: createCanonicalVoicing(41, [57, 60, 64]), // LH F2, RH [A3, C4, E4]
+    referenceVoicing: createCanonicalVoicing(41, [45, 52]), // F2, A2, E3
   }),
   Dm7: createChord({
     id: 'Dm7',
@@ -501,7 +509,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'minor7',
     requiredPitchClasses: [2, 5, 0], // D, F, C (5th A is optional)
     optionalPitchClasses: [9],
-    referenceVoicing: createCanonicalVoicing(50, [60, 65, 69]), // LH D3, RH [C4, F4, A4]
+    referenceVoicing: createCanonicalVoicing(50, [53, 60]), // D3, F3, C4
   }),
   Am7: createChord({
     id: 'Am7',
@@ -510,7 +518,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'minor7',
     requiredPitchClasses: [9, 0, 7], // A, C, G (5th E is optional)
     optionalPitchClasses: [4],
-    referenceVoicing: createCanonicalVoicing(45, [55, 60, 64]), // LH A2, RH [G3, C4, E4]
+    referenceVoicing: createCanonicalVoicing(45, [48, 55]), // A2, C3, G3
   }),
   Em7: createChord({
     id: 'Em7',
@@ -519,7 +527,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'minor7',
     requiredPitchClasses: [4, 7, 2], // E, G, D (5th B is optional)
     optionalPitchClasses: [11],
-    referenceVoicing: createCanonicalVoicing(40, [59, 62, 67]), // LH E2, RH [B3, D4, G4]
+    referenceVoicing: createCanonicalVoicing(40, [43, 50]), // E2, G2, D3
   }),
 
   // Additional German/International reference chords
@@ -529,7 +537,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     rootPitchClass: 11,
     quality: 'major',
     requiredPitchClasses: [11, 3, 6], // B, D#, F#
-    referenceVoicing: createCanonicalVoicing(47, [54, 59, 63]), // LH B2, RH [F#3, B3, D#4]
+    referenceVoicing: createCanonicalVoicing(47, [51, 54]), // B2, D#3, F#3
   }),
   B7: createChord({
     id: 'B7',
@@ -538,7 +546,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'dominant7',
     requiredPitchClasses: [11, 3, 9], // B, D#, A
     optionalPitchClasses: [6],
-    referenceVoicing: createCanonicalVoicing(47, [57, 59, 63]), // LH B2, RH [A3, B3, D#4]
+    referenceVoicing: createCanonicalVoicing(47, [51, 57]), // B2, D#3, A3
   }),
   Bb7: createChord({
     id: 'Bb7',
@@ -547,7 +555,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'dominant7',
     requiredPitchClasses: [10, 2, 8], // Bb, D, Ab
     optionalPitchClasses: [5],
-    referenceVoicing: createCanonicalVoicing(46, [56, 58, 62]), // LH Bb2, RH [Ab3, Bb3, D4]
+    referenceVoicing: createCanonicalVoicing(46, [50, 56]), // Bb2, D3, Ab3
   }),
   Bm7: createChord({
     id: 'Bm7',
@@ -556,7 +564,7 @@ export const CHORD_LIBRARY: Record<string, ChordDefinition> = {
     quality: 'minor7',
     requiredPitchClasses: [11, 2, 9], // B, D, A
     optionalPitchClasses: [6],
-    referenceVoicing: createCanonicalVoicing(47, [57, 59, 62]), // LH B2, RH [A3, B3, D4]
+    referenceVoicing: createCanonicalVoicing(47, [50, 57]), // B2, D3, A3
   }),
 };
 

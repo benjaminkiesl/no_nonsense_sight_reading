@@ -116,7 +116,7 @@ describe('Chord Symbols Mode - Curriculum & Data Structures', () => {
           expect(voicing).toBeDefined();
           expect(voicing.lhMidi).toBeGreaterThanOrEqual(36); // At or above C2
           expect(voicing.lhMidi).toBeLessThanOrEqual(53); // At or below F3
-          expect(voicing.rhMidis.length).toBeGreaterThanOrEqual(3);
+          expect(voicing.rhMidis.length).toBeGreaterThanOrEqual(2);
           expect(voicing.allMidis).toEqual([voicing.lhMidi, ...voicing.rhMidis].sort((a, b) => a - b));
         }
       }

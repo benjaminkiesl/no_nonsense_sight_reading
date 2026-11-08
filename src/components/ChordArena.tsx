@@ -159,7 +159,7 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
 
       const mapped = mapKeyboardEventToInput(e);
       if (mapped && mapped.source === 'computer_keyboard') {
-        const targetOctave = 4;
+        const targetOctave = 3;
         let midi = (targetOctave + 1) * 12 + mapped.pitchClass;
         handleNoteOn(midi);
       }
@@ -170,7 +170,7 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
 
       const mapped = mapKeyboardEventToInput(e);
       if (mapped && mapped.source === 'computer_keyboard') {
-        const targetOctave = 4;
+        const targetOctave = 3;
         let midi = (targetOctave + 1) * 12 + mapped.pitchClass;
         handleNoteOff(midi);
       }
@@ -252,12 +252,12 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
         </div>
       </div>
 
-      {/* Main Grand Staff Vector Engraving (840 x 280) */}
+      {/* Main Grand Staff Vector Engraving (840 x 260) */}
       <div className="nnsr-staff-container" style={{ position: 'relative' }}>
         <svg
-          viewBox="0 0 840 280"
+          viewBox="0 0 840 260"
           width="840"
-          height="280"
+          height="260"
           style={{ display: 'block', backgroundColor: '#ffffff' }}
         >
           <defs>
@@ -270,18 +270,16 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
             </filter>
           </defs>
 
-          {/* Treble staff lines (y: 58, 70, 82, 94, 106) */}
-          {[58, 70, 82, 94, 106].map((y) => (
-            <line
-              key={`treble-line-${y}`}
-              x1={16}
-              y1={y}
-              x2={840}
-              y2={y}
-              stroke="#2c332f"
-              strokeWidth={1.2}
-            />
-          ))}
+          {/* Dedicated Chord Symbol Lead-Sheet Track Separator */}
+          <line
+            x1={16}
+            y1={84}
+            x2={840}
+            y2={84}
+            stroke="#e2dfd7"
+            strokeWidth={1.5}
+            strokeDasharray="4 4"
+          />
 
           {/* Bass staff lines (y: 172, 184, 196, 208, 220) */}
           {[172, 184, 196, 208, 220].map((y) => (
@@ -296,29 +294,10 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
             />
           ))}
 
-          {/* Left vertical bar across both staves */}
-          <line x1={16} y1={58} x2={16} y2={220} stroke="#2c332f" strokeWidth={2.0} />
+          {/* Left vertical bar for bass staff */}
+          <line x1={16} y1={172} x2={16} y2={220} stroke="#2c332f" strokeWidth={2.0} />
 
-          {/* Classic Brace arc */}
-          <path
-            d="M 16 58 C 8 90, 8 120, 4 139 C 8 158, 8 188, 16 220"
-            fill="none"
-            stroke="#2c332f"
-            strokeWidth={1.5}
-          />
-
-          {/* Clefs */}
-          <text
-            x={42}
-            y={91}
-            fontFamily="serif"
-            fontSize={52}
-            fill="#1f2421"
-            textAnchor="middle"
-            dominantBaseline="middle"
-          >
-            𝄞
-          </text>
+          {/* Bass Clef */}
           <text
             x={42}
             y={203}
@@ -334,15 +313,6 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
           {/* Key Signature Accidentals */}
           {keySigSpec && keySigSpec.accidentalType !== 'none' && (
             <g fontFamily="serif" fontSize={22} fill="#1f2421" textAnchor="middle">
-              {keySigSpec.trebleStepOffsets.map((offset, idx) => (
-                <text
-                  key={`treble-acc-${idx}`}
-                  x={74 + idx * 14}
-                  y={106 - offset * 6 + 7}
-                >
-                  {keySigSpec.accidentalType === 'sharp' ? '♯' : '♭'}
-                </text>
-              ))}
               {keySigSpec.bassStepOffsets.map((offset, idx) => (
                 <text
                   key={`bass-acc-${idx}`}
@@ -359,9 +329,9 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
           <rect
             data-testid="hit-zone"
             x={hitZoneLeft}
-            y={24}
+            y={20}
             width={hitZoneWidth}
-            height={232}
+            height={220}
             rx={6}
             fill={hitZoneFill}
             stroke={hitZoneBorder}
@@ -372,7 +342,7 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
           {snapshot.phase === 'COUNTDOWN' && (
             <text
               x={hitZoneCenter}
-              y={139}
+              y={130}
               textAnchor="middle"
               dominantBaseline="middle"
               fontFamily="serif"
@@ -439,97 +409,142 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
               );
             })}
 
-          {/* Learn Phase & Mistake Freeze: Large Chord Symbol & Canonical Reference Voicing Stack */}
-          {target && isLearnOrMistake && (
-            <g>
-              {/* Large Chord Symbol */}
+          {/* Learn Phase: Large Chord Symbol Card */}
+          {target && snapshot.phase === 'LEARN' && (
+            <g
+              data-testid="large-chord-symbol"
+              transform={`translate(${hitZoneCenter}, 48)`}
+            >
+              <rect
+                x={-34}
+                y={-20}
+                width={68}
+                height={40}
+                rx={6}
+                fill="#ffffff"
+                stroke="#60d394"
+                strokeWidth={2.0}
+              />
               <text
-                data-testid="large-chord-symbol"
-                x={hitZoneCenter}
-                y={46}
+                x={0}
+                y={1}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fontFamily="var(--font-serif, serif)"
-                fontSize={32}
+                fontFamily="var(--font-sans, sans-serif)"
+                fontSize={17}
                 fontWeight="bold"
                 fill="#1f2421"
               >
                 {formatChordLabel(target, chordNotationSystem)}
               </text>
+            </g>
+          )}
 
-              {/* Stacked Canonical Reference Voicing Noteheads on the Bass Staff */}
-              {target.referenceVoicing.allMidis.map((midi) => {
-                const y = midiToBassStaffY(midi);
-                const { stepOffset, noteLetter } = midiToBassDiatonicStep(midi);
-                const ledgerLines = getLedgerLines(stepOffset);
+          {/* Learn Phase & Mistake Freeze: Stacked Canonical Reference Voicing Noteheads on Bass Staff */}
+          {target && isLearnOrMistake && (
+            <g>
+              {(() => {
+                const sortedRefMidis = [...target.referenceVoicing.allMidis].sort((a, b) => a - b);
+                let prevStepOffset: number | null = null;
 
-                return (
-                  <g key={`reference-voicing-${midi}`}>
-                    {/* Ledger lines */}
-                    {ledgerLines.map((lOffset) => {
-                      const ly = 220 - lOffset * 6;
-                      return (
-                        <line
-                          key={`ref-ledger-${midi}-${lOffset}`}
-                          x1={hitZoneCenter - 14}
-                          y1={ly}
-                          x2={hitZoneCenter + 14}
-                          y2={ly}
-                          stroke="#1f2421"
-                          strokeWidth={1.8}
-                        />
-                      );
-                    })}
+                return sortedRefMidis.map((midi) => {
+                  const y = midiToBassStaffY(midi);
+                  const { stepOffset, noteLetter, accidental } = midiToBassDiatonicStep(midi);
+                  const ledgerLines = getLedgerLines(stepOffset);
 
-                    {/* Glowing outer aura */}
-                    <ellipse
-                      cx={hitZoneCenter}
-                      cy={y}
-                      rx={11}
-                      ry={8.5}
-                      fill="rgba(96, 211, 148, 0.4)"
-                      stroke="#60d394"
-                      strokeWidth={2}
-                      filter="url(#reference-glow)"
-                    />
+                  const isSecond = prevStepOffset !== null && stepOffset - prevStepOffset <= 1;
+                  prevStepOffset = stepOffset;
 
-                    {/* Reference Notehead */}
-                    <ellipse
-                      data-testid={`reference-notehead-${midi}`}
-                      cx={hitZoneCenter}
-                      cy={y}
-                      rx={7.5}
-                      ry={5.4}
-                      fill="#60d394"
-                      stroke="#04724d"
-                      strokeWidth={1.5}
-                      transform={`rotate(-20 ${hitZoneCenter} ${y})`}
-                    />
+                  const noteheadX = isSecond ? hitZoneCenter + 14 : hitZoneCenter;
+                  const labelX = isSecond ? hitZoneCenter + 30 : hitZoneCenter + 18;
 
-                    {/* Pitch Name Label */}
-                    <text
-                      data-testid={`reference-label-${midi}`}
-                      x={hitZoneCenter + 18}
-                      y={y}
-                      dominantBaseline="middle"
-                      fontFamily="var(--font-sans, sans-serif)"
-                      fontSize={12}
-                      fontWeight="bold"
-                      fill="#1f2421"
-                    >
-                      {formatChordLabel(noteLetter, chordNotationSystem)}
-                    </text>
-                  </g>
-                );
-              })}
+                  return (
+                    <g key={`reference-voicing-${midi}`}>
+                      {/* Ledger lines */}
+                      {ledgerLines.map((lOffset) => {
+                        const ly = 220 - lOffset * 6;
+                        return (
+                          <line
+                            key={`ref-ledger-${midi}-${lOffset}`}
+                            x1={noteheadX - 14}
+                            y1={ly}
+                            x2={noteheadX + 14}
+                            y2={ly}
+                            stroke="#1f2421"
+                            strokeWidth={1.8}
+                          />
+                        );
+                      })}
+
+                      {/* Accidental symbol */}
+                      {accidental !== 0 && (
+                        <text
+                          x={hitZoneCenter - 16}
+                          y={y + 1}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fontFamily="serif"
+                          fontSize={20}
+                          fill="#1f2421"
+                        >
+                          {accidental === 1 ? '♯' : '♭'}
+                        </text>
+                      )}
+
+                      {/* Glowing outer aura */}
+                      <ellipse
+                        cx={noteheadX}
+                        cy={y}
+                        rx={11}
+                        ry={8.5}
+                        fill="rgba(96, 211, 148, 0.4)"
+                        stroke="#60d394"
+                        strokeWidth={2}
+                        filter="url(#reference-glow)"
+                      />
+
+                      {/* Reference Notehead */}
+                      <ellipse
+                        data-testid={`reference-notehead-${midi}`}
+                        cx={noteheadX}
+                        cy={y}
+                        rx={7.5}
+                        ry={5.4}
+                        fill="#60d394"
+                        stroke="#04724d"
+                        strokeWidth={1.5}
+                        transform={`rotate(-20 ${noteheadX} ${y})`}
+                      />
+
+                      {/* Pitch Name Label */}
+                      <text
+                        data-testid={`reference-label-${midi}`}
+                        x={labelX}
+                        y={y}
+                        dominantBaseline="middle"
+                        fontFamily="var(--font-sans, sans-serif)"
+                        fontSize={12}
+                        fontWeight="bold"
+                        fill="#1f2421"
+                      >
+                        {formatChordLabel(noteLetter, chordNotationSystem)}
+                      </text>
+                    </g>
+                  );
+                });
+              })()}
             </g>
           )}
 
           {/* Real-Time Live Polyphonic Held Notes Noteheads on Staff */}
           {target &&
             snapshot.activeHeldMidis.map((midi) => {
-              const y = midiToBassStaffY(midi);
-              const { stepOffset } = midiToBassDiatonicStep(midi);
+              let displayMidi = midi;
+              while (displayMidi > 64) displayMidi -= 12;
+              while (displayMidi < 36) displayMidi += 12;
+
+              const y = midiToBassStaffY(displayMidi);
+              const { stepOffset } = midiToBassDiatonicStep(displayMidi);
               const ledgerLines = getLedgerLines(stepOffset);
               const valid = isHeldMidiValid(midi, target, snapshot.activeHeldMidis);
 

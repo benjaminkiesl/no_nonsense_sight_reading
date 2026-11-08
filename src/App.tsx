@@ -327,8 +327,10 @@ export default function App(): React.JSX.Element {
         activeView={activeView}
         onToggleView={() => setActiveView((v) => (v === 'practice' ? 'levels' : 'practice'))}
         chordNotationSystem={chordNotationSystem}
-        onToggleChordNotation={() =>
-          setChordNotationSystem(chordNotationSystem === 'international' ? 'german' : 'international')
+        onToggleChordNotation={
+          isChordMode
+            ? () => setChordNotationSystem(chordNotationSystem === 'international' ? 'german' : 'international')
+            : undefined
         }
       />
 
