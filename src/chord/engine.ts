@@ -339,6 +339,9 @@ export class ChordEngine {
       frontmost.state = 'hit';
       frontmost.stateTimeMs = 0;
 
+      const nextFrontmost = this.getFrontmostApproachingChord();
+      this.currentTargetChord = nextFrontmost ? nextFrontmost.chord : null;
+
       if (this.phase === 'SPEED_UP') {
         this.speedStepIndex++;
         const fraction = Math.min(1, this.speedStepIndex / this.speedTotalSteps);
