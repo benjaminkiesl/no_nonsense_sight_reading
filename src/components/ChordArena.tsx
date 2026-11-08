@@ -52,6 +52,17 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
   const chordLevel: ChordLevelSpec = getChordLevelById(levelId);
   const engineRef = useRef<ChordEngine>(new ChordEngine(chordLevel, chordNotationSystem));
   const [snapshot, setSnapshot] = useState<ChordEngineSnapshot>(() => engineRef.current.getSnapshot());
+  const [recentHitMidis, setRecentHitMidis] = useState<number[]>([]);
+  const hitFlashTimeoutRef = useRef<number | null>(null);
+
+  // Clean up any pending flash timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hitFlashTimeoutRef.current !== null) {
+        window.clearTimeout(hitFlashTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Update notation system in engine if changed from header
   useEffect(() => {
@@ -100,6 +111,24 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
     const res = engineRef.current.handleNoteOn(midi);
     const snap = engineRef.current.getSnapshot();
     setSnapshot(snap);
+
+    if (res.outcome === 'correct_hit' || res.outcome === 'correction_complete') {
+      if (res.validMidis && res.validMidis.length > 0) {
+        setRecentHitMidis(res.validMidis);
+        if (hitFlashTimeoutRef.current !== null) {
+          window.clearTimeout(hitFlashTimeoutRef.current);
+        }
+        hitFlashTimeoutRef.current = window.setTimeout(() => {
+          setRecentHitMidis([]);
+        }, 200);
+      }
+    } else if (res.outcome === 'building_chord' || res.outcome === 'wrong_notes') {
+      if (hitFlashTimeoutRef.current !== null) {
+        window.clearTimeout(hitFlashTimeoutRef.current);
+        hitFlashTimeoutRef.current = null;
+      }
+      setRecentHitMidis([]);
+    }
 
     if (res.outcome === 'correct_hit') {
       playSanctuaryWakeChime();
@@ -218,6 +247,20 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
       keyboardHighlights.push({
         midi,
         status: valid ? 'correct' : 'wrong',
+      });
+    }
+  }
+
+  // Brief 200ms Jungle Teal confirmation flash on hit keys
+  if (recentHitMidis.length > 0 && snapshot.activeHeldMidis.length === 0) {
+    for (const midi of recentHitMidis) {
+      const existingIdx = keyboardHighlights.findIndex((h) => h.midi === midi);
+      if (existingIdx >= 0) {
+        keyboardHighlights.splice(existingIdx, 1);
+      }
+      keyboardHighlights.push({
+        midi,
+        status: 'correct',
       });
     }
   }
@@ -367,8 +410,6 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
                 textFill = '#4d9078';
               } else if (isFailed) {
                 textFill = '#b4436c';
-              } else if (chordEvent.x >= 116 && chordEvent.x <= 220) {
-                textFill = '#4d9078';
               }
 
               return (

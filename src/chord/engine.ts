@@ -296,16 +296,20 @@ export class ChordEngine {
     if (validation.valid) {
       // Immediate Hit!
       if (this.phase === 'LEARN') {
+        const validMidis = Array.from(this.activeHeldMidis);
+        this.activeHeldMidis.clear();
         this.learnStepIndex++;
         if (this.learnStepIndex >= this.learnTotalSteps) {
           this.transitionToCountdown();
         } else {
           this.currentTargetChord = this.learnChords[this.learnStepIndex]!;
         }
-        return { outcome: 'correct_hit', targetChord: target };
+        return { outcome: 'correct_hit', targetChord: target, validMidis };
       }
 
       if (this.substate === 'WAITING_FOR_CORRECTION') {
+        const validMidis = Array.from(this.activeHeldMidis);
+        this.activeHeldMidis.clear();
         if (this.failedChord) {
           this.failedChord.state = 'hit';
           this.failedChord.stateTimeMs = 0;
@@ -314,7 +318,7 @@ export class ChordEngine {
         this.substate = 'NORMAL';
         const frontmost = this.getFrontmostApproachingChord();
         this.currentTargetChord = frontmost ? frontmost.chord : null;
-        return { outcome: 'correction_complete', targetChord: target };
+        return { outcome: 'correction_complete', targetChord: target, validMidis };
       }
 
       // SPEED_UP or HOLD phase
@@ -329,6 +333,9 @@ export class ChordEngine {
         return { outcome: 'empty_zone' };
       }
 
+      const validMidis = Array.from(this.activeHeldMidis);
+      this.activeHeldMidis.clear();
+
       frontmost.state = 'hit';
       frontmost.stateTimeMs = 0;
 
@@ -342,16 +349,16 @@ export class ChordEngine {
           this.phase = 'HOLD';
           this.actualBpm = this.targetBpm;
         }
-        return { outcome: 'correct_hit', targetChord: target };
+        return { outcome: 'correct_hit', targetChord: target, validMidis };
       }
 
       if (this.phase === 'HOLD') {
         this.holdCompletedCount++;
         if (this.holdCompletedCount >= this.holdTotalCount) {
           this.phase = 'LEVEL_COMPLETE';
-          return { outcome: 'level_advance', targetChord: target };
+          return { outcome: 'level_advance', targetChord: target, validMidis };
         }
-        return { outcome: 'correct_hit', targetChord: target };
+        return { outcome: 'correct_hit', targetChord: target, validMidis };
       }
     }
 

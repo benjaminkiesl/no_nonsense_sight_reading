@@ -115,9 +115,77 @@ describe('Chord Arena Integration Tests', () => {
     // Step 3: User adds G3 (55) -> Now all required chord tones {0, 4, 7} are sounding!
     const res3 = engine.handleNoteOn(55);
     expect(res3.outcome).toBe('correct_hit');
+    expect(res3.validMidis).toEqual(expect.arrayContaining([48, 52, 55]));
+    expect(engine.getSnapshot().activeHeldMidis).toEqual([]);
 
     // Advances to next chord in Tier 1 (F/C)
     expect(engine.getSnapshot().currentTargetChord?.id).toBe('F/C');
+  });
+
+  it('clears activeHeldMidis upon chord completion so held keys do not bleed over to next chord', () => {
+    const level1 = getChordLevelById('chord-1');
+    const engine = new ChordEngine(level1, 'international');
+
+    expect(engine.getSnapshot().phase).toBe('LEARN');
+    expect(engine.getSnapshot().currentTargetChord?.id).toBe('C');
+
+    // Complete chord C (48, 52, 55)
+    engine.handleNoteOn(48);
+    engine.handleNoteOn(52);
+    const hitRes = engine.handleNoteOn(55);
+
+    expect(hitRes.outcome).toBe('correct_hit');
+    expect(hitRes.validMidis).toEqual(expect.arrayContaining([48, 52, 55]));
+
+    // currentTargetChord has advanced to F/C
+    expect(engine.getSnapshot().currentTargetChord?.id).toBe('F/C');
+
+    // activeHeldMidis must be cleared to [] so notes 48, 52, 55 are not evaluated as wrong against F/C
+    expect(engine.getSnapshot().activeHeldMidis).toEqual([]);
+
+    // Subsequent note-offs for C chord notes (as fingers release keys) are safe no-ops
+    engine.handleNoteOff(48);
+    engine.handleNoteOff(52);
+    engine.handleNoteOff(55);
+    expect(engine.getSnapshot().activeHeldMidis).toEqual([]);
+  });
+
+  it('flashes Jungle Teal (correct status) for 200ms on hit keys in ChordArena', () => {
+    vi.useFakeTimers();
+    let registeredNoteOn: ((midi: number) => void) | undefined;
+
+    const { container } = render(
+      <ChordArena
+        levelId="chord-1"
+        onMidiRegister={(handlers) => {
+          registeredNoteOn = handlers.onNoteOn;
+        }}
+      />
+    );
+
+    expect(registeredNoteOn).toBeDefined();
+
+    // Play C chord (48, 52, 55)
+    act(() => {
+      registeredNoteOn!(48);
+      registeredNoteOn!(52);
+      registeredNoteOn!(55);
+    });
+
+    // Check that keys 48, 52, 55 have correct status ('var(--emerald)')
+    const emeraldKeys = Array.from(container.querySelectorAll('rect[fill="var(--emerald)"]'));
+    expect(emeraldKeys.length).toBe(3);
+
+    // Fast forward 200ms
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    // Flash expires; now F/C is target, so 48 is neutral reference ('var(--jasmine)'), 52 & 55 are unhighlighted
+    const remainingEmerald = Array.from(container.querySelectorAll('rect[fill="var(--emerald)"]'));
+    expect(remainingEmerald.length).toBe(0);
+
+    vi.useRealTimers();
   });
 
   it('renders emerald green for valid chord tones and coral red for foreign notes', () => {
