@@ -96,10 +96,12 @@ export class ChordEngine {
   private readonly learnChords: readonly ChordDefinition[];
   private readonly learnTotalSteps: number;
 
+  private speedHitsCount = 0;
+  private readonly speedRequiredHits = 48;
   private speedStepIndex = 0;
-  private readonly speedTotalSteps = 8;
+  private readonly speedTotalSteps = 24;
   private holdCompletedCount = 0;
-  private readonly holdTotalCount = 8;
+  private readonly holdTotalCount = 24;
 
   private activeChords: ActiveChordEvent[] = [];
   private activeHeldMidis: Set<number> = new Set();
@@ -119,8 +121,30 @@ export class ChordEngine {
     this.targetBpm = level.targetBpm;
     this.actualBpm = Math.max(24, Math.round(level.targetBpm * 0.55));
 
-    this.learnChords =
-      level.newChords.length > 0 ? level.newChords : level.targetChords;
+    const learnQueue: ChordDefinition[] = [];
+
+    if (level.newChords && level.newChords.length > 0) {
+      for (let rep = 0; rep < 4; rep++) {
+        for (const chord of level.newChords) {
+          learnQueue.push(chord);
+        }
+      }
+    } else if (level.targetChords && level.targetChords.length > 0) {
+      const base = level.targetChords.slice(0, 4);
+      for (let rep = 0; rep < 2; rep++) {
+        for (const chord of base) {
+          learnQueue.push(chord);
+        }
+      }
+    }
+
+    if (level.reviewChords && level.reviewChords.length > 0) {
+      for (const chord of level.reviewChords.slice(0, 4)) {
+        learnQueue.push(chord);
+      }
+    }
+
+    this.learnChords = learnQueue;
     this.learnTotalSteps = this.learnChords.length;
 
     if (this.learnTotalSteps > 0) {
@@ -343,12 +367,13 @@ export class ChordEngine {
       this.currentTargetChord = nextFrontmost ? nextFrontmost.chord : null;
 
       if (this.phase === 'SPEED_UP') {
-        this.speedStepIndex++;
-        const fraction = Math.min(1, this.speedStepIndex / this.speedTotalSteps);
+        this.speedHitsCount++;
+        this.speedStepIndex = Math.min(this.speedTotalSteps, Math.floor(this.speedHitsCount / 2));
+        const fraction = Math.min(1, this.speedHitsCount / this.speedRequiredHits);
         const startBpm = Math.max(24, Math.round(this.targetBpm * 0.55));
         this.actualBpm = Math.round(startBpm + fraction * (this.targetBpm - startBpm));
 
-        if (this.speedStepIndex >= this.speedTotalSteps || this.actualBpm >= this.targetBpm) {
+        if (this.speedHitsCount >= this.speedRequiredHits) {
           this.phase = 'HOLD';
           this.actualBpm = this.targetBpm;
         }
@@ -378,13 +403,25 @@ export class ChordEngine {
     return { outcome: 'ignored', targetChord: target };
   }
 
-  private triggerChordFailure(chord: ActiveChordEvent): void {
+  public triggerChordFailure(chord: ActiveChordEvent): void {
     chord.state = 'failed';
     chord.failedOnCurrentPrompt = true;
     chord.x = CHORD_ENGINE_GEOMETRY.HIT_ZONE_CENTER_X;
     this.failedChord = chord;
     this.currentTargetChord = chord.chord;
     this.substate = 'WAITING_FOR_CORRECTION';
+
+    // Mistake penalty: cooldown reduction matching SpeedController.onFailure
+    this.speedHitsCount = Math.max(0, this.speedHitsCount - 5);
+    this.speedStepIndex = Math.min(this.speedTotalSteps, Math.floor(this.speedHitsCount / 2));
+    const fraction = Math.min(1, this.speedHitsCount / this.speedRequiredHits);
+    const startBpm = Math.max(24, Math.round(this.targetBpm * 0.55));
+    this.actualBpm = Math.round(startBpm + fraction * (this.targetBpm - startBpm));
+
+    if (this.phase === 'HOLD') {
+      this.phase = 'SPEED_UP';
+      this.holdCompletedCount = 0;
+    }
   }
 
   private transitionToCountdown(): void {

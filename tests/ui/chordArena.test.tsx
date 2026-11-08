@@ -222,12 +222,12 @@ describe('Chord Arena Integration Tests', () => {
       countdownRemainingSec: 0,
       actualBpm: 33,
       targetBpm: 60,
-      learnStepIndex: 2,
-      learnTotalSteps: 2,
+      learnStepIndex: 8,
+      learnTotalSteps: 8,
       speedStepIndex: 0,
-      speedTotalSteps: 8,
+      speedTotalSteps: 24,
       holdCompletedCount: 0,
-      holdTotalCount: 8,
+      holdTotalCount: 24,
       activeChords: [
         {
           id: 'chord-1',
@@ -274,11 +274,11 @@ describe('Chord Arena Integration Tests', () => {
       actualBpm: 33,
       targetBpm: 60,
       learnStepIndex: 1,
-      learnTotalSteps: 2,
+      learnTotalSteps: 10,
       speedStepIndex: 0,
-      speedTotalSteps: 8,
+      speedTotalSteps: 24,
       holdCompletedCount: 0,
-      holdTotalCount: 8,
+      holdTotalCount: 24,
       activeChords: [],
       activeHeldMidis: [],
       settlingRemainingMs: 0,
@@ -310,18 +310,20 @@ describe('Chord Arena Integration Tests', () => {
     const level1 = getChordLevelById('chord-1');
     const engine = new ChordEngine(level1, 'international');
 
-    // Complete LEARN phase (2 chords in chord-1: C and F/C)
-    // 1. C chord
-    engine.handleNoteOn(48);
-    engine.handleNoteOn(52);
-    engine.handleNoteOn(55);
-    engine.handleClearNotes();
+    // Complete LEARN phase (8 chords in chord-1: C and F/C repeated 4 times)
+    for (let i = 0; i < 4; i++) {
+      // 1. C chord
+      engine.handleNoteOn(48);
+      engine.handleNoteOn(52);
+      engine.handleNoteOn(55);
+      engine.handleClearNotes();
 
-    // 2. F/C chord
-    engine.handleNoteOn(48);
-    engine.handleNoteOn(53);
-    engine.handleNoteOn(57);
-    engine.handleClearNotes();
+      // 2. F/C chord
+      engine.handleNoteOn(48);
+      engine.handleNoteOn(53);
+      engine.handleNoteOn(57);
+      engine.handleClearNotes();
+    }
 
     expect(engine.getSnapshot().phase).toBe('COUNTDOWN');
 
@@ -348,5 +350,149 @@ describe('Chord Arena Integration Tests', () => {
 
     // Frontmost chord must NOT be marked as 'hit'
     expect(engine.getSnapshot().activeChords.find((c) => c.id === frontmost!.id)?.state).toBe('approaching');
+  });
+
+  it('manages 8-step LEARN queue, 48-hit SPEED_UP, 24-hit HOLD, and late miss penalty in ChordEngine', () => {
+    const level1 = getChordLevelById('chord-1');
+    const engine = new ChordEngine(level1, 'international');
+
+    let snap = engine.getSnapshot();
+    expect(snap.phase).toBe('LEARN');
+    expect(snap.learnStepIndex).toBe(0);
+    expect(snap.learnTotalSteps).toBe(8);
+    expect(snap.speedTotalSteps).toBe(24);
+    expect(snap.holdTotalCount).toBe(24);
+
+    // 1. Complete Tier 1 LEARN: requires exactly 8 hits (C and F/C repeated 4 times)
+    const expectedSequence = ['C', 'F/C', 'C', 'F/C', 'C', 'F/C', 'C', 'F/C'];
+    for (let i = 0; i < 8; i++) {
+      snap = engine.getSnapshot();
+      expect(snap.phase).toBe('LEARN');
+      expect(snap.learnStepIndex).toBe(i);
+      expect(snap.currentTargetChord?.id).toBe(expectedSequence[i]);
+
+      const target = snap.currentTargetChord!;
+      const hit = engine.setHeldMidis(target.referenceVoicing.allMidis);
+      expect(hit.outcome).toBe('correct_hit');
+    }
+
+    // Now transitioned to COUNTDOWN
+    snap = engine.getSnapshot();
+    expect(snap.phase).toBe('COUNTDOWN');
+    expect(snap.learnStepIndex).toBe(8);
+
+    // Advance past COUNTDOWN
+    engine.tick(3100);
+    snap = engine.getSnapshot();
+    expect(snap.phase).toBe('SPEED_UP');
+    expect(snap.speedStepIndex).toBe(0);
+
+    // 2. SPEED_UP phase requires 48 hits (spanning 24 speedTotalSteps)
+    // Hit 47 chords in hit zone
+    for (let hit = 1; hit <= 47; hit++) {
+      engine.tick(30);
+      snap = engine.getSnapshot();
+      const frontmost = snap.activeChords.find((c) => c.state === 'approaching')!;
+      frontmost.x = 146; // in hit window
+      const target = engine.getSnapshot().currentTargetChord!;
+      const hitRes = engine.setHeldMidis(target.referenceVoicing.allMidis);
+      expect(hitRes.outcome).toBe('correct_hit');
+
+      snap = engine.getSnapshot();
+      expect(snap.phase).toBe('SPEED_UP');
+      expect(snap.speedStepIndex).toBe(Math.floor(hit / 2));
+    }
+
+    // Hit 48: ramps to targetBpm and transitions to HOLD
+    engine.tick(30);
+    snap = engine.getSnapshot();
+    const frontmost48 = snap.activeChords.find((c) => c.state === 'approaching')!;
+    frontmost48.x = 146;
+    const target48 = engine.getSnapshot().currentTargetChord!;
+    const hitRes48 = engine.setHeldMidis(target48.referenceVoicing.allMidis);
+    expect(hitRes48.outcome).toBe('correct_hit');
+
+    snap = engine.getSnapshot();
+    expect(snap.phase).toBe('HOLD');
+    expect(snap.speedStepIndex).toBe(24);
+    expect(snap.actualBpm).toBe(snap.targetBpm);
+    expect(snap.holdCompletedCount).toBe(0);
+
+    // 3. Complete some hits in HOLD
+    for (let holdHit = 1; holdHit <= 10; holdHit++) {
+      engine.tick(30);
+      snap = engine.getSnapshot();
+      const frontmostHold = snap.activeChords.find((c) => c.state === 'approaching')!;
+      frontmostHold.x = 146;
+      const targetHold = engine.getSnapshot().currentTargetChord!;
+      const res = engine.setHeldMidis(targetHold.referenceVoicing.allMidis);
+      expect(res.outcome).toBe('correct_hit');
+
+      snap = engine.getSnapshot();
+      expect(snap.phase).toBe('HOLD');
+      expect(snap.holdCompletedCount).toBe(holdHit);
+    }
+
+    // 4. Late miss penalty during HOLD:
+    const frontmostMiss = snap.activeChords.find((c) => c.state === 'approaching')!;
+    engine.triggerChordFailure(frontmostMiss);
+
+    snap = engine.getSnapshot();
+    // Mistake drops HOLD back to SPEED_UP and resets holdCompletedCount to 0
+    expect(snap.phase).toBe('SPEED_UP');
+    expect(snap.holdCompletedCount).toBe(0);
+    expect(snap.substate).toBe('WAITING_FOR_CORRECTION');
+    // speedHitsCount was reduced from 48 to 43 (-5)
+    // speedStepIndex is floor(43 / 2) = 21 (reduced from 24)
+    expect(snap.speedStepIndex).toBe(21);
+    expect(snap.actualBpm).toBeLessThan(snap.targetBpm);
+
+    // Correction hit
+    const correctionRes = engine.setHeldMidis(frontmostMiss.chord.referenceVoicing.allMidis);
+    expect(correctionRes.outcome).toBe('correction_complete');
+    expect(engine.getSnapshot().substate).toBe('NORMAL');
+
+    // Play 5 more chords to get back to 48 hits and re-enter HOLD
+    for (let recoverHit = 0; recoverHit < 5; recoverHit++) {
+      engine.tick(30);
+      snap = engine.getSnapshot();
+      const front = snap.activeChords.find((c) => c.state === 'approaching')!;
+      front.x = 146;
+      engine.setHeldMidis(engine.getSnapshot().currentTargetChord!.referenceVoicing.allMidis);
+    }
+
+    snap = engine.getSnapshot();
+    expect(snap.phase).toBe('HOLD');
+    expect(snap.speedStepIndex).toBe(24);
+    expect(snap.holdCompletedCount).toBe(0);
+
+    // 5. Complete all 24 hits in HOLD
+    for (let holdHit = 1; holdHit < 24; holdHit++) {
+      engine.tick(30);
+      snap = engine.getSnapshot();
+      const front = snap.activeChords.find((c) => c.state === 'approaching')!;
+      front.x = 146;
+      engine.setHeldMidis(engine.getSnapshot().currentTargetChord!.referenceVoicing.allMidis);
+      snap = engine.getSnapshot();
+      expect(snap.phase).toBe('HOLD');
+      expect(snap.holdCompletedCount).toBe(holdHit);
+    }
+
+    // 24th hit completes the level
+    engine.tick(30);
+    snap = engine.getSnapshot();
+    const finalFront = snap.activeChords.find((c) => c.state === 'approaching')!;
+    finalFront.x = 146;
+    const finalRes = engine.setHeldMidis(engine.getSnapshot().currentTargetChord!.referenceVoicing.allMidis);
+    expect(finalRes.outcome).toBe('level_advance');
+    expect(engine.getSnapshot().phase).toBe('LEVEL_COMPLETE');
+  });
+
+  it('builds 12-step LEARN queue for Tier 9 with empty newChords (4 target chords x 2 + 4 review chords)', () => {
+    const level9 = getChordLevelById('chord-9');
+    expect(level9.newChords.length).toBe(0);
+    const engine = new ChordEngine(level9, 'international');
+    const snap = engine.getSnapshot();
+    expect(snap.learnTotalSteps).toBe(12);
   });
 });
