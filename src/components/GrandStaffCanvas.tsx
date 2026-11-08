@@ -110,15 +110,15 @@ export const GrandStaffCanvas: React.FC<GrandStaffCanvasProps> = ({ snapshot, le
     // Hit Zone Bar (x: 120..156, width: 36)
     const hitZoneLeft = 120;
     const hitZoneWidth = 36;
-    let hitZoneFill = 'rgba(96, 211, 148, 0.16)';
-    let hitZoneBorder = 'rgba(96, 211, 148, 0.45)';
+    let hitZoneFill = 'rgba(77, 144, 120, 0.16)';
+    let hitZoneBorder = 'rgba(77, 144, 120, 0.50)';
 
     if (snapshot.substate === 'WAITING_FOR_CORRECTION') {
-      hitZoneFill = 'rgba(238, 96, 85, 0.22)';
-      hitZoneBorder = 'rgba(238, 96, 85, 0.65)';
+      hitZoneFill = 'rgba(180, 67, 108, 0.22)';
+      hitZoneBorder = 'rgba(180, 67, 108, 0.65)';
     } else if (snapshot.emptyZonePulseRemainingMs > 0) {
-      hitZoneFill = 'rgba(255, 217, 125, 0.45)';
-      hitZoneBorder = 'rgba(255, 217, 125, 0.75)';
+      hitZoneFill = 'rgba(242, 193, 78, 0.45)';
+      hitZoneBorder = 'rgba(242, 193, 78, 0.75)';
     }
 
     ctx.fillStyle = hitZoneFill;
@@ -160,9 +160,9 @@ export const GrandStaffCanvas: React.FC<GrandStaffCanvasProps> = ({ snapshot, le
 
       if (note.state === 'hit') {
         alpha = Math.max(0, 1 - note.stateTimeMs / 200);
-        noteColor = '#60d394';
+        noteColor = '#4d9078';
       } else if (note.state === 'failed') {
-        noteColor = '#ee6055';
+        noteColor = '#b4436c';
         // Small shake animation
         renderX += Math.sin(note.stateTimeMs * 0.05) * 3;
       }

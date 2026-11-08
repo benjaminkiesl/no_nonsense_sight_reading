@@ -1,10 +1,17 @@
 :root {
-  /* Original Spec Color Palette */
-  --vibrant-coral: #ee6055;
-  --emerald: #60d394;
-  --light-green: #aaf683;
-  --jasmine: #ffd97d;
-  --sweet-salmon: #ff9b85;
+  /* New 5-Color Palette */
+  --moss-green: #5fad56;
+  --tuscan-sun: #f2c14e;
+  --coral-glow: #f78154;
+  --jungle-teal: #4d9078;
+  --berry-crush: #b4436c;
+
+  /* Semantic Aliases */
+  --emerald: var(--jungle-teal);        /* Correct green: #4d9078 */
+  --vibrant-coral: var(--berry-crush);  /* Wrong "red": #b4436c */
+  --jasmine: var(--tuscan-sun);         /* Warm gold/yellow: #f2c14e */
+  --light-green: var(--moss-green);     /* Moss green: #5fad56 */
+  --sweet-salmon: var(--coral-glow);    /* Warm coral accent: #f78154 */
 
   /* Warm, Clean Surfaces & Typography */
   --bg-warm-ivory: #faf8f5;

@@ -158,4 +158,5 @@ export interface ChordEngineSnapshot {
   readonly notationSystem: ChordNotationSystem;
   readonly currentTargetChord: ChordDefinition | null;
   readonly isSettling: boolean;
+  readonly emptyZonePulseRemainingMs?: number;
 }

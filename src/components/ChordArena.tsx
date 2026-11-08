@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { playMutedFeltThud, playSanctuaryRestChime, playSanctuaryWakeChime } from '../audio/recoveryAudio';
-import { ChordEngine, midiToBassDiatonicStep, midiToBassStaffY } from '../chord/engine';
+import { ChordEngine, CHORD_ENGINE_GEOMETRY, midiToBassDiatonicStep, midiToBassStaffY } from '../chord/engine';
 import { formatChordLabel, toPitchClass } from '../chord/chords';
 import { getChordLevelById } from '../chord/curriculum';
 import { mapKeyboardEventToInput } from '../input/keyboardMapper';
@@ -226,15 +226,18 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
   const primaryKeySig = chordLevel.keySignatures[0] || 'C_MAJOR';
   const keySigSpec = KEY_SIGNATURES[primaryKeySig];
 
-  const hitZoneLeft = 120;
-  const hitZoneWidth = 50;
-  const hitZoneCenter = 145;
+  const hitZoneLeft = CHORD_ENGINE_GEOMETRY.HIT_ZONE_LEFT_X;
+  const hitZoneWidth = CHORD_ENGINE_GEOMETRY.HIT_ZONE_RIGHT_X - CHORD_ENGINE_GEOMETRY.HIT_ZONE_LEFT_X;
+  const hitZoneCenter = CHORD_ENGINE_GEOMETRY.HIT_ZONE_CENTER_X;
 
-  let hitZoneFill = 'rgba(96, 211, 148, 0.16)';
-  let hitZoneBorder = 'rgba(96, 211, 148, 0.45)';
+  let hitZoneFill = 'rgba(77, 144, 120, 0.16)';
+  let hitZoneBorder = 'rgba(77, 144, 120, 0.50)';
   if (snapshot.substate === 'WAITING_FOR_CORRECTION') {
-    hitZoneFill = 'rgba(238, 96, 85, 0.22)';
-    hitZoneBorder = 'rgba(238, 96, 85, 0.65)';
+    hitZoneFill = 'rgba(180, 67, 108, 0.22)';
+    hitZoneBorder = 'rgba(180, 67, 108, 0.65)';
+  } else if ((snapshot.emptyZonePulseRemainingMs ?? 0) > 0) {
+    hitZoneFill = 'rgba(242, 193, 78, 0.45)';
+    hitZoneBorder = 'rgba(242, 193, 78, 0.75)';
   }
 
   return (
@@ -255,9 +258,9 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
       {/* Main Grand Staff Vector Engraving (840 x 260) */}
       <div className="nnsr-staff-container" style={{ position: 'relative' }}>
         <svg
-          viewBox="0 0 840 260"
+          viewBox="0 0 840 200"
           width="840"
-          height="260"
+          height="200"
           style={{ display: 'block', backgroundColor: '#ffffff' }}
         >
           <defs>
@@ -270,19 +273,8 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
             </filter>
           </defs>
 
-          {/* Dedicated Chord Symbol Lead-Sheet Track Separator */}
-          <line
-            x1={16}
-            y1={84}
-            x2={840}
-            y2={84}
-            stroke="#e2dfd7"
-            strokeWidth={1.5}
-            strokeDasharray="4 4"
-          />
-
-          {/* Bass staff lines (y: 172, 184, 196, 208, 220) */}
-          {[172, 184, 196, 208, 220].map((y) => (
+          {/* Bass staff lines (y: 100, 112, 124, 136, 148) */}
+          {[100, 112, 124, 136, 148].map((y) => (
             <line
               key={`bass-line-${y}`}
               x1={16}
@@ -295,12 +287,12 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
           ))}
 
           {/* Left vertical bar for bass staff */}
-          <line x1={16} y1={172} x2={16} y2={220} stroke="#2c332f" strokeWidth={2.0} />
+          <line x1={16} y1={100} x2={16} y2={148} stroke="#2c332f" strokeWidth={2.0} />
 
           {/* Bass Clef */}
           <text
             x={42}
-            y={203}
+            y={131}
             fontFamily="serif"
             fontSize={52}
             fill="#1f2421"
@@ -317,7 +309,7 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
                 <text
                   key={`bass-acc-${idx}`}
                   x={74 + idx * 14}
-                  y={220 - offset * 6 + 7}
+                  y={148 - offset * 6 + 7}
                 >
                   {keySigSpec.accidentalType === 'sharp' ? '♯' : '♭'}
                 </text>
@@ -329,9 +321,9 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
           <rect
             data-testid="hit-zone"
             x={hitZoneLeft}
-            y={20}
+            y={24}
             width={hitZoneWidth}
-            height={220}
+            height={156}
             rx={6}
             fill={hitZoneFill}
             stroke={hitZoneBorder}
@@ -342,7 +334,7 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
           {snapshot.phase === 'COUNTDOWN' && (
             <text
               x={hitZoneCenter}
-              y={130}
+              y={124}
               textAnchor="middle"
               dominantBaseline="middle"
               fontFamily="serif"
@@ -361,19 +353,22 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
               const isHit = chordEvent.state === 'hit';
               const isFailed = chordEvent.state === 'failed';
 
-              let badgeBg = '#ffffff';
-              let badgeBorder = '#b0aba2';
               let badgeOpacity = 1.0;
               let renderX = chordEvent.x;
 
               if (isHit) {
-                badgeBg = '#60d394';
-                badgeBorder = '#04724d';
                 badgeOpacity = Math.max(0, 1 - chordEvent.stateTimeMs / 220);
               } else if (isFailed) {
-                badgeBg = '#fdf0ed';
-                badgeBorder = '#c0392b';
                 renderX += Math.sin(chordEvent.stateTimeMs * 0.05) * 3;
+              }
+
+              let textFill = '#1f2421';
+              if (isHit) {
+                textFill = '#4d9078';
+              } else if (isFailed) {
+                textFill = '#b4436c';
+              } else if (chordEvent.x >= 116 && chordEvent.x <= 220) {
+                textFill = '#4d9078';
               }
 
               return (
@@ -381,27 +376,17 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
                   key={chordEvent.id}
                   data-testid={`chord-card-${chordEvent.chord.id}`}
                   opacity={badgeOpacity}
-                  transform={`translate(${renderX}, 48)`}
+                  transform={`translate(${renderX}, 56)`}
                 >
-                  <rect
-                    x={-34}
-                    y={-20}
-                    width={68}
-                    height={40}
-                    rx={6}
-                    fill={badgeBg}
-                    stroke={badgeBorder}
-                    strokeWidth={2.0}
-                  />
                   <text
                     x={0}
-                    y={1}
+                    y={0}
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fontFamily="var(--font-sans, sans-serif)"
-                    fontSize={17}
+                    fontSize={26}
                     fontWeight="bold"
-                    fill="#1f2421"
+                    fill={textFill}
                   >
                     {formatted}
                   </text>
@@ -409,35 +394,21 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
               );
             })}
 
-          {/* Learn Phase: Large Chord Symbol Card */}
+          {/* Learn Phase: Large Chord Symbol */}
           {target && snapshot.phase === 'LEARN' && (
-            <g
+            <text
               data-testid="large-chord-symbol"
-              transform={`translate(${hitZoneCenter}, 48)`}
+              x={hitZoneCenter}
+              y={56}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontFamily="var(--font-sans, sans-serif)"
+              fontSize={28}
+              fontWeight="bold"
+              fill="#1f2421"
             >
-              <rect
-                x={-34}
-                y={-20}
-                width={68}
-                height={40}
-                rx={6}
-                fill="#ffffff"
-                stroke="#60d394"
-                strokeWidth={2.0}
-              />
-              <text
-                x={0}
-                y={1}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontFamily="var(--font-sans, sans-serif)"
-                fontSize={17}
-                fontWeight="bold"
-                fill="#1f2421"
-              >
-                {formatChordLabel(target, chordNotationSystem)}
-              </text>
-            </g>
+              {formatChordLabel(target, chordNotationSystem)}
+            </text>
           )}
 
           {/* Learn Phase & Mistake Freeze: Stacked Canonical Reference Voicing Noteheads on Bass Staff */}
@@ -462,7 +433,7 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
                     <g key={`reference-voicing-${midi}`}>
                       {/* Ledger lines */}
                       {ledgerLines.map((lOffset) => {
-                        const ly = 220 - lOffset * 6;
+                        const ly = 148 - lOffset * 6;
                         return (
                           <line
                             key={`ref-ledger-${midi}-${lOffset}`}
@@ -497,8 +468,8 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
                         cy={y}
                         rx={11}
                         ry={8.5}
-                        fill="rgba(96, 211, 148, 0.4)"
-                        stroke="#60d394"
+                        fill="rgba(77, 144, 120, 0.4)"
+                        stroke="#4d9078"
                         strokeWidth={2}
                         filter="url(#reference-glow)"
                       />
@@ -510,8 +481,8 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
                         cy={y}
                         rx={7.5}
                         ry={5.4}
-                        fill="#60d394"
-                        stroke="#04724d"
+                        fill="#4d9078"
+                        stroke="#356957"
                         strokeWidth={1.5}
                         transform={`rotate(-20 ${noteheadX} ${y})`}
                       />
@@ -548,14 +519,14 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
               const ledgerLines = getLedgerLines(stepOffset);
               const valid = isHeldMidiValid(midi, target, snapshot.activeHeldMidis);
 
-              const fill = valid ? '#04724d' : '#c0392b';
-              const stroke = valid ? '#60d394' : '#ee6055';
+              const fill = valid ? '#4d9078' : '#b4436c';
+              const stroke = valid ? '#5fad56' : '#f78154';
 
               return (
                 <g key={`held-note-${midi}`}>
                   {/* Ledger lines */}
                   {ledgerLines.map((lOffset) => {
-                    const ly = 220 - lOffset * 6;
+                    const ly = 148 - lOffset * 6;
                     return (
                       <line
                         key={`held-ledger-${midi}-${lOffset}`}
@@ -594,7 +565,7 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
               bottom: '8px',
               left: '50%',
               transform: 'translateX(-50%)',
-              backgroundColor: 'rgba(238, 96, 85, 0.92)',
+              backgroundColor: 'rgba(180, 67, 108, 0.92)',
               color: '#ffffff',
               padding: '4px 14px',
               borderRadius: '9999px',

@@ -12,11 +12,12 @@ import { getNextMarkovChord } from './curriculum';
 
 export const CHORD_ENGINE_GEOMETRY = {
   CANVAS_WIDTH: 840,
-  HIT_ZONE_LEFT_X: 120,
-  HIT_ZONE_RIGHT_X: 170,
-  HIT_ZONE_CENTER_X: 145,
-  EARLY_GRACE_PX: 35,
-  CHORD_SPACING_PX: 240,
+  HIT_ZONE_LEFT_X: 116,
+  HIT_ZONE_RIGHT_X: 176,
+  HIT_ZONE_CENTER_X: 146,
+  EARLY_GRACE_PX: 44,
+  CHORD_SPACING_PX: 220,
+  FIRST_CHORD_COUNTDOWN_X: 230,
 } as const;
 
 export interface ChordNoteInputResult {
@@ -26,6 +27,7 @@ export interface ChordNoteInputResult {
     | 'correction_complete'
     | 'building_chord'
     | 'level_advance'
+    | 'empty_zone'
     | 'ignored';
   targetChord?: ChordDefinition;
   validMidis?: number[];
@@ -73,8 +75,8 @@ export function midiToBassDiatonicStep(midi: number): {
 
 export function midiToBassStaffY(midi: number): number {
   const { stepOffset } = midiToBassDiatonicStep(midi);
-  // Bottom line G2 of bass staff sits at y = 220
-  return 220 - stepOffset * 6;
+  // Bottom line G2 of bass staff sits at y = 148
+  return 148 - stepOffset * 6;
 }
 
 export class ChordEngine {
@@ -86,6 +88,7 @@ export class ChordEngine {
   private substate: ChordEngineSubstate = 'NORMAL';
   private countdownRemainingSec = 3.0;
   private recoveryRemainingMs = 0;
+  private emptyZonePulseRemainingMs = 0;
   private actualBpm: number;
   private targetBpm: number;
 
@@ -153,11 +156,14 @@ export class ChordEngine {
       notationSystem: this.notationSystem,
       currentTargetChord: this.currentTargetChord,
       isSettling: false,
+      emptyZonePulseRemainingMs: this.emptyZonePulseRemainingMs,
     };
   }
 
   public tick(deltaMs: number): void {
     if (deltaMs <= 0) return;
+
+    this.emptyZonePulseRemainingMs = Math.max(0, this.emptyZonePulseRemainingMs - deltaMs);
 
     // Clean up finished 'hit' chords after 220ms
     for (const chord of this.activeChords) {
@@ -215,7 +221,7 @@ export class ChordEngine {
         while (maxX < CHORD_ENGINE_GEOMETRY.CANVAS_WIDTH + CHORD_ENGINE_GEOMETRY.CHORD_SPACING_PX) {
           const spawnX =
             maxX === 0
-              ? 380
+              ? CHORD_ENGINE_GEOMETRY.FIRST_CHORD_COUNTDOWN_X
               : maxX + CHORD_ENGINE_GEOMETRY.CHORD_SPACING_PX;
 
           const lastChordId =
@@ -313,34 +319,40 @@ export class ChordEngine {
 
       // SPEED_UP or HOLD phase
       const frontmost = this.getFrontmostApproachingChord();
-      if (frontmost && frontmost.x <= CHORD_ENGINE_GEOMETRY.HIT_ZONE_RIGHT_X + CHORD_ENGINE_GEOMETRY.EARLY_GRACE_PX) {
-        frontmost.state = 'hit';
-        frontmost.stateTimeMs = 0;
+      const inWindow =
+        frontmost !== null &&
+        frontmost.x >= CHORD_ENGINE_GEOMETRY.HIT_ZONE_LEFT_X &&
+        frontmost.x <= CHORD_ENGINE_GEOMETRY.HIT_ZONE_RIGHT_X + CHORD_ENGINE_GEOMETRY.EARLY_GRACE_PX;
 
-        if (this.phase === 'SPEED_UP') {
-          this.speedStepIndex++;
-          const fraction = Math.min(1, this.speedStepIndex / this.speedTotalSteps);
-          const startBpm = Math.max(24, Math.round(this.targetBpm * 0.55));
-          this.actualBpm = Math.round(startBpm + fraction * (this.targetBpm - startBpm));
-
-          if (this.speedStepIndex >= this.speedTotalSteps || this.actualBpm >= this.targetBpm) {
-            this.phase = 'HOLD';
-            this.actualBpm = this.targetBpm;
-          }
-          return { outcome: 'correct_hit', targetChord: target };
-        }
-
-        if (this.phase === 'HOLD') {
-          this.holdCompletedCount++;
-          if (this.holdCompletedCount >= this.holdTotalCount) {
-            this.phase = 'LEVEL_COMPLETE';
-            return { outcome: 'level_advance', targetChord: target };
-          }
-          return { outcome: 'correct_hit', targetChord: target };
-        }
+      if (!inWindow) {
+        this.emptyZonePulseRemainingMs = 150;
+        return { outcome: 'empty_zone' };
       }
 
-      return { outcome: 'correct_hit', targetChord: target };
+      frontmost.state = 'hit';
+      frontmost.stateTimeMs = 0;
+
+      if (this.phase === 'SPEED_UP') {
+        this.speedStepIndex++;
+        const fraction = Math.min(1, this.speedStepIndex / this.speedTotalSteps);
+        const startBpm = Math.max(24, Math.round(this.targetBpm * 0.55));
+        this.actualBpm = Math.round(startBpm + fraction * (this.targetBpm - startBpm));
+
+        if (this.speedStepIndex >= this.speedTotalSteps || this.actualBpm >= this.targetBpm) {
+          this.phase = 'HOLD';
+          this.actualBpm = this.targetBpm;
+        }
+        return { outcome: 'correct_hit', targetChord: target };
+      }
+
+      if (this.phase === 'HOLD') {
+        this.holdCompletedCount++;
+        if (this.holdCompletedCount >= this.holdTotalCount) {
+          this.phase = 'LEVEL_COMPLETE';
+          return { outcome: 'level_advance', targetChord: target };
+        }
+        return { outcome: 'correct_hit', targetChord: target };
+      }
     }
 
     // Validation failed:
@@ -371,7 +383,7 @@ export class ChordEngine {
     this.activeChords = [];
 
     // Pre-populate timeline with initial scrolling chords
-    let x = 380;
+    let x = CHORD_ENGINE_GEOMETRY.FIRST_CHORD_COUNTDOWN_X;
     let lastChordId = this.learnChords.length > 0 ? this.learnChords[0]!.id : this.level.targetChords[0]!.id;
 
     for (let i = 0; i < 4; i++) {

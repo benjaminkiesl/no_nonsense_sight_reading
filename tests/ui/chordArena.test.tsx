@@ -221,20 +221,64 @@ describe('Chord Arena Integration Tests', () => {
 
     render(<ChordArena levelId="chord-2" />);
 
-    // Lower note F3 (53) notehead is at center (cx = 145)
+    // Lower note F3 (53) notehead is at center (cx = 146)
     const notehead53 = screen.getByTestId('reference-notehead-53');
-    expect(notehead53.getAttribute('cx')).toBe('145');
+    expect(notehead53.getAttribute('cx')).toBe('146');
 
-    // Upper note G3 (55) notehead is offset by +14px (cx = 159)
+    // Upper note G3 (55) notehead is offset by +14px (cx = 160)
     const notehead55 = screen.getByTestId('reference-notehead-55');
-    expect(notehead55.getAttribute('cx')).toBe('159');
+    expect(notehead55.getAttribute('cx')).toBe('160');
 
-    // Label for 53 is at +18px (x = 163)
+    // Label for 53 is at +18px (x = 164)
     const label53 = screen.getByTestId('reference-label-53');
-    expect(label53.getAttribute('x')).toBe('163');
+    expect(label53.getAttribute('x')).toBe('164');
 
-    // Label for 55 is at +30px (x = 175)
+    // Label for 55 is at +30px (x = 176)
     const label55 = screen.getByTestId('reference-label-55');
-    expect(label55.getAttribute('x')).toBe('175');
+    expect(label55.getAttribute('x')).toBe('176');
+  });
+
+  it('returns empty_zone and sets emptyZonePulseRemainingMs when pressing a chord early (x > 220) during SPEED_UP', () => {
+    const level1 = getChordLevelById('chord-1');
+    const engine = new ChordEngine(level1, 'international');
+
+    // Complete LEARN phase (2 chords in chord-1: C and F/C)
+    // 1. C chord
+    engine.handleNoteOn(48);
+    engine.handleNoteOn(52);
+    engine.handleNoteOn(55);
+    engine.handleClearNotes();
+
+    // 2. F/C chord
+    engine.handleNoteOn(48);
+    engine.handleNoteOn(53);
+    engine.handleNoteOn(57);
+    engine.handleClearNotes();
+
+    expect(engine.getSnapshot().phase).toBe('COUNTDOWN');
+
+    // Advance past COUNTDOWN (3 seconds)
+    engine.tick(3100);
+    expect(engine.getSnapshot().phase).toBe('SPEED_UP');
+
+    const snap = engine.getSnapshot();
+    const frontmost = snap.activeChords.find((c) => c.state === 'approaching');
+    expect(frontmost).toBeDefined();
+    // First chord spawns at FIRST_CHORD_COUNTDOWN_X = 230, which is > 220 (HIT_ZONE_RIGHT_X 176 + EARLY_GRACE_PX 44)
+    expect(frontmost!.x).toBeGreaterThan(220);
+
+    // Target chord is frontmost.chord
+    const target = engine.getSnapshot().currentTargetChord!;
+    expect(target).toBeDefined();
+
+    // User plays the target chord early while frontmost.x > 220
+    const result = engine.setHeldMidis(target.referenceVoicing.allMidis);
+
+    // Must return 'empty_zone' and NOT 'correct_hit'
+    expect(result.outcome).toBe('empty_zone');
+    expect(engine.getSnapshot().emptyZonePulseRemainingMs).toBeGreaterThan(0);
+
+    // Frontmost chord must NOT be marked as 'hit'
+    expect(engine.getSnapshot().activeChords.find((c) => c.id === frontmost!.id)?.state).toBe('approaching');
   });
 });

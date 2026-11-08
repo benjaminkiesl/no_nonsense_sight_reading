@@ -14,10 +14,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Header - Emerald main color per spec */
+/* Header - Moss green main color per spec */
 .nnsr-header {
   height: var(--header-height);
-  background-color: var(--emerald);
+  background-color: var(--moss-green);
   border-bottom: 1px solid rgba(31, 36, 33, 0.14);
   color: var(--ink-primary);
   display: flex;
@@ -85,7 +85,7 @@ body {
 }
 
 .nnsr-midi-dot.connected {
-  background-color: #1f7a4c;
+  background-color: var(--jungle-teal);
 }
 
 .nnsr-midi-dot.disconnected {
@@ -437,7 +437,7 @@ body {
 
 .nnsr-celebration-button {
   background-color: var(--emerald);
-  color: var(--ink-primary);
+  color: #ffffff;
   border: 1px solid rgba(31, 36, 33, 0.2);
   font-weight: 700;
   font-size: 0.92rem;
@@ -625,7 +625,7 @@ body {
 
 .nnsr-modal-start-btn {
   background-color: var(--emerald);
-  color: var(--ink-primary);
+  color: #ffffff;
   border: 1px solid rgba(31, 36, 33, 0.2);
   font-weight: 700;
   font-size: 0.92rem;

@@ -515,9 +515,9 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                 const evalRes = snapshot.feedback.noteEvaluations[currentNoteIndex];
                 if (evalRes) {
                   if (evalRes.status === 'perfect' || evalRes.status === 'loose') {
-                    noteColor = '#04724d';
+                    noteColor = '#4d9078';
                   } else {
-                    noteColor = '#e05a47';
+                    noteColor = '#b4436c';
                   }
                   errorHint = evalRes.errorHint;
                 }
@@ -846,7 +846,7 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                 snapshot.feedback.shiftedTaps.forEach((tap) => {
                   const xTap = timelineStart + tap.startBeat * wBeatLinear;
                   const wTap = Math.max(6, tap.durationBeats * wBeatLinear - 3);
-                  const color = tap.status === 'missed' ? '#e05a47' : '#04724d';
+                  const color = tap.status === 'missed' ? '#b4436c' : '#4d9078';
 
                   if (tap.matchedNoteIndex !== null) {
                     const matched = snapshot.flattenedNotes[tap.matchedNoteIndex];
@@ -928,8 +928,8 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
             color:
               snapshot.phase === 'FEEDBACK'
                 ? snapshot.feedback?.passed
-                  ? '#04724d'
-                  : '#c0392b'
+                  ? '#4d9078'
+                  : '#b4436c'
                 : undefined,
           }}
         >
@@ -996,7 +996,7 @@ export const RhythmArena: React.FC<RhythmArenaProps> = ({
                     onClick={handleNextPhrase}
                     style={{
                       border: 'none',
-                      background: '#04724d',
+                      background: '#4d9078',
                       color: '#ffffff',
                       padding: '6px 16px',
                       borderRadius: '6px',
