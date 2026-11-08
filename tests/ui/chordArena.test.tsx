@@ -310,20 +310,18 @@ describe('Chord Arena Integration Tests', () => {
     const level1 = getChordLevelById('chord-1');
     const engine = new ChordEngine(level1, 'international');
 
-    // Complete LEARN phase (8 chords in chord-1: C and F/C repeated 4 times)
-    for (let i = 0; i < 4; i++) {
-      // 1. C chord
-      engine.handleNoteOn(48);
-      engine.handleNoteOn(52);
-      engine.handleNoteOn(55);
-      engine.handleClearNotes();
+    // Complete LEARN phase (2 chords in chord-1: C and F/C once each)
+    // 1. C chord
+    engine.handleNoteOn(48);
+    engine.handleNoteOn(52);
+    engine.handleNoteOn(55);
+    engine.handleClearNotes();
 
-      // 2. F/C chord
-      engine.handleNoteOn(48);
-      engine.handleNoteOn(53);
-      engine.handleNoteOn(57);
-      engine.handleClearNotes();
-    }
+    // 2. F/C chord
+    engine.handleNoteOn(48);
+    engine.handleNoteOn(53);
+    engine.handleNoteOn(57);
+    engine.handleClearNotes();
 
     expect(engine.getSnapshot().phase).toBe('COUNTDOWN');
 
@@ -352,20 +350,20 @@ describe('Chord Arena Integration Tests', () => {
     expect(engine.getSnapshot().activeChords.find((c) => c.id === frontmost!.id)?.state).toBe('approaching');
   });
 
-  it('manages 8-step LEARN queue, 48-hit SPEED_UP, 24-hit HOLD, and late miss penalty in ChordEngine', () => {
+  it('manages concise LEARN queue (1x per new chord), 48-hit SPEED_UP, 24-hit HOLD, and late miss penalty in ChordEngine', () => {
     const level1 = getChordLevelById('chord-1');
     const engine = new ChordEngine(level1, 'international');
 
     let snap = engine.getSnapshot();
     expect(snap.phase).toBe('LEARN');
     expect(snap.learnStepIndex).toBe(0);
-    expect(snap.learnTotalSteps).toBe(8);
+    expect(snap.learnTotalSteps).toBe(2);
     expect(snap.speedTotalSteps).toBe(24);
     expect(snap.holdTotalCount).toBe(24);
 
-    // 1. Complete Tier 1 LEARN: requires exactly 8 hits (C and F/C repeated 4 times)
-    const expectedSequence = ['C', 'F/C', 'C', 'F/C', 'C', 'F/C', 'C', 'F/C'];
-    for (let i = 0; i < 8; i++) {
+    // 1. Complete Tier 1 LEARN: requires just 2 hits (C and F/C once each)
+    const expectedSequence = ['C', 'F/C'];
+    for (let i = 0; i < 2; i++) {
       snap = engine.getSnapshot();
       expect(snap.phase).toBe('LEARN');
       expect(snap.learnStepIndex).toBe(i);
@@ -379,7 +377,7 @@ describe('Chord Arena Integration Tests', () => {
     // Now transitioned to COUNTDOWN
     snap = engine.getSnapshot();
     expect(snap.phase).toBe('COUNTDOWN');
-    expect(snap.learnStepIndex).toBe(8);
+    expect(snap.learnStepIndex).toBe(2);
 
     // Advance past COUNTDOWN
     engine.tick(3100);
@@ -488,11 +486,12 @@ describe('Chord Arena Integration Tests', () => {
     expect(engine.getSnapshot().phase).toBe('LEVEL_COMPLETE');
   });
 
-  it('builds 12-step LEARN queue for Tier 9 with empty newChords (4 target chords x 2 + 4 review chords)', () => {
+  it('skips LEARN phase directly to COUNTDOWN for review tiers with empty newChords (e.g. Tier 9)', () => {
     const level9 = getChordLevelById('chord-9');
     expect(level9.newChords.length).toBe(0);
     const engine = new ChordEngine(level9, 'international');
     const snap = engine.getSnapshot();
-    expect(snap.learnTotalSteps).toBe(12);
+    expect(snap.learnTotalSteps).toBe(0);
+    expect(snap.phase).toBe('COUNTDOWN');
   });
 });

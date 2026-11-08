@@ -121,30 +121,7 @@ export class ChordEngine {
     this.targetBpm = level.targetBpm;
     this.actualBpm = Math.max(24, Math.round(level.targetBpm * 0.55));
 
-    const learnQueue: ChordDefinition[] = [];
-
-    if (level.newChords && level.newChords.length > 0) {
-      for (let rep = 0; rep < 4; rep++) {
-        for (const chord of level.newChords) {
-          learnQueue.push(chord);
-        }
-      }
-    } else if (level.targetChords && level.targetChords.length > 0) {
-      const base = level.targetChords.slice(0, 4);
-      for (let rep = 0; rep < 2; rep++) {
-        for (const chord of base) {
-          learnQueue.push(chord);
-        }
-      }
-    }
-
-    if (level.reviewChords && level.reviewChords.length > 0) {
-      for (const chord of level.reviewChords.slice(0, 4)) {
-        learnQueue.push(chord);
-      }
-    }
-
-    this.learnChords = learnQueue;
+    this.learnChords = level.newChords;
     this.learnTotalSteps = this.learnChords.length;
 
     if (this.learnTotalSteps > 0) {
