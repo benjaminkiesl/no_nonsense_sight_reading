@@ -121,7 +121,7 @@ export class ChordEngine {
     this.targetBpm = level.targetBpm;
     this.actualBpm = Math.max(24, Math.round(level.targetBpm * 0.55));
 
-    this.learnChords = level.newChords;
+    this.learnChords = [...level.newChords, ...level.newChords];
     this.learnTotalSteps = this.learnChords.length;
 
     if (this.learnTotalSteps > 0) {
