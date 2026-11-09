@@ -422,6 +422,11 @@ const MiniRhythmMotif: React.FC<MiniRhythmMotifProps> = ({ motif, cx, cy }) => {
 };
 
 function getChordMotifBadgeText(level: ChordLevelSpec, notation: ChordNotationSystem): string {
+  // Tier 1 introduces the 3 primary triads in C
+  if (level.tier === 1) {
+    return `${formatChordLabel('C', notation)} · ${formatChordLabel('F/C', notation)} · ${formatChordLabel('G/B', notation)}`;
+  }
+
   // If the level introduces new chords, display up to 2 of the new chords
   if (level.newChords && level.newChords.length > 0) {
     return level.newChords
@@ -455,7 +460,7 @@ interface MiniChordMotifProps {
 
 const MiniChordMotif: React.FC<MiniChordMotifProps> = ({ level, notationSystem, cx, cy }) => {
   const badgeText = getChordMotifBadgeText(level, notationSystem);
-  const fontSize = badgeText.length > 9 ? 7.5 : badgeText.length > 5 ? 8.5 : 10;
+  const fontSize = badgeText.length > 12 ? 6.5 : badgeText.length > 9 ? 7.5 : badgeText.length > 5 ? 8.5 : 10;
 
   return (
     <text
