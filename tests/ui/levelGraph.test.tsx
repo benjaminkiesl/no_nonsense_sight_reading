@@ -75,10 +75,10 @@ describe('LevelGraph Component', () => {
       />
     );
 
-    // Tier 2: G/B in international
-    expect(screen.getByText('G/B')).toBeDefined();
-    // Tier 5: Bb · C7 in international
-    expect(screen.getByText('Bb · C7')).toBeDefined();
+    // Tier 2: G7/B in international
+    expect(screen.getByText('G7/B')).toBeDefined();
+    // Tier 5: Bb/F · C7/E in international
+    expect(screen.getByText('Bb/F · C7/E')).toBeDefined();
 
     rerender(
       <LevelGraph
@@ -89,9 +89,9 @@ describe('LevelGraph Component', () => {
       />
     );
 
-    // Tier 2: G/H in German
-    expect(screen.getByText('G/H')).toBeDefined();
-    // Tier 5: B · C7 in German
-    expect(screen.getByText('B · C7')).toBeDefined();
+    // Tier 2: G7/H in German
+    expect(screen.getByText('G7/H')).toBeDefined();
+    // Tier 5: B/F · C7/E in German
+    expect(screen.getByText('B/F · C7/E')).toBeDefined();
   });
 });

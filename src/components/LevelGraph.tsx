@@ -422,33 +422,27 @@ const MiniRhythmMotif: React.FC<MiniRhythmMotifProps> = ({ motif, cx, cy }) => {
 };
 
 function getChordMotifBadgeText(level: ChordLevelSpec, notation: ChordNotationSystem): string {
+  // If the level introduces new chords, display up to 2 of the new chords
+  if (level.newChords && level.newChords.length > 0) {
+    return level.newChords
+      .map((c) => formatChordLabel(c, notation))
+      .slice(0, 2)
+      .join(' · ');
+  }
+
+  // Review / integration tiers
   switch (level.tier) {
-    case 1:
-      return `${formatChordLabel('C', notation)} · ${formatChordLabel('F/C', notation)}`;
-    case 2:
-      return `${formatChordLabel('G/B', notation)}`;
-    case 3:
-      return `${formatChordLabel('G', notation)} · ${formatChordLabel('C', notation)} · ${formatChordLabel('D7', notation)}`;
-    case 4:
-      return `${formatChordLabel('C/G', notation)} · ${formatChordLabel('D7', notation)}`;
-    case 5:
-      return `${formatChordLabel('Bb', notation)} · ${formatChordLabel('C7', notation)}`;
-    case 6:
-      return `${formatChordLabel('Am', notation)} · ${formatChordLabel('Em', notation)}`;
-    case 7:
-      return `${formatChordLabel('E7', notation)} · ${formatChordLabel('A7', notation)}`;
-    case 8:
-      return `${formatChordLabel('D', notation)} · ${formatChordLabel('Bm', notation)}`;
     case 9:
-      return `${formatChordLabel('Cmaj7', notation)}`;
+      return `${formatChordLabel('D7', notation)} · ${formatChordLabel('C7', notation)}`;
     case 10:
-      return `${formatChordLabel('Dm7', notation)} · ${formatChordLabel('Am7', notation)}`;
-    case 11:
-      return `${formatChordLabel('B7', notation)} · ${formatChordLabel('Bb7', notation)}`;
+      return `${formatChordLabel('C', notation)} · ${formatChordLabel('Am', notation)}`;
     case 12:
-      return `${formatChordLabel('Bbm', notation)} · ${formatChordLabel('Fm', notation)}`;
+      return 'ALL';
     default:
-      return level.newChords.map((c) => formatChordLabel(c, notation)).slice(0, 2).join(' · ');
+      return level.targetChords
+        .map((c) => formatChordLabel(c, notation))
+        .slice(0, 2)
+        .join(' · ');
   }
 }
 
