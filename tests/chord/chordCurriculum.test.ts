@@ -38,7 +38,7 @@ describe('Chord Symbols Mode - Curriculum & Data Structures', () => {
     it('retrieves chord levels by ID or throws if not found', () => {
       const level1 = getChordLevelById('chord-1');
       expect(level1.tier).toBe(1);
-      expect(level1.title).toBe('The Tonic Anchor');
+      expect(level1.title).toBe('The Primary Triads');
 
       expect(() => getChordLevelById('non-existent')).toThrow(
         /Chord level with ID "non-existent" not found/
@@ -68,15 +68,15 @@ describe('Chord Symbols Mode - Curriculum & Data Structures', () => {
     });
 
     it('matches target chords and pedagogical goals per tier', () => {
-      // Tier 1: C, F/C
+      // Tier 1: C, F/C, G/B
       const chord1 = getChordLevelById('chord-1');
-      expect(chord1.targetChords.map((c) => c.id)).toEqual(['C', 'F/C']);
-      expect(chord1.newChords.map((c) => c.id)).toEqual(['C', 'F/C']);
+      expect(chord1.targetChords.map((c) => c.id)).toEqual(['C', 'F/C', 'G/B']);
+      expect(chord1.newChords.map((c) => c.id)).toEqual(['C', 'F/C', 'G/B']);
       expect(chord1.reviewChords).toEqual([]);
 
-      // Tier 2: Introduces G/B, G7/B
+      // Tier 2: Introduces G7/B
       const chord2 = getChordLevelById('chord-2');
-      expect(chord2.newChords.map((c) => c.id)).toEqual(['G/B', 'G7/B']);
+      expect(chord2.newChords.map((c) => c.id)).toEqual(['G7/B']);
       expect(chord2.targetChords.map((c) => c.id)).toEqual(['C', 'F/C', 'G/B', 'G7/B']);
 
       // Tier 4: Volkslieder singing key (G major)
