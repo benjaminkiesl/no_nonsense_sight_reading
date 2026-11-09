@@ -188,7 +188,9 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
 
       const mapped = mapKeyboardEventToInput(e);
       if (mapped && mapped.source === 'computer_keyboard') {
-        const targetOctave = 3;
+        // Map B/H naturally to Bass register B2 (MIDI 47) so B2 voicings like G/B (47) match directly;
+        // map C, D, E, F, G, A to Octave 3 (C3=48, D3=50, E3=52, F3=53, G3=55, A3=57).
+        const targetOctave = mapped.pitchClass === 11 ? 2 : 3;
         let midi = (targetOctave + 1) * 12 + mapped.pitchClass;
         handleNoteOn(midi);
       }
@@ -199,7 +201,7 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
 
       const mapped = mapKeyboardEventToInput(e);
       if (mapped && mapped.source === 'computer_keyboard') {
-        const targetOctave = 3;
+        const targetOctave = mapped.pitchClass === 11 ? 2 : 3;
         let midi = (targetOctave + 1) * 12 + mapped.pitchClass;
         handleNoteOff(midi);
       }
@@ -551,9 +553,16 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
           {/* Real-Time Live Polyphonic Held Notes Noteheads on Staff */}
           {target &&
             snapshot.activeHeldMidis.map((midi) => {
+              // Fold held MIDI note to match the octave of the corresponding reference chord note (if matching pitch class)
               let displayMidi = midi;
-              while (displayMidi > 64) displayMidi -= 12;
-              while (displayMidi < 36) displayMidi += 12;
+              const pc = toPitchClass(midi);
+              const refMatch = target.referenceVoicing.allMidis.find((m) => toPitchClass(m) === pc);
+              if (refMatch !== undefined) {
+                displayMidi = refMatch;
+              } else {
+                while (displayMidi > 60) displayMidi -= 12;
+                while (displayMidi < 36) displayMidi += 12;
+              }
 
               const y = midiToBassStaffY(displayMidi);
               const { stepOffset } = midiToBassDiatonicStep(displayMidi);
