@@ -17,6 +17,7 @@ export interface LevelGraphProps {
   onSelectLevel: (levelId: string) => void;
   onOpenAccelerando?: () => void;
   onOpenRhythmStream?: () => void;
+  onOpenChordNaming?: () => void;
   celebratingLevelId?: string | null;
   chordNotationSystem?: ChordNotationSystem;
 }
@@ -484,6 +485,7 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
   onSelectLevel,
   onOpenAccelerando,
   onOpenRhythmStream,
+  onOpenChordNaming,
   celebratingLevelId,
   chordNotationSystem,
 }) => {
@@ -881,6 +883,48 @@ export const LevelGraph: React.FC<LevelGraphProps> = ({
               />
               {/* Sliding weight bead */}
               <circle cx="4.5" cy="-3.5" r="2.2" fill="var(--vibrant-coral)" />
+            </g>
+          </g>
+
+          {/* Name the Chord Octagon Node (X=CHORDS_X=440, Y=65) */}
+          <g
+            className="nnsr-graph-octagon-node"
+            role="button"
+            tabIndex={0}
+            aria-label="Name the Chord Drill"
+            data-testid="chord-naming-octagon-node"
+            onClick={() => onOpenChordNaming?.()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onOpenChordNaming?.();
+              }
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <polygon
+              points={getOctagonPoints(CHORDS_X, 65, 23)}
+              fill="#ffffff"
+              stroke="var(--emerald)"
+              strokeWidth={2.2}
+            />
+            <g transform={`translate(${CHORDS_X}, 65)`}>
+              {/* Mini stacked triad + ? icon */}
+              <ellipse cx="-6" cy="6" rx="3.4" ry="2.4" fill="#1f2421" transform="rotate(-20 -6 6)" />
+              <ellipse cx="-6" cy="0" rx="3.4" ry="2.4" fill="#1f2421" transform="rotate(-20 -6 0)" />
+              <ellipse cx="-6" cy="-6" rx="3.4" ry="2.4" fill="#1f2421" transform="rotate(-20 -6 -6)" />
+              <text
+                x="7"
+                y="1"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontFamily="var(--font-serif)"
+                fontSize="16"
+                fontWeight="700"
+                fill="var(--emerald)"
+              >
+                ?
+              </text>
             </g>
           </g>
 

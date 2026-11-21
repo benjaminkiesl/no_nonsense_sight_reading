@@ -58,7 +58,7 @@ export class SightReadingEngine {
   ) {
     this.level = level;
     this.isAccelerando = options?.mode === 'accelerando';
-    this.accelerandoStartBpm = options?.accelerandoStartingBpm ?? 40.0;
+    this.accelerandoStartBpm = options?.accelerandoStartingBpm ?? 28.0;
 
     if (this.isAccelerando) {
       const notes =

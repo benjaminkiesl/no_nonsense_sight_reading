@@ -12,6 +12,7 @@ export interface PersistedProgress {
   readonly bestAccelerandoBpm?: number | null;
   readonly lastCustomAccelerandoNotes?: StaffNoteTarget[] | null;
   readonly chordNotationSystem?: ChordNotationSystem;
+  readonly bestChordNamingSecPerChord?: number | null;
 }
 
 export interface AppState {
@@ -22,12 +23,14 @@ export interface AppState {
   bestAccelerandoBpm: number | null;
   lastCustomAccelerandoNotes: StaffNoteTarget[] | null;
   chordNotationSystem: ChordNotationSystem;
+  bestChordNamingSecPerChord: number | null;
   selectLevel: (levelId: string) => void;
   markLevelCompleted: (levelId: string) => void;
   setMidiDeviceName: (name: string | null) => void;
   updateBestAccelerandoBpm: (bpm: number) => void;
   setLastCustomAccelerandoNotes: (notes: StaffNoteTarget[] | null) => void;
   setChordNotationSystem: (system: ChordNotationSystem) => void;
+  updateBestChordNamingSecPerChord: (secPerChord: number) => void;
 }
 
 function loadInitialProgress(): {
@@ -36,6 +39,7 @@ function loadInitialProgress(): {
   bestAccelerandoBpm: number | null;
   lastCustomAccelerandoNotes: StaffNoteTarget[] | null;
   chordNotationSystem: ChordNotationSystem;
+  bestChordNamingSecPerChord: number | null;
 } {
   if (typeof window === 'undefined' || !window.localStorage) {
     return {
@@ -44,6 +48,7 @@ function loadInitialProgress(): {
       bestAccelerandoBpm: null,
       lastCustomAccelerandoNotes: null,
       chordNotationSystem: 'international',
+      bestChordNamingSecPerChord: null,
     };
   }
 
@@ -71,6 +76,10 @@ function loadInitialProgress(): {
               ? parsed.lastCustomAccelerandoNotes
               : null,
           chordNotationSystem: chordNotation,
+          bestChordNamingSecPerChord:
+            typeof parsed.bestChordNamingSecPerChord === 'number' && parsed.bestChordNamingSecPerChord > 0
+              ? parsed.bestChordNamingSecPerChord
+              : null,
         };
       }
     }
@@ -84,6 +93,7 @@ function loadInitialProgress(): {
     bestAccelerandoBpm: null,
     lastCustomAccelerandoNotes: null,
     chordNotationSystem: 'international',
+    bestChordNamingSecPerChord: null,
   };
 }
 
@@ -92,7 +102,8 @@ function saveProgress(
   directlyCompletedLevelIds: string[],
   bestAccelerandoBpm: number | null,
   lastCustomAccelerandoNotes: StaffNoteTarget[] | null,
-  chordNotationSystem: ChordNotationSystem
+  chordNotationSystem: ChordNotationSystem,
+  bestChordNamingSecPerChord: number | null
 ): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
@@ -103,6 +114,7 @@ function saveProgress(
       bestAccelerandoBpm: bestAccelerandoBpm ?? undefined,
       lastCustomAccelerandoNotes: lastCustomAccelerandoNotes ?? undefined,
       chordNotationSystem,
+      bestChordNamingSecPerChord: bestChordNamingSecPerChord ?? undefined,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch {
@@ -120,6 +132,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   bestAccelerandoBpm: initialProgress.bestAccelerandoBpm,
   lastCustomAccelerandoNotes: initialProgress.lastCustomAccelerandoNotes,
   chordNotationSystem: initialProgress.chordNotationSystem,
+  bestChordNamingSecPerChord: initialProgress.bestChordNamingSecPerChord,
 
   selectLevel: (levelId: string) => {
     set({ currentLevelId: levelId });
@@ -128,7 +141,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().directlyCompletedLevelIds,
       get().bestAccelerandoBpm,
       get().lastCustomAccelerandoNotes,
-      get().chordNotationSystem
+      get().chordNotationSystem,
+      get().bestChordNamingSecPerChord
     );
   },
 
@@ -149,7 +163,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       updated,
       get().bestAccelerandoBpm,
       get().lastCustomAccelerandoNotes,
-      get().chordNotationSystem
+      get().chordNotationSystem,
+      get().bestChordNamingSecPerChord
     );
   },
 
@@ -167,7 +182,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         get().directlyCompletedLevelIds,
         rounded,
         get().lastCustomAccelerandoNotes,
-        get().chordNotationSystem
+        get().chordNotationSystem,
+        get().bestChordNamingSecPerChord
       );
     }
   },
@@ -179,7 +195,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().directlyCompletedLevelIds,
       get().bestAccelerandoBpm,
       notes,
-      get().chordNotationSystem
+      get().chordNotationSystem,
+      get().bestChordNamingSecPerChord
     );
   },
 
@@ -190,7 +207,24 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().directlyCompletedLevelIds,
       get().bestAccelerandoBpm,
       get().lastCustomAccelerandoNotes,
-      system
+      system,
+      get().bestChordNamingSecPerChord
     );
+  },
+
+  updateBestChordNamingSecPerChord: (secPerChord: number) => {
+    const rounded = Math.round(secPerChord * 100) / 100;
+    const currentBest = get().bestChordNamingSecPerChord;
+    if (rounded > 0 && (currentBest === null || rounded < currentBest)) {
+      set({ bestChordNamingSecPerChord: rounded });
+      saveProgress(
+        get().currentLevelId,
+        get().directlyCompletedLevelIds,
+        get().bestAccelerandoBpm,
+        get().lastCustomAccelerandoNotes,
+        get().chordNotationSystem,
+        rounded
+      );
+    }
   },
 }));

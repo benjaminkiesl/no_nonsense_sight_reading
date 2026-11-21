@@ -42,7 +42,7 @@ export const CHORD_LEVELS: readonly ChordLevelSpec[] = [
     },
     prerequisiteIds: [],
     nextIds: ['chord-2'],
-    targetBpm: 50,
+    targetBpm: 70,
   },
 
   // Tier 2: The Stepwise Leading Tone
@@ -64,7 +64,7 @@ export const CHORD_LEVELS: readonly ChordLevelSpec[] = [
     },
     prerequisiteIds: ['chord-1'],
     nextIds: ['chord-3'],
-    targetBpm: 52,
+    targetBpm: 70,
   },
 
   // Tier 3: The Root-Position Cadence
@@ -88,7 +88,7 @@ export const CHORD_LEVELS: readonly ChordLevelSpec[] = [
     },
     prerequisiteIds: ['chord-2'],
     nextIds: ['chord-4'],
-    targetBpm: 54,
+    targetBpm: 70,
   },
 
   // Tier 4: The Volkslieder Singing Key
@@ -111,7 +111,7 @@ export const CHORD_LEVELS: readonly ChordLevelSpec[] = [
     },
     prerequisiteIds: ['chord-3'],
     nextIds: ['chord-5'],
-    targetBpm: 56,
+    targetBpm: 70,
   },
 
   // Tier 5: The Flat Key & German B/H Pivot
@@ -134,7 +134,7 @@ export const CHORD_LEVELS: readonly ChordLevelSpec[] = [
     },
     prerequisiteIds: ['chord-4'],
     nextIds: ['chord-6'],
-    targetBpm: 58,
+    targetBpm: 70,
   },
 
   // Tier 6: The Relative Minor
@@ -158,7 +158,7 @@ export const CHORD_LEVELS: readonly ChordLevelSpec[] = [
     },
     prerequisiteIds: ['chord-5'],
     nextIds: ['chord-7'],
-    targetBpm: 60,
+    targetBpm: 70,
   },
 
   // Tier 7: Minor-Key Dominant Drive
@@ -182,7 +182,7 @@ export const CHORD_LEVELS: readonly ChordLevelSpec[] = [
     },
     prerequisiteIds: ['chord-6'],
     nextIds: ['chord-8'],
-    targetBpm: 62,
+    targetBpm: 72,
   },
 
   // Tier 8: The Bright 2-Sharp Key
@@ -205,7 +205,7 @@ export const CHORD_LEVELS: readonly ChordLevelSpec[] = [
     },
     prerequisiteIds: ['chord-7'],
     nextIds: ['chord-9'],
-    targetBpm: 64,
+    targetBpm: 72,
   },
 
   // Tier 9: Applied Secondary Dominants
@@ -232,7 +232,7 @@ export const CHORD_LEVELS: readonly ChordLevelSpec[] = [
     },
     prerequisiteIds: ['chord-8'],
     nextIds: ['chord-10'],
-    targetBpm: 66,
+    targetBpm: 74,
   },
 
   // Tier 10: The Universal 4-Chord Axis
@@ -256,7 +256,7 @@ export const CHORD_LEVELS: readonly ChordLevelSpec[] = [
     },
     prerequisiteIds: ['chord-9'],
     nextIds: ['chord-11'],
-    targetBpm: 68,
+    targetBpm: 74,
   },
 
   // Tier 11: Modern Pop & Jazz Color
@@ -280,7 +280,7 @@ export const CHORD_LEVELS: readonly ChordLevelSpec[] = [
     },
     prerequisiteIds: ['chord-10'],
     nextIds: ['chord-12'],
-    targetBpm: 70,
+    targetBpm: 76,
   },
 
   // Tier 12: Master Lead-Sheet Fluency
@@ -336,7 +336,7 @@ export const CHORD_LEVELS: readonly ChordLevelSpec[] = [
     },
     prerequisiteIds: ['chord-11'],
     nextIds: [],
-    targetBpm: 72,
+    targetBpm: 78,
   },
 ];
 

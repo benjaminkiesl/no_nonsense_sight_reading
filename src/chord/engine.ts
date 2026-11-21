@@ -119,7 +119,7 @@ export class ChordEngine {
     this.rng = randomFn;
 
     this.targetBpm = level.targetBpm;
-    this.actualBpm = Math.max(24, Math.round(level.targetBpm * 0.55));
+    this.actualBpm = this.getStartingBpm();
 
     this.learnChords = [...level.newChords, ...level.newChords];
     this.learnTotalSteps = this.learnChords.length;
@@ -347,7 +347,7 @@ export class ChordEngine {
         this.speedHitsCount++;
         this.speedStepIndex = Math.min(this.speedTotalSteps, Math.floor(this.speedHitsCount / 2));
         const fraction = Math.min(1, this.speedHitsCount / this.speedRequiredHits);
-        const startBpm = Math.max(24, Math.round(this.targetBpm * 0.55));
+        const startBpm = this.getStartingBpm();
         this.actualBpm = Math.round(startBpm + fraction * (this.targetBpm - startBpm));
 
         if (this.speedHitsCount >= this.speedRequiredHits) {
@@ -392,7 +392,7 @@ export class ChordEngine {
     this.speedHitsCount = Math.max(0, this.speedHitsCount - 5);
     this.speedStepIndex = Math.min(this.speedTotalSteps, Math.floor(this.speedHitsCount / 2));
     const fraction = Math.min(1, this.speedHitsCount / this.speedRequiredHits);
-    const startBpm = Math.max(24, Math.round(this.targetBpm * 0.55));
+    const startBpm = this.getStartingBpm();
     this.actualBpm = Math.round(startBpm + fraction * (this.targetBpm - startBpm));
 
     if (this.phase === 'HOLD') {
@@ -426,6 +426,11 @@ export class ChordEngine {
     }
 
     this.currentTargetChord = this.activeChords[0] ? this.activeChords[0].chord : null;
+  }
+
+  private getStartingBpm(): number {
+    // Start calm (~28 BPM for 70 BPM target) and ramp all the way up to targetBpm (>= 70 BPM)
+    return Math.max(24, Math.round(this.targetBpm * 0.40));
   }
 
   private getFrontmostApproachingChord(): ActiveChordEvent | null {

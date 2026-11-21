@@ -142,10 +142,10 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
   });
 
   describe('AccelerandoModal Setup', () => {
-    it('defaults to 20 BPM when no best recorded, or 10% below best BPM when recorded', () => {
+    it('defaults to 28 BPM when no best recorded, or 10% below best BPM when recorded', () => {
       const onStart = vi.fn();
 
-      // Case 1: No previous best recorded -> 20 BPM
+      // Case 1: No previous best recorded -> 28 BPM
       const { unmount } = render(
         <AccelerandoModal
           isOpen={true}
@@ -156,7 +156,7 @@ describe('Infinite Speed-Up UI Components & Flow', () => {
       );
 
       const inputNoBest = screen.getByLabelText('Starting BPM Input') as HTMLInputElement;
-      expect(Number(inputNoBest.value)).toBe(20);
+      expect(Number(inputNoBest.value)).toBe(28);
       unmount();
 
       // Case 2: Best recorded 100 BPM -> 10% below = 90 BPM

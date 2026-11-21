@@ -4,6 +4,8 @@ import { AccelerandoModal } from './components/AccelerandoModal';
 import { RhythmStreamModal } from './components/RhythmStreamModal';
 import { CelebrationOverlay } from './components/CelebrationOverlay';
 import { ChordArena } from './components/ChordArena';
+import { ChordNamingArena } from './components/ChordNamingArena';
+import { ChordNamingModal } from './components/ChordNamingModal';
 import { GrandStaffCanvas } from './components/GrandStaffCanvas';
 import { Header } from './components/Header';
 import { LevelGraph } from './components/LevelGraph';
@@ -11,6 +13,7 @@ import { ActiveKeyHighlight, PianoKeyboard } from './components/PianoKeyboard';
 import { ProgressBar } from './components/ProgressBar';
 import { RhythmArena, RhythmStreamOptionsProp } from './components/RhythmArena';
 import { getChordLevelById, isChordLevelId } from './chord/curriculum';
+import { ChordNamingConfig, DEFAULT_CHORD_NAMING_CONFIG } from './chord/naming';
 import { getLevelById, getNextRecommendedLevel } from './curriculum/graph';
 import { getRhythmLevelById, isRhythmLevelId } from './rhythm/curriculum';
 import { SightReadingEngine } from './engine/engine';
@@ -31,6 +34,7 @@ export default function App(): React.JSX.Element {
     bestAccelerandoBpm,
     lastCustomAccelerandoNotes,
     chordNotationSystem,
+    bestChordNamingSecPerChord,
     selectLevel,
     markLevelCompleted,
     setMidiDeviceName,
@@ -44,13 +48,18 @@ export default function App(): React.JSX.Element {
   const [isRhythmStreamModalOpen, setIsRhythmStreamModalOpen] = useState(false);
   const [isRhythmStreamActive, setIsRhythmStreamActive] = useState(false);
   const [rhythmStreamOptions, setRhythmStreamOptions] = useState<RhythmStreamOptionsProp | null>(null);
+  const [isChordNamingModalOpen, setIsChordNamingModalOpen] = useState(false);
+  const [isChordNamingActive, setIsChordNamingActive] = useState(false);
+  const [chordNamingConfig, setChordNamingConfig] = useState<ChordNamingConfig>(DEFAULT_CHORD_NAMING_CONFIG);
   const [isRhythmLevelCelebrating, setIsRhythmLevelCelebrating] = useState(false);
   const [isChordLevelCelebrating, setIsChordLevelCelebrating] = useState(false);
   const [isManuallyPaused, setIsManuallyPaused] = useState(false);
 
-  const isChordMode = !isAccelerandoActive && isChordLevelId(currentLevelId);
-  const isRhythmMode = (!isAccelerandoActive && isRhythmLevelId(currentLevelId)) || isRhythmStreamActive;
-  const isPitchMode = !isChordMode && !isRhythmMode;
+  const isChordMode = !isAccelerandoActive && !isChordNamingActive && isChordLevelId(currentLevelId);
+  const isRhythmMode =
+    (!isAccelerandoActive && !isChordNamingActive && isRhythmLevelId(currentLevelId)) ||
+    isRhythmStreamActive;
+  const isPitchMode = !isChordMode && !isRhythmMode && !isChordNamingActive;
   const currentLevel = isPitchMode ? getLevelById(currentLevelId) : getLevelById('treble-1');
 
   const [activeView, setActiveView] = useState<'practice' | 'levels'>('practice');
@@ -78,6 +87,8 @@ export default function App(): React.JSX.Element {
   const handleStartAccelerando = useCallback(
     (notes: readonly StaffNoteTarget[], startingBpm: number) => {
       setIsAccelerandoActive(true);
+      setIsChordNamingActive(false);
+      setIsRhythmStreamActive(false);
       setIsAccelerandoModalOpen(false);
       setIsManuallyPaused(false);
       setActiveView('practice');
@@ -106,6 +117,7 @@ export default function App(): React.JSX.Element {
       setIsAccelerandoActive(false);
       setIsRhythmStreamActive(false);
       setRhythmStreamOptions(null);
+      setIsChordNamingActive(false);
       setIsRhythmLevelCelebrating(false);
       setIsChordLevelCelebrating(false);
       setIsManuallyPaused(false);
@@ -126,6 +138,7 @@ export default function App(): React.JSX.Element {
       setRhythmStreamOptions(options);
       setIsRhythmStreamActive(true);
       setIsAccelerandoActive(false);
+      setIsChordNamingActive(false);
       setIsRhythmStreamModalOpen(false);
       setIsManuallyPaused(false);
       setActiveView('practice');
@@ -136,6 +149,22 @@ export default function App(): React.JSX.Element {
   const handleExitRhythmStream = useCallback(() => {
     setIsRhythmStreamActive(false);
     setRhythmStreamOptions(null);
+    setActiveView('levels');
+  }, []);
+
+  // Launch Name the Chord Drill
+  const handleStartChordNaming = useCallback((config: ChordNamingConfig) => {
+    setChordNamingConfig(config);
+    setIsChordNamingActive(true);
+    setIsAccelerandoActive(false);
+    setIsRhythmStreamActive(false);
+    setIsChordNamingModalOpen(false);
+    setIsManuallyPaused(false);
+    setActiveView('practice');
+  }, []);
+
+  const handleExitChordNaming = useCallback(() => {
+    setIsChordNamingActive(false);
     setActiveView('levels');
   }, []);
 
@@ -291,7 +320,7 @@ export default function App(): React.JSX.Element {
         return;
       }
 
-      if (isRhythmMode || isChordMode || activeView === 'levels') {
+      if (isRhythmMode || isChordMode || isChordNamingActive || activeView === 'levels') {
         return;
       }
 
@@ -314,6 +343,7 @@ export default function App(): React.JSX.Element {
     isPitchMode,
     isRhythmMode,
     isChordMode,
+    isChordNamingActive,
     isManuallyPaused,
     isRhythmLevelCelebrating,
     isChordLevelCelebrating,
@@ -328,14 +358,24 @@ export default function App(): React.JSX.Element {
         onToggleView={() => setActiveView((v) => (v === 'practice' ? 'levels' : 'practice'))}
         chordNotationSystem={chordNotationSystem}
         onToggleChordNotation={
-          isChordMode
+          isChordMode || (isChordNamingActive && chordNamingConfig.answerMode === 'chord_name')
             ? () => setChordNotationSystem(chordNotationSystem === 'international' ? 'german' : 'international')
             : undefined
         }
       />
 
       {activeView === 'practice' ? (
-        !isAccelerandoActive && isChordMode ? (
+        !isAccelerandoActive && isChordNamingActive ? (
+          <main className="nnsr-workspace nnsr-practice-workspace">
+            <section className="nnsr-main-column">
+              <ChordNamingArena
+                config={chordNamingConfig}
+                onExit={handleExitChordNaming}
+                onReconfigure={() => setIsChordNamingModalOpen(true)}
+              />
+            </section>
+          </main>
+        ) : !isAccelerandoActive && isChordMode ? (
           <main className="nnsr-workspace nnsr-practice-workspace">
             <section className="nnsr-main-column" style={{ position: 'relative' }}>
               <ChordArena
@@ -459,6 +499,7 @@ export default function App(): React.JSX.Element {
               onSelectLevel={handleSelectLevel}
               onOpenAccelerando={() => setIsAccelerandoModalOpen(true)}
               onOpenRhythmStream={() => setIsRhythmStreamModalOpen(true)}
+              onOpenChordNaming={() => setIsChordNamingModalOpen(true)}
               chordNotationSystem={chordNotationSystem}
               celebratingLevelId={
                 (snapshot.phase === 'LEVEL_COMPLETE' && isPitchMode) ||
@@ -484,6 +525,13 @@ export default function App(): React.JSX.Element {
         isOpen={isRhythmStreamModalOpen}
         onClose={() => setIsRhythmStreamModalOpen(false)}
         onStart={handleStartRhythmStream}
+      />
+
+      <ChordNamingModal
+        isOpen={isChordNamingModalOpen}
+        onClose={() => setIsChordNamingModalOpen(false)}
+        onStart={handleStartChordNaming}
+        bestSecPerChord={bestChordNamingSecPerChord}
       />
     </div>
   );

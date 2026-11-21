@@ -149,12 +149,12 @@ export const AccelerandoModal: React.FC<AccelerandoModalProps> = ({
   const effectiveLastCustomNotes =
     lastCustomNotes !== undefined ? lastCustomNotes : storedLastCustomNotes;
 
-  // Default starting tempo: 10% below previous best BPM, or 20 BPM if no best recorded
+  // Default starting tempo: 10% below previous best BPM, or 28 BPM if no best recorded
   const computedDefaultBpm = useMemo(() => {
     if (bestAccelerandoBpm && bestAccelerandoBpm > 0) {
       return Math.max(15, Math.min(240, Math.round(bestAccelerandoBpm * 0.9)));
     }
-    return 20;
+    return 28;
   }, [bestAccelerandoBpm]);
 
   const [startingBpm, setStartingBpm] = useState<number>(computedDefaultBpm);

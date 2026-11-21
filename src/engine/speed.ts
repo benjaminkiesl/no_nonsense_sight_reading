@@ -30,7 +30,7 @@ export class SpeedController {
     this.isAccelerando = options?.mode === 'accelerando';
 
     if (this.isAccelerando) {
-      const startBpm = options?.startingBpm ?? 20.0;
+      const startBpm = options?.startingBpm ?? 28.0;
       this.maxBpm = options?.maxBpm ?? SpeedController.V_ACCELERANDO_MAX;
       this.targetBpm = Math.min(this.maxBpm, Math.max(SpeedController.V_MIN_START, startBpm));
       this.actualBpm = this.targetBpm;
