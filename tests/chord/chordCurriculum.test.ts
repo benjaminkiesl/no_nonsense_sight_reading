@@ -324,20 +324,20 @@ describe('Chord Symbols Mode - Curriculum & Data Structures', () => {
       expect(convertToGermanNotation('Bbmaj7')).toBe('Bmaj7');
     });
 
-    it('converts slash chords with B or Bb in bass or root', () => {
-      expect(convertToGermanNotation('G/B')).toBe('G/H');
-      expect(convertToGermanNotation('G7/B')).toBe('G7/H');
-      expect(convertToGermanNotation('Bb/F')).toBe('B/F');
-      expect(convertToGermanNotation('F/Bb')).toBe('F/B');
-      expect(convertToGermanNotation('Bb/B')).toBe('B/H');
+    it('converts slash chords with B or Bb in bass or root (with lowercase bass in German notation)', () => {
+      expect(convertToGermanNotation('G/B')).toBe('G/h');
+      expect(convertToGermanNotation('G7/B')).toBe('G7/h');
+      expect(convertToGermanNotation('Bb/F')).toBe('B/f');
+      expect(convertToGermanNotation('F/Bb')).toBe('F/b');
+      expect(convertToGermanNotation('Bb/B')).toBe('B/h');
     });
 
-    it('preserves non-B chord names unchanged in German notation', () => {
+    it('preserves non-B chord names (lowercasing slash bass) in German notation', () => {
       expect(convertToGermanNotation('C')).toBe('C');
-      expect(convertToGermanNotation('F/C')).toBe('F/C');
-      expect(convertToGermanNotation('C/G')).toBe('C/G');
-      expect(convertToGermanNotation('D7/F#')).toBe('D7/F#');
-      expect(convertToGermanNotation('C7/E')).toBe('C7/E');
+      expect(convertToGermanNotation('F/C')).toBe('F/c');
+      expect(convertToGermanNotation('C/G')).toBe('C/g');
+      expect(convertToGermanNotation('D7/F#')).toBe('D7/f#');
+      expect(convertToGermanNotation('C7/E')).toBe('C7/e');
       expect(convertToGermanNotation('Am')).toBe('Am');
       expect(convertToGermanNotation('Dm7')).toBe('Dm7');
     });
@@ -349,15 +349,16 @@ describe('Chord Symbols Mode - Curriculum & Data Structures', () => {
       expect(convertToInternationalNotation('B')).toBe('Bb');
       expect(convertToInternationalNotation('Bm')).toBe('Bbm');
       expect(convertToInternationalNotation('B7')).toBe('Bb7');
-      expect(convertToInternationalNotation('G/H')).toBe('G/B');
-      expect(convertToInternationalNotation('B/F')).toBe('Bb/F');
-      expect(convertToInternationalNotation('B/H')).toBe('Bb/B');
+      expect(convertToInternationalNotation('G/h')).toBe('G/B');
+      expect(convertToInternationalNotation('B/f')).toBe('Bb/F');
+      expect(convertToInternationalNotation('B/h')).toBe('Bb/B');
+      expect(convertToInternationalNotation('F/c')).toBe('F/C');
     });
 
     it('formats chord labels according to active notation system', () => {
       const gOverB = getChordDefinition('G/B');
       expect(formatChordLabel(gOverB, 'international')).toBe('G/B');
-      expect(formatChordLabel(gOverB, 'german')).toBe('G/H');
+      expect(formatChordLabel(gOverB, 'german')).toBe('G/h');
 
       const bb = getChordDefinition('Bb');
       expect(formatChordLabel(bb, 'international')).toBe('Bb');
@@ -369,10 +370,10 @@ describe('Chord Symbols Mode - Curriculum & Data Structures', () => {
 
       const bbOverF = getChordDefinition('Bb/F');
       expect(formatChordLabel(bbOverF, 'international')).toBe('Bb/F');
-      expect(formatChordLabel(bbOverF, 'german')).toBe('B/F');
+      expect(formatChordLabel(bbOverF, 'german')).toBe('B/f');
 
       // String ID formatting
-      expect(formatChordLabel('G7/B', 'german')).toBe('G7/H');
+      expect(formatChordLabel('G7/B', 'german')).toBe('G7/h');
       expect(formatChordLabel('G7/B', 'international')).toBe('G7/B');
       expect(formatChordLabel('Bb7', 'german')).toBe('B7');
     });

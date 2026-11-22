@@ -28,12 +28,17 @@ interface RootButtonSpec {
   readonly germanLabel: string;
 }
 
-const ACCIDENTAL_ROOT_BUTTONS: readonly RootButtonSpec[] = [
-  { intlValue: 'C#', germanValue: 'C#', intlLabel: 'C♯/D♭', germanLabel: 'C♯/D♭' },
-  { intlValue: 'Eb', germanValue: 'Eb', intlLabel: 'E♭/D♯', germanLabel: 'E♭/D♯' },
-  { intlValue: 'F#', germanValue: 'F#', intlLabel: 'F♯/G♭', germanLabel: 'F♯/G♭' },
-  { intlValue: 'Ab', germanValue: 'Ab', intlLabel: 'A♭/G♯', germanLabel: 'A♭/G♯' },
-  { intlValue: 'Bb', germanValue: 'B', intlLabel: 'B♭', germanLabel: 'B' },
+interface BlackKeySpec extends RootButtonSpec {
+  /** Exact boundary index between white keys (1=C/D, 2=D/E, 4=F/G, 5=G/A, 6=A/B) */
+  readonly boundaryIndex: number;
+}
+
+const ACCIDENTAL_ROOT_BUTTONS: readonly BlackKeySpec[] = [
+  { intlValue: 'C#', germanValue: 'C#', intlLabel: 'C♯/D♭', germanLabel: 'C♯/D♭', boundaryIndex: 1 },
+  { intlValue: 'Eb', germanValue: 'Eb', intlLabel: 'E♭', germanLabel: 'E♭', boundaryIndex: 2 },
+  { intlValue: 'F#', germanValue: 'F#', intlLabel: 'F♯/G♭', germanLabel: 'F♯/G♭', boundaryIndex: 4 },
+  { intlValue: 'Ab', germanValue: 'Ab', intlLabel: 'A♭', germanLabel: 'A♭', boundaryIndex: 5 },
+  { intlValue: 'Bb', germanValue: 'B', intlLabel: 'B♭', germanLabel: 'B', boundaryIndex: 6 },
 ];
 
 const NATURAL_ROOT_BUTTONS: readonly RootButtonSpec[] = [
@@ -825,23 +830,67 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         ) : (
           <div
             data-testid="chord-tap-pad"
-            style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
           >
-            {/* Row 1A: 5 Accidental Roots */}
+            {/* True 1-Octave Piano Keyboard Root Selector (7 white keys + 5 black keys at exact positions) */}
             <div
+              data-testid="piano-root-selector"
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
-                gap: '6px',
-                maxWidth: '520px',
+                position: 'relative',
                 width: '100%',
+                maxWidth: '520px',
+                height: '116px',
                 margin: '0 auto',
+                userSelect: 'none',
               }}
             >
+              {/* 7 White Keys */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                  height: '100%',
+                  gap: '2px',
+                }}
+              >
+                {NATURAL_ROOT_BUTTONS.map((btn) => {
+                  const val = getRootValue(btn, chordNotationSystem);
+                  const label = getRootLabel(btn, chordNotationSystem);
+                  const isSelected = selectedRoot === val;
+                  return (
+                    <button
+                      key={btn.intlValue}
+                      type="button"
+                      data-testid={`root-btn-${btn.intlValue}`}
+                      onClick={() => handleSelectRoot(val)}
+                      style={{
+                        height: '100%',
+                        padding: '0 2px 10px 2px',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        justifyContent: 'center',
+                        fontSize: '1.05rem',
+                        fontWeight: 700,
+                        borderRadius: '0 0 7px 7px',
+                        border: isSelected ? '2px solid var(--emerald)' : '1.5px solid #2c332f',
+                        backgroundColor: isSelected ? 'rgba(77, 144, 120, 0.22)' : '#ffffff',
+                        color: isSelected ? 'var(--emerald)' : 'var(--ink-primary)',
+                        cursor: 'pointer',
+                        touchAction: 'manipulation',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 5 Black Keys positioned at exact piano key boundaries (2-then-3 grouping with E-F gap) */}
               {ACCIDENTAL_ROOT_BUTTONS.map((btn) => {
                 const val = getRootValue(btn, chordNotationSystem);
                 const label = getRootLabel(btn, chordNotationSystem);
                 const isSelected = selectedRoot === val;
+                const leftPct = (btn.boundaryIndex / 7) * 100;
                 return (
                   <button
                     key={btn.intlValue}
@@ -849,51 +898,27 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
                     data-testid={`root-btn-${btn.intlValue}`}
                     onClick={() => handleSelectRoot(val)}
                     style={{
-                      padding: '10px 4px',
-                      fontSize: '0.92rem',
+                      position: 'absolute',
+                      top: 0,
+                      left: `${leftPct}%`,
+                      transform: 'translateX(-50%)',
+                      width: '11.2%',
+                      height: '60%',
+                      zIndex: 2,
+                      padding: '0 2px 6px 2px',
+                      display: 'flex',
+                      alignItems: 'flex-end',
+                      justifyContent: 'center',
+                      fontSize: label.length > 3 ? '0.68rem' : '0.82rem',
                       fontWeight: 700,
-                      borderRadius: '7px',
-                      border: isSelected ? '2px solid var(--emerald)' : '1px solid #2c332f',
-                      backgroundColor: isSelected ? 'var(--emerald)' : '#2c332f',
+                      lineHeight: 1.1,
+                      borderRadius: '0 0 5px 5px',
+                      border: isSelected ? '2px solid var(--tuscan-sun)' : '1px solid #141816',
+                      backgroundColor: isSelected ? 'var(--emerald)' : '#1f2421',
                       color: '#ffffff',
                       cursor: 'pointer',
                       touchAction: 'manipulation',
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Row 1B: 7 Natural Roots */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-                gap: '6px',
-              }}
-            >
-              {NATURAL_ROOT_BUTTONS.map((btn) => {
-                const val = getRootValue(btn, chordNotationSystem);
-                const label = getRootLabel(btn, chordNotationSystem);
-                const isSelected = selectedRoot === val;
-                return (
-                  <button
-                    key={btn.intlValue}
-                    type="button"
-                    data-testid={`root-btn-${btn.intlValue}`}
-                    onClick={() => handleSelectRoot(val)}
-                    style={{
-                      padding: '12px 4px',
-                      fontSize: '1.05rem',
-                      fontWeight: 700,
-                      borderRadius: '7px',
-                      border: isSelected ? '2px solid var(--emerald)' : '1.5px solid var(--border-strong)',
-                      backgroundColor: isSelected ? 'rgba(77, 144, 120, 0.16)' : '#ffffff',
-                      color: isSelected ? 'var(--emerald)' : 'var(--ink-primary)',
-                      cursor: 'pointer',
-                      touchAction: 'manipulation',
+                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.28)',
                     }}
                   >
                     {label}

@@ -89,9 +89,9 @@ describe('LevelGraph Component', () => {
       />
     );
 
-    // Tier 2: G7/H in German
-    expect(screen.getByText('G7/H')).toBeDefined();
-    // Tier 5: B/F · C7/E in German
-    expect(screen.getByText('B/F · C7/E')).toBeDefined();
+    // Tier 2: G7/h in German
+    expect(screen.getByText('G7/h')).toBeDefined();
+    // Tier 5: B/f · C7/e in German
+    expect(screen.getByText('B/f · C7/e')).toBeDefined();
   });
 });

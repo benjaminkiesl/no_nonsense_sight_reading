@@ -48,10 +48,12 @@ export function convertToGermanNotation(internationalStr: string): string {
 
   if (bass !== undefined) {
     let convertedBass = bass;
-    if (bass === 'Bb') {
-      convertedBass = 'B';
-    } else if (bass === 'B') {
-      convertedBass = 'H';
+    if (bass === 'Bb' || bass === 'bb') {
+      convertedBass = 'b';
+    } else if (bass === 'B' || bass === 'b') {
+      convertedBass = 'h';
+    } else {
+      convertedBass = bass.toLowerCase();
     }
     return `${convertedMain}/${convertedBass}`;
   }
@@ -63,8 +65,9 @@ export function convertToGermanNotation(internationalStr: string): string {
  * Convert German chord symbol string to International notation.
  * - Leading H -> B
  * - Leading B (natural) -> Bb
- * - Bass /H -> /B
- * - Bass /B -> /Bb
+ * - Bass /H or /h -> /B
+ * - Bass /B or /b -> /Bb
+ * - Lowercase bass /c, /f#, etc. -> /C, /F#
  */
 export function convertToInternationalNotation(germanStr: string): string {
   const parts = germanStr.split('/');
@@ -80,10 +83,13 @@ export function convertToInternationalNotation(germanStr: string): string {
 
   if (bass !== undefined) {
     let convertedBass = bass;
-    if (bass === 'H') {
+    const bassLower = bass.toLowerCase();
+    if (bassLower === 'h') {
       convertedBass = 'B';
-    } else if (bass === 'B') {
+    } else if (bassLower === 'b') {
       convertedBass = 'Bb';
+    } else if (bass.length > 0) {
+      convertedBass = bass[0]!.toUpperCase() + bass.slice(1);
     }
     return `${convertedMain}/${convertedBass}`;
   }
