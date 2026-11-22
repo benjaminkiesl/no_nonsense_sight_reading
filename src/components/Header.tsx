@@ -46,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        <div className="nnsr-header-midi">
+        <div className={`nnsr-header-midi ${midiDeviceName ? 'is-connected' : 'is-disconnected'}`}>
           <span
             className={`nnsr-midi-dot ${midiDeviceName ? 'connected' : 'disconnected'}`}
             aria-hidden="true"

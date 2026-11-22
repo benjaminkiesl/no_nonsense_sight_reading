@@ -687,3 +687,43 @@ body {
   text-align: center;
   letter-spacing: 0.01em;
 }
+
+/* ==========================================================================
+   Mobile / Portrait Phone Responsive Polish
+   ========================================================================== */
+@media (max-width: 640px) {
+  .nnsr-header {
+    height: auto;
+    min-height: 46px;
+    padding: 8px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .nnsr-header-title {
+    font-size: 0.98rem;
+  }
+
+  .nnsr-header-actions {
+    gap: 6px;
+  }
+
+  .nnsr-view-toggle-btn,
+  .nnsr-notation-toggle-btn {
+    padding: 4px 10px;
+    font-size: 0.76rem;
+  }
+
+  .nnsr-header-midi.is-disconnected {
+    display: none;
+  }
+
+  .nnsr-header-midi {
+    font-size: 0.74rem;
+    padding: 3px 8px;
+  }
+
+  .nnsr-workspace {
+    padding: 12px 10px;
+  }
+}

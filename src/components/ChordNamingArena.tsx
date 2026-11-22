@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { playMutedFeltThud, playSanctuaryWakeChime } from '../audio/recoveryAudio';
+import { playMutedFeltThud } from '../audio/recoveryAudio';
 import { formatChordLabel } from '../chord/chords';
 import {
   AdaptiveNamingScheduler,
@@ -188,7 +188,6 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
       );
 
       if (isCorrect) {
-        playSanctuaryWakeChime();
         const now = performance.now();
         const elapsedMs = Math.max(100, now - promptStartedAtMs);
         const wasFirstTry = !hadMistakeOnCurrent;

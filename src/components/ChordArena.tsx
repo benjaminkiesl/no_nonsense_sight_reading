@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { playMutedFeltThud, playSanctuaryRestChime, playSanctuaryWakeChime } from '../audio/recoveryAudio';
+import { playMutedFeltThud } from '../audio/recoveryAudio';
 import { ChordEngine, CHORD_ENGINE_GEOMETRY, midiToBassDiatonicStep, midiToBassStaffY } from '../chord/engine';
 import { formatChordLabel, toPitchClass } from '../chord/chords';
 import { getChordLevelById } from '../chord/curriculum';
@@ -130,11 +130,7 @@ export const ChordArena: React.FC<ChordArenaProps> = ({
       setRecentHitMidis([]);
     }
 
-    if (res.outcome === 'correct_hit') {
-      playSanctuaryWakeChime();
-    } else if (res.outcome === 'correction_complete') {
-      playSanctuaryRestChime();
-    } else if (res.outcome === 'wrong_notes') {
+    if (res.outcome === 'wrong_notes') {
       playMutedFeltThud();
     } else if (res.outcome === 'level_advance') {
       onLevelComplete?.();
