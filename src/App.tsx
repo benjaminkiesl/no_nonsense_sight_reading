@@ -499,7 +499,7 @@ export default function App(): React.JSX.Element {
               onSelectLevel={handleSelectLevel}
               onOpenAccelerando={() => setIsAccelerandoModalOpen(true)}
               onOpenRhythmStream={() => setIsRhythmStreamModalOpen(true)}
-              onOpenChordNaming={() => setIsChordNamingModalOpen(true)}
+              onOpenChordNaming={() => handleStartChordNaming(chordNamingConfig)}
               chordNotationSystem={chordNotationSystem}
               celebratingLevelId={
                 (snapshot.phase === 'LEVEL_COMPLETE' && isPitchMode) ||

@@ -5,7 +5,6 @@ import {
   ChordNamingClefMode,
   ChordNamingConfig,
   ChordNamingKeyId,
-  ChordNamingPoolId,
   DEFAULT_CHORD_NAMING_CONFIG,
 } from '../chord/naming';
 import { useAppStore } from '../store/useAppStore';
@@ -24,22 +23,10 @@ const KEY_OPTIONS: readonly { id: ChordNamingKeyId; label: string; detail: strin
   { id: 'D_MAJOR', label: 'D Major', detail: '2 sharps (F♯, C♯)' },
 ];
 
-const POOL_OPTIONS: readonly { id: ChordNamingPoolId; label: string; detail: string }[] = [
-  {
-    id: 'adaptive',
-    label: 'Adaptive Ladder (Recommended)',
-    detail: 'Starts with C, F, G · Unlocks highest-ROI chords as you master them',
-  },
-  { id: 'core_triads', label: 'Songbook Triads (11)', detail: 'C, F, G, D, A, Bb, Am, Dm, Em, Gm, Bm' },
-  { id: 'all_triads', label: 'All Major & Minor Triads (24)', detail: 'All 12 roots · Major & minor' },
-  { id: 'triads_and_7ths', label: 'Triads + 7ths (60)', detail: 'All 12 roots · Maj, m, 7, maj7, m7' },
-  { id: 'all_chords', label: 'Full Harmony (96)', detail: 'All 12 roots · + dim, sus2, sus4' },
-];
-
 const CLEF_OPTIONS: readonly { id: ChordNamingClefMode; label: string }[] = [
   { id: 'both', label: 'Both Clefs' },
-  { id: 'treble', label: 'Treble Only (𝄞)' },
-  { id: 'bass', label: 'Bass Only (𝄢)' },
+  { id: 'treble', label: 'Treble (𝄞)' },
+  { id: 'bass', label: 'Bass (𝄢)' },
 ];
 
 const LENGTH_OPTIONS: readonly number[] = [25, 50, 100];
@@ -56,9 +43,6 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
   const [clefMode, setClefMode] = useState<ChordNamingClefMode>(
     DEFAULT_CHORD_NAMING_CONFIG.clefMode
   );
-  const [poolId, setPoolId] = useState<ChordNamingPoolId>(
-    DEFAULT_CHORD_NAMING_CONFIG.poolId
-  );
   const [fixedKey, setFixedKey] = useState<ChordNamingKeyId>(
     DEFAULT_CHORD_NAMING_CONFIG.fixedKey
   );
@@ -74,7 +58,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
     onStart({
       answerMode,
       clefMode,
-      poolId,
+      poolId: 'adaptive',
       fixedKey,
       totalChords,
     });
@@ -85,7 +69,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
     border: active ? '1.5px solid var(--emerald)' : '1px solid #d4d0c7',
     background: active ? 'rgba(77, 144, 120, 0.12)' : '#ffffff',
     color: active ? 'var(--emerald)' : 'var(--ink-primary)',
-    padding: '8px 14px',
+    padding: '8px 12px',
     borderRadius: '8px',
     fontSize: '13px',
     fontWeight: 600,
@@ -98,7 +82,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Name the Chord Configuration"
+      aria-label="Name the Chord Settings"
       data-testid="chord-naming-modal"
       style={{
         position: 'fixed',
@@ -119,7 +103,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
         style={{
           background: '#ffffff',
           borderRadius: '14px',
-          width: '620px',
+          width: '500px',
           maxWidth: '96vw',
           maxHeight: '92vh',
           display: 'flex',
@@ -132,7 +116,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
         {/* Header */}
         <div
           style={{
-            padding: '20px 24px 16px 24px',
+            padding: '18px 22px 14px 22px',
             borderBottom: '1px solid #eeebe3',
             display: 'flex',
             alignItems: 'center',
@@ -143,27 +127,17 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
             <h2
               style={{
                 margin: 0,
-                fontSize: '20px',
+                fontSize: '19px',
                 fontWeight: 700,
                 color: 'var(--ink-primary)',
                 fontFamily: 'var(--font-serif)',
               }}
             >
-              Name the Chord
+              Name the Chord — Settings
             </h2>
-            <p
-              style={{
-                margin: '4px 0 0 0',
-                fontSize: '13px',
-                color: 'var(--ink-secondary)',
-              }}
-            >
-              Read chords on the staff in any inversion and type their name or Roman numeral.
-              {bestSecPerChord !== null && (
-                <span style={{ marginLeft: '8px', fontWeight: 700, color: 'var(--emerald)' }}>
-                  Best: {bestSecPerChord.toFixed(2)} s/chord
-                </span>
-              )}
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--ink-secondary)' }}>
+              Unlocked: {adaptiveState.unlockedChordCount} / {ADAPTIVE_CHORD_LADDER.length} chords
+              {bestSecPerChord !== null && ` · Best: ${bestSecPerChord.toFixed(2)} s/chord`}
             </p>
           </div>
           <button
@@ -187,14 +161,14 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
         {/* Body */}
         <div
           style={{
-            padding: '20px 24px',
+            padding: '18px 22px',
             overflowY: 'auto',
             display: 'flex',
             flexDirection: 'column',
-            gap: '18px',
+            gap: '16px',
           }}
         >
-          {/* Answer Format */}
+          {/* Mode Toggle */}
           <div>
             <div
               style={{
@@ -206,7 +180,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
                 marginBottom: '8px',
               }}
             >
-              Answer Format
+              Mode
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <button
@@ -217,7 +191,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
               >
                 <div>Chord Names</div>
                 <div style={{ fontSize: '11px', fontWeight: 400, color: 'var(--ink-secondary)', marginTop: '2px' }}>
-                  Type C, Am, G7… (inversions accepted as root)
+                  C, F, G → Am → … (auto)
                 </div>
               </button>
               <button
@@ -228,83 +202,14 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
               >
                 <div>Roman Numerals</div>
                 <div style={{ fontSize: '11px', fontWeight: 400, color: 'var(--ink-secondary)', marginTop: '2px' }}>
-                  Fixed key signature · Type I, ii, IV, V, V7, vi
+                  I, IV, V → vi → … in a fixed key
                 </div>
               </button>
             </div>
           </div>
 
-          {/* Conditional: Chord Pool OR Fixed Key */}
-          {answerMode === 'chord_name' ? (
-            <div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '8px',
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    color: 'var(--ink-secondary)',
-                  }}
-                >
-                  Chord Vocabulary
-                </span>
-                {poolId === 'adaptive' && (
-                  <span style={{ fontSize: '11px', color: 'var(--emerald)', fontWeight: 700 }}>
-                    Unlocked: {adaptiveState.unlockedChordCount} / {ADAPTIVE_CHORD_LADDER.length}
-                    {adaptiveState.unlockedChordCount > 3 && (
-                      <button
-                        type="button"
-                        onClick={resetAdaptiveState}
-                        data-testid="reset-adaptive-btn"
-                        style={{
-                          marginLeft: '8px',
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--ink-secondary)',
-                          textDecoration: 'underline',
-                          cursor: 'pointer',
-                          fontSize: '11px',
-                          padding: 0,
-                        }}
-                      >
-                        Reset
-                      </button>
-                    )}
-                  </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {POOL_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    data-testid={`naming-pool-${opt.id}`}
-                    onClick={() => setPoolId(opt.id)}
-                    style={{
-                      ...pillStyle(poolId === opt.id),
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '12px',
-                    }}
-                  >
-                    <span>{opt.label}</span>
-                    <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--ink-secondary)' }}>
-                      {opt.detail}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
+          {/* Key Picker (only in Roman Numerals mode) */}
+          {answerMode === 'roman_numeral' && (
             <div>
               <div
                 style={{
@@ -316,7 +221,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
                   marginBottom: '8px',
                 }}
               >
-                Fixed Scale / Key Signature
+                Scale / Key Signature
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 {KEY_OPTIONS.map((opt) => (
@@ -338,7 +243,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
           )}
 
           {/* Clef & Length */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <div>
               <div
                 style={{
@@ -378,7 +283,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
                   marginBottom: '8px',
                 }}
               >
-                Drill Length
+                Chords per Run
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {LENGTH_OPTIONS.map((count) => (
@@ -397,9 +302,27 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
                   </button>
                 ))}
               </div>
-              <p style={{ fontSize: '11px', color: 'var(--ink-secondary)', marginTop: '8px', lineHeight: 1.4 }}>
-                No time limit. Your average speed (seconds per chord) is measured at the end.
-              </p>
+
+              {(adaptiveState.unlockedChordCount > 3 || adaptiveState.unlockedRomanCount > 3) && (
+                <button
+                  type="button"
+                  onClick={resetAdaptiveState}
+                  data-testid="reset-adaptive-btn"
+                  style={{
+                    marginTop: '14px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--vibrant-coral)',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    padding: 0,
+                  }}
+                >
+                  Reset Adaptive Progress
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -407,11 +330,11 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
         {/* Footer */}
         <div
           style={{
-            padding: '16px 24px',
+            padding: '14px 22px',
             borderTop: '1px solid #eeebe3',
             display: 'flex',
             justifyContent: 'flex-end',
-            gap: '12px',
+            gap: '10px',
             background: '#faf9f6',
           }}
         >
@@ -422,7 +345,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
               border: '1px solid #d4d0c7',
               background: '#ffffff',
               color: 'var(--ink-primary)',
-              padding: '8px 18px',
+              padding: '8px 16px',
               borderRadius: '8px',
               fontSize: '14px',
               fontWeight: 600,
@@ -439,14 +362,14 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
               border: 'none',
               background: 'var(--emerald)',
               color: '#ffffff',
-              padding: '8px 22px',
+              padding: '8px 20px',
               borderRadius: '8px',
               fontSize: '14px',
               fontWeight: 600,
               cursor: 'pointer',
             }}
           >
-            Start Drill →
+            Apply & Start →
           </button>
         </div>
       </div>
