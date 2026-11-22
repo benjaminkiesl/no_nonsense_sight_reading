@@ -23,9 +23,10 @@ const KEY_OPTIONS: readonly { id: ChordNamingKeyId; label: string; detail: strin
 ];
 
 const POOL_OPTIONS: readonly { id: ChordNamingPoolId; label: string; detail: string }[] = [
-  { id: 'core_triads', label: 'Core Triads', detail: 'C, F, G, D, A, Bb, Am, Dm, Em, Gm, Bm' },
-  { id: 'triads_and_dom7', label: 'Triads + Dom 7ths', detail: 'Adds G7, D7, C7, A7, E7' },
-  { id: 'all_chords', label: 'All Chords', detail: 'Adds Cmaj7, Fmaj7, Dm7, Am7, Em7' },
+  { id: 'core_triads', label: 'Songbook Triads (11)', detail: 'C, F, G, D, A, Bb, Am, Dm, Em, Gm, Bm' },
+  { id: 'all_triads', label: 'All Major & Minor Triads (24)', detail: 'All 12 roots · Major & minor' },
+  { id: 'triads_and_7ths', label: 'Triads + 7ths (60)', detail: 'All 12 roots · Maj, m, 7, maj7, m7' },
+  { id: 'all_chords', label: 'Full Harmony (96)', detail: 'All 12 roots · + dim, sus2, sus4' },
 ];
 
 const CLEF_OPTIONS: readonly { id: ChordNamingClefMode; label: string }[] = [

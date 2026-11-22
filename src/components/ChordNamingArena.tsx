@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { playMutedFeltThud, playSanctuaryWakeChime } from '../audio/recoveryAudio';
 import {
   ChordNamingConfig,
@@ -6,10 +6,12 @@ import {
   evaluateChordNamingAnswer,
   formatPromptCanonicalAnswer,
   generateChordNamingDrill,
+  getPoolQualities,
 } from '../chord/naming';
 import { getLedgerLines } from '../music/notation';
 import { KEY_SIGNATURES } from '../music/scales';
 import { useAppStore } from '../store/useAppStore';
+import { ChordNotationSystem, ChordQuality } from '../types/chord';
 
 export interface ChordNamingArenaProps {
   readonly config: ChordNamingConfig;
@@ -18,6 +20,47 @@ export interface ChordNamingArenaProps {
   readonly initialPrompts?: readonly ChordNamingPrompt[];
 }
 
+interface RootButtonSpec {
+  readonly intlValue: string;
+  readonly germanValue: string;
+  readonly intlLabel: string;
+  readonly germanLabel: string;
+}
+
+const ACCIDENTAL_ROOT_BUTTONS: readonly RootButtonSpec[] = [
+  { intlValue: 'C#', germanValue: 'C#', intlLabel: 'C♯/D♭', germanLabel: 'C♯/D♭' },
+  { intlValue: 'Eb', germanValue: 'Eb', intlLabel: 'E♭/D♯', germanLabel: 'E♭/D♯' },
+  { intlValue: 'F#', germanValue: 'F#', intlLabel: 'F♯/G♭', germanLabel: 'F♯/G♭' },
+  { intlValue: 'Ab', germanValue: 'Ab', intlLabel: 'A♭/G♯', germanLabel: 'A♭/G♯' },
+  { intlValue: 'Bb', germanValue: 'B', intlLabel: 'B♭', germanLabel: 'B' },
+];
+
+const NATURAL_ROOT_BUTTONS: readonly RootButtonSpec[] = [
+  { intlValue: 'C', germanValue: 'C', intlLabel: 'C', germanLabel: 'C' },
+  { intlValue: 'D', germanValue: 'D', intlLabel: 'D', germanLabel: 'D' },
+  { intlValue: 'E', germanValue: 'E', intlLabel: 'E', germanLabel: 'E' },
+  { intlValue: 'F', germanValue: 'F', intlLabel: 'F', germanLabel: 'F' },
+  { intlValue: 'G', germanValue: 'G', intlLabel: 'G', germanLabel: 'G' },
+  { intlValue: 'A', germanValue: 'A', intlLabel: 'A', germanLabel: 'A' },
+  { intlValue: 'B', germanValue: 'H', intlLabel: 'B', germanLabel: 'H' },
+];
+
+const QUALITY_BUTTON_META: Record<
+  Exclude<ChordQuality, 'augmented'>,
+  { label: string; suffix: string }
+> = {
+  major: { label: 'Major', suffix: '' },
+  minor: { label: 'm', suffix: 'm' },
+  dominant7: { label: '7', suffix: '7' },
+  major7: { label: 'maj7', suffix: 'maj7' },
+  minor7: { label: 'm7', suffix: 'm7' },
+  diminished: { label: 'dim', suffix: 'dim' },
+  sus2: { label: 'sus2', suffix: 'sus2' },
+  sus4: { label: 'sus4', suffix: 'sus4' },
+};
+
+const ROMAN_BUTTONS: readonly string[] = ['I', 'ii', 'iii', 'IV', 'V', 'V7', 'vi'];
+
 function formatDuration(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
   const secs = totalSeconds % 60;
@@ -25,6 +68,14 @@ function formatDuration(totalSeconds: number): string {
     return `${secs.toFixed(1)}s`;
   }
   return `${mins}m ${Math.floor(secs).toString().padStart(2, '0')}s`;
+}
+
+function getRootValue(btn: RootButtonSpec, notation: ChordNotationSystem): string {
+  return notation === 'german' ? btn.germanValue : btn.intlValue;
+}
+
+function getRootLabel(btn: RootButtonSpec, notation: ChordNotationSystem): string {
+  return notation === 'german' ? btn.germanLabel : btn.intlLabel;
 }
 
 export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
@@ -44,6 +95,8 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
   );
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [inputValue, setInputValue] = useState<string>('');
+  const [selectedRoot, setSelectedRoot] = useState<string | null>(null);
+  const [selectedQuality, setSelectedQuality] = useState<Exclude<ChordQuality, 'augmented'>>('major');
   const [feedback, setFeedback] = useState<'idle' | 'correct' | 'wrong'>('idle');
   const [lastSolvedLabel, setLastSolvedLabel] = useState<string | null>(null);
   const [revealedAnswer, setRevealedAnswer] = useState<string | null>(null);
@@ -53,6 +106,19 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
   const [finishedAtMs, setFinishedAtMs] = useState<number | null>(null);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const selectedRootRef = useRef<string | null>(null);
+  const selectedQualityRef = useRef<Exclude<ChordQuality, 'augmented'>>('major');
+
+  const activeQualities = useMemo(() => getPoolQualities(config.poolId), [config.poolId]);
+
+  const resetForNextPrompt = useCallback(() => {
+    setInputValue('');
+    selectedRootRef.current = null;
+    selectedQualityRef.current = 'major';
+    setSelectedRoot(null);
+    setSelectedQuality('major');
+    setRevealedAnswer(null);
+  }, []);
 
   // Reset drill when config changes
   useEffect(() => {
@@ -60,87 +126,115 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
       setPrompts(generateChordNamingDrill(config));
     }
     setCurrentIndex(0);
-    setInputValue('');
+    resetForNextPrompt();
     setFeedback('idle');
     setLastSolvedLabel(null);
-    setRevealedAnswer(null);
     setHadMistakeOnCurrent(false);
     setFirstTryCorrectCount(0);
     setStartedAtMs(performance.now());
     setFinishedAtMs(null);
-  }, [config, initialPrompts]);
-
-  // Keep textbox focused during active drill
-  useEffect(() => {
-    if (finishedAtMs === null) {
-      inputRef.current?.focus();
-    }
-  }, [currentIndex, finishedAtMs]);
+  }, [config, initialPrompts, resetForNextPrompt]);
 
   const handleRestart = useCallback(() => {
     setPrompts(initialPrompts ? [...initialPrompts] : generateChordNamingDrill(config));
     setCurrentIndex(0);
-    setInputValue('');
+    resetForNextPrompt();
     setFeedback('idle');
     setLastSolvedLabel(null);
-    setRevealedAnswer(null);
     setHadMistakeOnCurrent(false);
     setFirstTryCorrectCount(0);
     setStartedAtMs(performance.now());
     setFinishedAtMs(null);
-  }, [config, initialPrompts]);
+  }, [config, initialPrompts, resetForNextPrompt]);
 
   const isFinished = finishedAtMs !== null || currentIndex >= prompts.length;
   const currentPrompt = !isFinished ? prompts[currentIndex]! : null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentPrompt || isFinished) return;
+  const submitAnswerString = useCallback(
+    (rawAnswer: string) => {
+      if (!currentPrompt || isFinished) return;
+      const trimmed = rawAnswer.trim();
+      if (!trimmed) return;
 
-    const trimmed = inputValue.trim();
-    if (!trimmed) return;
-
-    const isCorrect = evaluateChordNamingAnswer(
-      trimmed,
-      currentPrompt,
-      config.answerMode,
-      chordNotationSystem
-    );
-
-    if (isCorrect) {
-      playSanctuaryWakeChime();
-      const solvedLabel = formatPromptCanonicalAnswer(
+      const isCorrect = evaluateChordNamingAnswer(
+        trimmed,
         currentPrompt,
         config.answerMode,
         chordNotationSystem
       );
-      setLastSolvedLabel(solvedLabel);
-      setFeedback('correct');
-      setInputValue('');
-      setRevealedAnswer(null);
 
-      if (!hadMistakeOnCurrent) {
-        setFirstTryCorrectCount((c) => c + 1);
-      }
-      setHadMistakeOnCurrent(false);
+      if (isCorrect) {
+        playSanctuaryWakeChime();
+        const solvedLabel = formatPromptCanonicalAnswer(
+          currentPrompt,
+          config.answerMode,
+          chordNotationSystem
+        );
+        setLastSolvedLabel(solvedLabel);
+        setFeedback('correct');
+        resetForNextPrompt();
 
-      const nextIndex = currentIndex + 1;
-      if (nextIndex >= prompts.length) {
-        const now = performance.now();
-        setFinishedAtMs(now);
-        setCurrentIndex(nextIndex);
-        const totalSec = Math.max(0.1, (now - startedAtMs) / 1000);
-        const secPerChord = totalSec / prompts.length;
-        updateBestChordNamingSecPerChord(secPerChord);
+        if (!hadMistakeOnCurrent) {
+          setFirstTryCorrectCount((c) => c + 1);
+        }
+        setHadMistakeOnCurrent(false);
+
+        const nextIndex = currentIndex + 1;
+        if (nextIndex >= prompts.length) {
+          const now = performance.now();
+          setFinishedAtMs(now);
+          setCurrentIndex(nextIndex);
+          const totalSec = Math.max(0.1, (now - startedAtMs) / 1000);
+          const secPerChord = totalSec / prompts.length;
+          updateBestChordNamingSecPerChord(secPerChord);
+        } else {
+          setCurrentIndex(nextIndex);
+        }
       } else {
-        setCurrentIndex(nextIndex);
+        playMutedFeltThud();
+        setFeedback('wrong');
+        setHadMistakeOnCurrent(true);
       }
-    } else {
-      playMutedFeltThud();
-      setFeedback('wrong');
-      setHadMistakeOnCurrent(true);
-      inputRef.current?.select();
+    },
+    [
+      currentPrompt,
+      isFinished,
+      config.answerMode,
+      chordNotationSystem,
+      resetForNextPrompt,
+      hadMistakeOnCurrent,
+      currentIndex,
+      prompts.length,
+      startedAtMs,
+      updateBestChordNamingSecPerChord,
+    ]
+  );
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitAnswerString(inputValue);
+  };
+
+  const handleSelectRoot = (rootVal: string) => {
+    selectedRootRef.current = rootVal;
+    setSelectedRoot(rootVal);
+    if (feedback === 'wrong') setFeedback('idle');
+    const suffix = QUALITY_BUTTON_META[selectedQualityRef.current].suffix;
+    setInputValue(`${rootVal}${suffix}`);
+  };
+
+  const handleSelectQuality = (q: Exclude<ChordQuality, 'augmented'>) => {
+    selectedQualityRef.current = q;
+    setSelectedQuality(q);
+    if (feedback === 'wrong') setFeedback('idle');
+    if (selectedRootRef.current) {
+      setInputValue(`${selectedRootRef.current}${QUALITY_BUTTON_META[q].suffix}`);
     }
+  };
+
+  const handleRomanTap = (roman: string) => {
+    setInputValue(roman);
+    submitAnswerString(roman);
   };
 
   const handleReveal = () => {
@@ -149,7 +243,6 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
     setRevealedAnswer(
       formatPromptCanonicalAnswer(currentPrompt, config.answerMode, chordNotationSystem)
     );
-    inputRef.current?.focus();
   };
 
   const keySigSpec =
@@ -170,11 +263,12 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         className="nnsr-chord-naming-summary"
         data-testid="chord-naming-summary"
         style={{
-          width: '840px',
+          width: '100%',
+          maxWidth: '840px',
           backgroundColor: 'var(--surface-paper)',
           border: '1px solid var(--border-subtle)',
           borderRadius: '10px',
-          padding: '32px 28px',
+          padding: '28px 20px',
           textAlign: 'center',
           boxShadow: '0 4px 16px rgba(31, 36, 33, 0.06)',
         }}
@@ -194,7 +288,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         <h2
           style={{
             fontFamily: 'var(--font-serif)',
-            fontSize: '2.4rem',
+            fontSize: '2.2rem',
             color: 'var(--ink-primary)',
             margin: '0 0 6px 0',
           }}
@@ -202,7 +296,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         >
           {secPerChord.toFixed(2)} s / chord
         </h2>
-        <p style={{ color: 'var(--ink-secondary)', fontSize: '0.95rem', marginBottom: '24px' }}>
+        <p style={{ color: 'var(--ink-secondary)', fontSize: '0.95rem', marginBottom: '22px' }}>
           {config.answerMode === 'roman_numeral'
             ? `Roman Numerals in ${KEY_SIGNATURES[config.fixedKey].label}`
             : 'Chord Symbol Recognition'}
@@ -211,51 +305,33 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '12px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: '10px',
             maxWidth: '540px',
-            margin: '0 auto 28px auto',
+            margin: '0 auto 24px auto',
           }}
         >
-          <div
-            style={{
-              background: 'var(--surface-subtle)',
-              padding: '14px',
-              borderRadius: '8px',
-            }}
-          >
-            <div style={{ fontSize: '0.75rem', color: 'var(--ink-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
+          <div style={{ background: 'var(--surface-subtle)', padding: '14px', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--ink-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
               Total Time
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink-primary)', marginTop: '4px' }}>
+            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--ink-primary)', marginTop: '4px' }}>
               {formatDuration(totalSeconds)}
             </div>
           </div>
-          <div
-            style={{
-              background: 'var(--surface-subtle)',
-              padding: '14px',
-              borderRadius: '8px',
-            }}
-          >
-            <div style={{ fontSize: '0.75rem', color: 'var(--ink-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
+          <div style={{ background: 'var(--surface-subtle)', padding: '14px', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--ink-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
               First-Try Accuracy
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--emerald)', marginTop: '4px' }}>
+            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--emerald)', marginTop: '4px' }}>
               {accuracyPct}%
             </div>
           </div>
-          <div
-            style={{
-              background: 'var(--surface-subtle)',
-              padding: '14px',
-              borderRadius: '8px',
-            }}
-          >
-            <div style={{ fontSize: '0.75rem', color: 'var(--ink-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
+          <div style={{ background: 'var(--surface-subtle)', padding: '14px', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--ink-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
               Personal Best
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink-primary)', marginTop: '4px' }}>
+            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--ink-primary)', marginTop: '4px' }}>
               {bestChordNamingSecPerChord !== null
                 ? `${bestChordNamingSecPerChord.toFixed(2)} s`
                 : `${secPerChord.toFixed(2)} s`}
@@ -263,7 +339,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <button
             type="button"
             onClick={handleRestart}
@@ -318,7 +394,6 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
     );
   }
 
-  // Staff Geometry (bottom line y = 124, top line y = 76, 12px line spacing, 6px per diatonic step)
   const staffLines = [76, 88, 100, 112, 124];
   const chordX = 420;
 
@@ -326,7 +401,13 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
     <div
       className="nnsr-chord-naming-arena"
       data-testid="chord-naming-arena"
-      style={{ width: '840px', display: 'flex', flexDirection: 'column', gap: '12px' }}
+      style={{
+        width: '100%',
+        maxWidth: '840px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+      }}
     >
       {/* Header Banner */}
       <div
@@ -334,32 +415,28 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px',
         }}
       >
         <div>
-          <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--ink-primary)' }}>
+          <h2 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--ink-primary)' }}>
             Name the Chord —{' '}
             {config.answerMode === 'roman_numeral'
               ? `Roman Numerals (${KEY_SIGNATURES[config.fixedKey].label})`
               : 'Chord Symbols'}
           </h2>
-          <p style={{ margin: '3px 0 0', fontSize: '0.85rem', color: 'var(--ink-secondary)' }}>
+          <p style={{ margin: '3px 0 0', fontSize: '0.82rem', color: 'var(--ink-secondary)' }}>
             {config.answerMode === 'roman_numeral'
-              ? 'Type the scale-degree Roman numeral (I, ii, iii, IV, V, V7, vi) and press Enter.'
-              : 'Type the chord name (e.g. C, Am, G7 — inversions accepted as root) and press Enter.'}
+              ? 'Tap a Roman numeral below or type it and press Enter.'
+              : 'Tap Root + Quality below (or type in the box) — inversions accepted as root.'}
           </p>
         </div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span
             data-testid="chord-naming-counter"
             style={{
-              fontSize: '0.95rem',
+              fontSize: '0.9rem',
               fontWeight: 700,
               color: 'var(--ink-primary)',
               background: 'var(--surface-subtle)',
@@ -389,16 +466,18 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         </div>
       </div>
 
-      {/* Staff Card (840 x 200) */}
+      {/* Responsive Staff Card */}
       <div
         className="nnsr-staff-container"
-        style={{ position: 'relative', height: '200px' }}
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: 'auto',
+        }}
       >
         <svg
           viewBox="0 0 840 200"
-          width="840"
-          height="200"
-          style={{ display: 'block', backgroundColor: '#ffffff' }}
+          style={{ width: '100%', height: 'auto', display: 'block', backgroundColor: '#ffffff' }}
         >
           {/* 5 Staff Lines */}
           {staffLines.map((y) => (
@@ -486,7 +565,6 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
 
                 return (
                   <g key={`naming-note-${note.midi}`}>
-                    {/* Ledger lines */}
                     {ledgerLines.map((lOffset) => {
                       const ly = 124 - lOffset * 6;
                       return (
@@ -502,7 +580,6 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
                       );
                     })}
 
-                    {/* Explicit Accidental */}
                     {note.displayAccidental && (
                       <text
                         x={accX}
@@ -521,7 +598,6 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
                       </text>
                     )}
 
-                    {/* Whole-note / Chord Notehead */}
                     <ellipse
                       data-testid={`naming-notehead-${note.midi}`}
                       cx={noteheadX}
@@ -537,7 +613,6 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
             })()}
         </svg>
 
-        {/* Subtle Last-Solved Toast (top-right corner) */}
         {lastSolvedLabel && feedback === 'correct' && (
           <div
             style={{
@@ -578,15 +653,9 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         />
       </div>
 
-      {/* Answer Input Bar */}
-      <form
-        onSubmit={handleSubmit}
+      {/* Touch-Friendly Tap Selector + Keyboard Form */}
+      <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '10px',
-          padding: '16px',
           backgroundColor: 'var(--surface-paper)',
           border: `2px solid ${
             feedback === 'wrong'
@@ -595,76 +664,252 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
               ? 'var(--emerald)'
               : 'var(--border-subtle)'
           }`,
-          borderRadius: '8px',
+          borderRadius: '10px',
+          padding: '14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
           transition: 'border-color 0.15s ease',
         }}
       >
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={(e) => {
-            setInputValue(e.target.value);
-            if (feedback === 'wrong') setFeedback('idle');
-          }}
-          placeholder={
-            config.answerMode === 'roman_numeral'
-              ? 'Type Roman numeral (e.g. I, IV, V7, vi)…'
-              : chordNotationSystem === 'german'
-              ? 'Type chord (e.g. C, Am, G7, Hm, B)…'
-              : 'Type chord (e.g. C, Am, G7, Bm, Bb)…'
-          }
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          data-testid="chord-naming-input"
+        {config.answerMode === 'roman_numeral' ? (
+          /* Single-Row 1-Tap Roman Numeral Selector */
+          <div
+            data-testid="roman-tap-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+              gap: '8px',
+            }}
+          >
+            {ROMAN_BUTTONS.map((roman) => (
+              <button
+                key={roman}
+                type="button"
+                data-testid={`roman-btn-${roman}`}
+                onClick={() => handleRomanTap(roman)}
+                style={{
+                  padding: '14px 4px',
+                  fontSize: '1.1rem',
+                  fontWeight: 700,
+                  fontFamily: 'var(--font-serif)',
+                  background: '#faf9f6',
+                  color: 'var(--ink-primary)',
+                  border: '1.5px solid var(--border-strong)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  touchAction: 'manipulation',
+                }}
+              >
+                {roman}
+              </button>
+            ))}
+          </div>
+        ) : (
+          /* Two-Part Touch Selector: 12 Direct Roots (2 piano-style rows) + Quality Row */
+          <div
+            data-testid="chord-tap-pad"
+            style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
+          >
+            {/* Row 1A: 5 Accidental Roots */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                gap: '6px',
+                maxWidth: '520px',
+                width: '100%',
+                margin: '0 auto',
+              }}
+            >
+              {ACCIDENTAL_ROOT_BUTTONS.map((btn) => {
+                const val = getRootValue(btn, chordNotationSystem);
+                const label = getRootLabel(btn, chordNotationSystem);
+                const isSelected = selectedRoot === val;
+                return (
+                  <button
+                    key={btn.intlValue}
+                    type="button"
+                    data-testid={`root-btn-${btn.intlValue}`}
+                    onClick={() => handleSelectRoot(val)}
+                    style={{
+                      padding: '10px 4px',
+                      fontSize: '0.92rem',
+                      fontWeight: 700,
+                      borderRadius: '7px',
+                      border: isSelected ? '2px solid var(--emerald)' : '1px solid #2c332f',
+                      backgroundColor: isSelected ? 'var(--emerald)' : '#2c332f',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Row 1B: 7 Natural Roots */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                gap: '6px',
+              }}
+            >
+              {NATURAL_ROOT_BUTTONS.map((btn) => {
+                const val = getRootValue(btn, chordNotationSystem);
+                const label = getRootLabel(btn, chordNotationSystem);
+                const isSelected = selectedRoot === val;
+                return (
+                  <button
+                    key={btn.intlValue}
+                    type="button"
+                    data-testid={`root-btn-${btn.intlValue}`}
+                    onClick={() => handleSelectRoot(val)}
+                    style={{
+                      padding: '12px 4px',
+                      fontSize: '1.05rem',
+                      fontWeight: 700,
+                      borderRadius: '7px',
+                      border: isSelected ? '2px solid var(--emerald)' : '1.5px solid var(--border-strong)',
+                      backgroundColor: isSelected ? 'rgba(77, 144, 120, 0.16)' : '#ffffff',
+                      color: isSelected ? 'var(--emerald)' : 'var(--ink-primary)',
+                      cursor: 'pointer',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Row 2: Active Pool Quality Buttons */}
+            <div
+              data-testid="quality-tap-row"
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+            >
+              {activeQualities.map((q) => {
+                const meta = QUALITY_BUTTON_META[q];
+                const isSelected = selectedQuality === q;
+                return (
+                  <button
+                    key={q}
+                    type="button"
+                    data-testid={`quality-btn-${q}`}
+                    onClick={() => handleSelectQuality(q)}
+                    style={{
+                      padding: '9px 14px',
+                      minWidth: '58px',
+                      fontSize: '0.92rem',
+                      fontWeight: 700,
+                      borderRadius: '9999px',
+                      border: isSelected ? '2px solid var(--emerald)' : '1px solid var(--border-strong)',
+                      backgroundColor: isSelected ? 'var(--emerald)' : 'var(--surface-subtle)',
+                      color: isSelected ? '#ffffff' : 'var(--ink-primary)',
+                      cursor: 'pointer',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    {meta.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Textbox + Submit + Reveal Row */}
+        <form
+          onSubmit={handleFormSubmit}
           style={{
-            width: '320px',
-            fontSize: '1.25rem',
-            fontWeight: 700,
-            padding: '10px 16px',
-            borderRadius: '6px',
-            border: '1px solid var(--border-strong)',
-            color: 'var(--ink-primary)',
-            textAlign: 'center',
-            outline: 'none',
-          }}
-        />
-        <button
-          type="submit"
-          data-testid="chord-naming-submit-btn"
-          style={{
-            backgroundColor: 'var(--emerald)',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '6px',
-            padding: '11px 22px',
-            fontSize: '1rem',
-            fontWeight: 700,
-            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            gap: '8px',
+            paddingTop: '4px',
+            borderTop: '1px solid var(--surface-subtle)',
           }}
         >
-          Check ↵
-        </button>
-        <button
-          type="button"
-          onClick={handleReveal}
-          data-testid="chord-naming-reveal-btn"
-          style={{
-            backgroundColor: 'var(--surface-subtle)',
-            color: 'var(--ink-secondary)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: '6px',
-            padding: '11px 14px',
-            fontSize: '0.88rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          Reveal
-        </button>
-      </form>
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              setSelectedRoot(null);
+              if (feedback === 'wrong') setFeedback('idle');
+            }}
+            placeholder={
+              config.answerMode === 'roman_numeral'
+                ? 'Or type Roman numeral…'
+                : chordNotationSystem === 'german'
+                ? 'Or type (C, Am, G7, Hm, B)…'
+                : 'Or type (C, Am, G7, Bm, Bb)…'
+            }
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-testid="chord-naming-input"
+            style={{
+              flex: '1 1 200px',
+              maxWidth: '280px',
+              fontSize: '1.15rem',
+              fontWeight: 700,
+              padding: '10px 14px',
+              borderRadius: '6px',
+              border: '1px solid var(--border-strong)',
+              color: 'var(--ink-primary)',
+              textAlign: 'center',
+              outline: 'none',
+            }}
+          />
+          <button
+            type="submit"
+            data-testid="chord-naming-submit-btn"
+            style={{
+              backgroundColor: 'var(--emerald)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '11px 22px',
+              fontSize: '1rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+            }}
+          >
+            Check ↵
+          </button>
+          <button
+            type="button"
+            onClick={handleReveal}
+            data-testid="chord-naming-reveal-btn"
+            style={{
+              backgroundColor: 'var(--surface-subtle)',
+              color: 'var(--ink-secondary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '6px',
+              padding: '11px 14px',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+            }}
+          >
+            Reveal
+          </button>
+        </form>
+      </div>
 
       {/* Feedback / Revealed Answer Helper */}
       <div style={{ minHeight: '24px', textAlign: 'center', fontSize: '0.9rem', fontWeight: 600 }}>
@@ -675,7 +920,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         )}
         {revealedAnswer && (
           <span data-testid="chord-naming-revealed-msg" style={{ color: 'var(--ink-secondary)' }}>
-            Answer: <strong style={{ color: 'var(--ink-primary)' }}>{revealedAnswer}</strong> (type it to continue)
+            Answer: <strong style={{ color: 'var(--ink-primary)' }}>{revealedAnswer}</strong> (select or type it to continue)
           </span>
         )}
       </div>

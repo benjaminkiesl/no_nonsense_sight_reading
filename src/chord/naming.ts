@@ -6,7 +6,12 @@ import { convertToGermanNotation, formatChordLabel } from './chords';
 
 export type ChordNamingAnswerMode = 'chord_name' | 'roman_numeral';
 export type ChordNamingClefMode = 'treble' | 'bass' | 'both';
-export type ChordNamingPoolId = 'core_triads' | 'triads_and_dom7' | 'all_chords';
+export type ChordNamingPoolId =
+  | 'core_triads'
+  | 'all_triads'
+  | 'triads_and_dom7'
+  | 'triads_and_7ths'
+  | 'all_chords';
 export type ChordNamingKeyId = 'C_MAJOR' | 'G_MAJOR' | 'F_MAJOR' | 'D_MAJOR';
 
 export interface ChordNamingConfig {
@@ -62,288 +67,236 @@ export interface ChordNamingPrompt {
   readonly notes: readonly RenderedChordNote[];
 }
 
-export const NAMING_CHORD_SPECS: Record<string, NamingChordSpec> = {
-  // Core Major Triads
-  C: {
-    id: 'C',
-    rootLetter: 'C',
-    rootAccidental: 0,
-    quality: 'major',
-    tones: [
-      { letter: 'C', accidental: 0 },
-      { letter: 'E', accidental: 0 },
-      { letter: 'G', accidental: 0 },
-    ],
-  },
-  F: {
-    id: 'F',
-    rootLetter: 'F',
-    rootAccidental: 0,
-    quality: 'major',
-    tones: [
-      { letter: 'F', accidental: 0 },
-      { letter: 'A', accidental: 0 },
-      { letter: 'C', accidental: 0 },
-    ],
-  },
-  G: {
-    id: 'G',
-    rootLetter: 'G',
-    rootAccidental: 0,
-    quality: 'major',
-    tones: [
-      { letter: 'G', accidental: 0 },
-      { letter: 'B', accidental: 0 },
-      { letter: 'D', accidental: 0 },
-    ],
-  },
-  D: {
-    id: 'D',
-    rootLetter: 'D',
-    rootAccidental: 0,
-    quality: 'major',
-    tones: [
-      { letter: 'D', accidental: 0 },
-      { letter: 'F', accidental: 1 },
-      { letter: 'A', accidental: 0 },
-    ],
-  },
-  A: {
-    id: 'A',
-    rootLetter: 'A',
-    rootAccidental: 0,
-    quality: 'major',
-    tones: [
-      { letter: 'A', accidental: 0 },
-      { letter: 'C', accidental: 1 },
-      { letter: 'E', accidental: 0 },
-    ],
-  },
-  E: {
-    id: 'E',
-    rootLetter: 'E',
-    rootAccidental: 0,
-    quality: 'major',
-    tones: [
-      { letter: 'E', accidental: 0 },
-      { letter: 'G', accidental: 1 },
-      { letter: 'B', accidental: 0 },
-    ],
-  },
-  Bb: {
-    id: 'Bb',
-    rootLetter: 'B',
-    rootAccidental: -1,
-    quality: 'major',
-    tones: [
-      { letter: 'B', accidental: -1 },
-      { letter: 'D', accidental: 0 },
-      { letter: 'F', accidental: 0 },
-    ],
-  },
+const LETTERS: readonly LetterName[] = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 
-  // Core Minor Triads
-  Am: {
-    id: 'Am',
-    rootLetter: 'A',
-    rootAccidental: 0,
-    quality: 'minor',
-    tones: [
-      { letter: 'A', accidental: 0 },
-      { letter: 'C', accidental: 0 },
-      { letter: 'E', accidental: 0 },
-    ],
-  },
-  Dm: {
-    id: 'Dm',
-    rootLetter: 'D',
-    rootAccidental: 0,
-    quality: 'minor',
-    tones: [
-      { letter: 'D', accidental: 0 },
-      { letter: 'F', accidental: 0 },
-      { letter: 'A', accidental: 0 },
-    ],
-  },
-  Em: {
-    id: 'Em',
-    rootLetter: 'E',
-    rootAccidental: 0,
-    quality: 'minor',
-    tones: [
-      { letter: 'E', accidental: 0 },
-      { letter: 'G', accidental: 0 },
-      { letter: 'B', accidental: 0 },
-    ],
-  },
-  Gm: {
-    id: 'Gm',
-    rootLetter: 'G',
-    rootAccidental: 0,
-    quality: 'minor',
-    tones: [
-      { letter: 'G', accidental: 0 },
-      { letter: 'B', accidental: -1 },
-      { letter: 'D', accidental: 0 },
-    ],
-  },
-  Bm: {
-    id: 'Bm',
-    rootLetter: 'B',
-    rootAccidental: 0,
-    quality: 'minor',
-    tones: [
-      { letter: 'B', accidental: 0 },
-      { letter: 'D', accidental: 0 },
-      { letter: 'F', accidental: 1 },
-    ],
-  },
-  'F#m': {
-    id: 'F#m',
-    rootLetter: 'F',
-    rootAccidental: 1,
-    quality: 'minor',
-    tones: [
-      { letter: 'F', accidental: 1 },
-      { letter: 'A', accidental: 0 },
-      { letter: 'C', accidental: 1 },
-    ],
-  },
+interface IntervalDef {
+  readonly diatonicSteps: number; // 0=root, 1=2nd, 2=3rd, 3=4th, 4=5th, 6=7th
+  readonly semitones: number;
+}
 
-  // Dominant 7ths
-  G7: {
-    id: 'G7',
-    rootLetter: 'G',
-    rootAccidental: 0,
-    quality: 'dominant7',
-    tones: [
-      { letter: 'G', accidental: 0 },
-      { letter: 'B', accidental: 0 },
-      { letter: 'D', accidental: 0 },
-      { letter: 'F', accidental: 0 },
-    ],
-  },
-  D7: {
-    id: 'D7',
-    rootLetter: 'D',
-    rootAccidental: 0,
-    quality: 'dominant7',
-    tones: [
-      { letter: 'D', accidental: 0 },
-      { letter: 'F', accidental: 1 },
-      { letter: 'A', accidental: 0 },
-      { letter: 'C', accidental: 0 },
-    ],
-  },
-  C7: {
-    id: 'C7',
-    rootLetter: 'C',
-    rootAccidental: 0,
-    quality: 'dominant7',
-    tones: [
-      { letter: 'C', accidental: 0 },
-      { letter: 'E', accidental: 0 },
-      { letter: 'G', accidental: 0 },
-      { letter: 'B', accidental: -1 },
-    ],
-  },
-  A7: {
-    id: 'A7',
-    rootLetter: 'A',
-    rootAccidental: 0,
-    quality: 'dominant7',
-    tones: [
-      { letter: 'A', accidental: 0 },
-      { letter: 'C', accidental: 1 },
-      { letter: 'E', accidental: 0 },
-      { letter: 'G', accidental: 0 },
-    ],
-  },
-  E7: {
-    id: 'E7',
-    rootLetter: 'E',
-    rootAccidental: 0,
-    quality: 'dominant7',
-    tones: [
-      { letter: 'E', accidental: 0 },
-      { letter: 'G', accidental: 1 },
-      { letter: 'B', accidental: 0 },
-      { letter: 'D', accidental: 0 },
-    ],
-  },
-
-  // Major 7th & Minor 7th Chords
-  Cmaj7: {
-    id: 'Cmaj7',
-    rootLetter: 'C',
-    rootAccidental: 0,
-    quality: 'major7',
-    tones: [
-      { letter: 'C', accidental: 0 },
-      { letter: 'E', accidental: 0 },
-      { letter: 'G', accidental: 0 },
-      { letter: 'B', accidental: 0 },
-    ],
-  },
-  Fmaj7: {
-    id: 'Fmaj7',
-    rootLetter: 'F',
-    rootAccidental: 0,
-    quality: 'major7',
-    tones: [
-      { letter: 'F', accidental: 0 },
-      { letter: 'A', accidental: 0 },
-      { letter: 'C', accidental: 0 },
-      { letter: 'E', accidental: 0 },
-    ],
-  },
-  Dm7: {
-    id: 'Dm7',
-    rootLetter: 'D',
-    rootAccidental: 0,
-    quality: 'minor7',
-    tones: [
-      { letter: 'D', accidental: 0 },
-      { letter: 'F', accidental: 0 },
-      { letter: 'A', accidental: 0 },
-      { letter: 'C', accidental: 0 },
-    ],
-  },
-  Am7: {
-    id: 'Am7',
-    rootLetter: 'A',
-    rootAccidental: 0,
-    quality: 'minor7',
-    tones: [
-      { letter: 'A', accidental: 0 },
-      { letter: 'C', accidental: 0 },
-      { letter: 'E', accidental: 0 },
-      { letter: 'G', accidental: 0 },
-    ],
-  },
-  Em7: {
-    id: 'Em7',
-    rootLetter: 'E',
-    rootAccidental: 0,
-    quality: 'minor7',
-    tones: [
-      { letter: 'E', accidental: 0 },
-      { letter: 'G', accidental: 0 },
-      { letter: 'B', accidental: 0 },
-      { letter: 'D', accidental: 0 },
-    ],
-  },
+const QUALITY_INTERVALS: Record<
+  Exclude<ChordQuality, 'augmented'>,
+  readonly IntervalDef[]
+> = {
+  major: [
+    { diatonicSteps: 0, semitones: 0 },
+    { diatonicSteps: 2, semitones: 4 },
+    { diatonicSteps: 4, semitones: 7 },
+  ],
+  minor: [
+    { diatonicSteps: 0, semitones: 0 },
+    { diatonicSteps: 2, semitones: 3 },
+    { diatonicSteps: 4, semitones: 7 },
+  ],
+  dominant7: [
+    { diatonicSteps: 0, semitones: 0 },
+    { diatonicSteps: 2, semitones: 4 },
+    { diatonicSteps: 4, semitones: 7 },
+    { diatonicSteps: 6, semitones: 10 },
+  ],
+  major7: [
+    { diatonicSteps: 0, semitones: 0 },
+    { diatonicSteps: 2, semitones: 4 },
+    { diatonicSteps: 4, semitones: 7 },
+    { diatonicSteps: 6, semitones: 11 },
+  ],
+  minor7: [
+    { diatonicSteps: 0, semitones: 0 },
+    { diatonicSteps: 2, semitones: 3 },
+    { diatonicSteps: 4, semitones: 7 },
+    { diatonicSteps: 6, semitones: 10 },
+  ],
+  diminished: [
+    { diatonicSteps: 0, semitones: 0 },
+    { diatonicSteps: 2, semitones: 3 },
+    { diatonicSteps: 4, semitones: 6 },
+  ],
+  sus2: [
+    { diatonicSteps: 0, semitones: 0 },
+    { diatonicSteps: 1, semitones: 2 },
+    { diatonicSteps: 4, semitones: 7 },
+  ],
+  sus4: [
+    { diatonicSteps: 0, semitones: 0 },
+    { diatonicSteps: 3, semitones: 5 },
+    { diatonicSteps: 4, semitones: 7 },
+  ],
 };
+
+const QUALITY_SUFFIX: Record<Exclude<ChordQuality, 'augmented'>, string> = {
+  major: '',
+  minor: 'm',
+  dominant7: '7',
+  major7: 'maj7',
+  minor7: 'm7',
+  diminished: 'dim',
+  sus2: 'sus2',
+  sus4: 'sus4',
+};
+
+function buildChordSpec(
+  rootLetter: LetterName,
+  rootAccidental: Accidental,
+  quality: Exclude<ChordQuality, 'augmented'>
+): NamingChordSpec {
+  const rootLetterIdx = LETTER_INDEX[rootLetter];
+  const rootSemitone = (LETTER_SEMITONE[rootLetter] + rootAccidental + 12) % 12;
+
+  const tones: ChordToneSpelling[] = QUALITY_INTERVALS[quality].map((iv) => {
+    const targetLetterIdx = (rootLetterIdx + iv.diatonicSteps) % 7;
+    const letter = LETTERS[targetLetterIdx]!;
+    const naturalSemitone = LETTER_SEMITONE[letter];
+    const desiredSemitone = (rootSemitone + iv.semitones) % 12;
+
+    let diff = desiredSemitone - naturalSemitone;
+    if (diff > 6) diff -= 12;
+    if (diff < -6) diff += 12;
+
+    // Fallback to clean enharmonic spelling if a theoretical double-sharp/double-flat occurs
+    if (diff > 1 || diff < -1) {
+      const fallbackSharp: readonly ChordToneSpelling[] = [
+        { letter: 'C', accidental: 0 },
+        { letter: 'C', accidental: 1 },
+        { letter: 'D', accidental: 0 },
+        { letter: 'E', accidental: -1 },
+        { letter: 'E', accidental: 0 },
+        { letter: 'F', accidental: 0 },
+        { letter: 'F', accidental: 1 },
+        { letter: 'G', accidental: 0 },
+        { letter: 'A', accidental: -1 },
+        { letter: 'A', accidental: 0 },
+        { letter: 'B', accidental: -1 },
+        { letter: 'B', accidental: 0 },
+      ];
+      return fallbackSharp[desiredSemitone]!;
+    }
+
+    return { letter, accidental: diff as Accidental };
+  });
+
+  const accStr = rootAccidental === 1 ? '#' : rootAccidental === -1 ? 'b' : '';
+  const id = `${rootLetter}${accStr}${QUALITY_SUFFIX[quality]}`;
+
+  return {
+    id,
+    rootLetter,
+    rootAccidental,
+    quality,
+    tones,
+  };
+}
+
+/**
+ * 12 canonical musical roots for major/dominant/sus/dim chords (preferring standard key spellings:
+ * C, Db, D, Eb, E, F, F#, G, Ab, A, Bb, B) and for minor chords (C, C#, D, Eb, E, F, F#, G, G#, A, Bb, B).
+ */
+const MAJOR_ROOTS: readonly ChordToneSpelling[] = [
+  { letter: 'C', accidental: 0 },
+  { letter: 'D', accidental: -1 }, // Db
+  { letter: 'D', accidental: 0 },
+  { letter: 'E', accidental: -1 }, // Eb
+  { letter: 'E', accidental: 0 },
+  { letter: 'F', accidental: 0 },
+  { letter: 'F', accidental: 1 },  // F#
+  { letter: 'G', accidental: 0 },
+  { letter: 'A', accidental: -1 }, // Ab
+  { letter: 'A', accidental: 0 },
+  { letter: 'B', accidental: -1 }, // Bb
+  { letter: 'B', accidental: 0 },
+];
+
+const MINOR_ROOTS: readonly ChordToneSpelling[] = [
+  { letter: 'C', accidental: 0 },
+  { letter: 'C', accidental: 1 },  // C#m
+  { letter: 'D', accidental: 0 },
+  { letter: 'E', accidental: -1 }, // Ebm
+  { letter: 'E', accidental: 0 },
+  { letter: 'F', accidental: 0 },
+  { letter: 'F', accidental: 1 },  // F#m
+  { letter: 'G', accidental: 0 },
+  { letter: 'G', accidental: 1 },  // G#m
+  { letter: 'A', accidental: 0 },
+  { letter: 'B', accidental: -1 }, // Bbm
+  { letter: 'B', accidental: 0 },
+];
+
+function buildAllChordSpecs(): Record<string, NamingChordSpec> {
+  const map: Record<string, NamingChordSpec> = {};
+  const add = (spec: NamingChordSpec) => {
+    map[spec.id] = spec;
+  };
+
+  for (const r of MAJOR_ROOTS) {
+    add(buildChordSpec(r.letter, r.accidental, 'major'));
+    add(buildChordSpec(r.letter, r.accidental, 'dominant7'));
+    add(buildChordSpec(r.letter, r.accidental, 'major7'));
+    add(buildChordSpec(r.letter, r.accidental, 'diminished'));
+    add(buildChordSpec(r.letter, r.accidental, 'sus2'));
+    add(buildChordSpec(r.letter, r.accidental, 'sus4'));
+  }
+
+  for (const r of MINOR_ROOTS) {
+    add(buildChordSpec(r.letter, r.accidental, 'minor'));
+    add(buildChordSpec(r.letter, r.accidental, 'minor7'));
+  }
+
+  return map;
+}
+
+export const NAMING_CHORD_SPECS: Record<string, NamingChordSpec> = buildAllChordSpecs();
+
+const ALL_MAJOR_IDS = MAJOR_ROOTS.map((r) => `${r.letter}${r.accidental === 1 ? '#' : r.accidental === -1 ? 'b' : ''}`);
+const ALL_MINOR_IDS = MINOR_ROOTS.map((r) => `${r.letter}${r.accidental === 1 ? '#' : r.accidental === -1 ? 'b' : ''}m`);
+const ALL_DOM7_IDS = ALL_MAJOR_IDS.map((id) => `${id}7`);
+const ALL_MAJ7_IDS = ALL_MAJOR_IDS.map((id) => `${id}maj7`);
+const ALL_MIN7_IDS = ALL_MINOR_IDS.map((id) => `${id}7`);
+const ALL_DIM_IDS = ALL_MAJOR_IDS.map((id) => `${id}dim`);
+const ALL_SUS2_IDS = ALL_MAJOR_IDS.map((id) => `${id}sus2`);
+const ALL_SUS4_IDS = ALL_MAJOR_IDS.map((id) => `${id}sus4`);
 
 export const CHORD_NAMING_POOLS: Record<ChordNamingPoolId, readonly string[]> = {
   core_triads: ['C', 'F', 'G', 'D', 'A', 'Bb', 'Am', 'Dm', 'Em', 'Gm', 'Bm'],
-  triads_and_dom7: ['C', 'F', 'G', 'D', 'A', 'Bb', 'Am', 'Dm', 'Em', 'Gm', 'Bm', 'G7', 'D7', 'C7', 'A7', 'E7'],
-  all_chords: [
+  all_triads: [...ALL_MAJOR_IDS, ...ALL_MINOR_IDS], // 24 chords
+  triads_and_dom7: [
     'C', 'F', 'G', 'D', 'A', 'Bb', 'Am', 'Dm', 'Em', 'Gm', 'Bm',
     'G7', 'D7', 'C7', 'A7', 'E7',
-    'Cmaj7', 'Fmaj7', 'Dm7', 'Am7', 'Em7',
   ],
+  triads_and_7ths: [
+    ...ALL_MAJOR_IDS,
+    ...ALL_MINOR_IDS,
+    ...ALL_DOM7_IDS,
+    ...ALL_MAJ7_IDS,
+    ...ALL_MIN7_IDS,
+  ], // 60 chords
+  all_chords: [
+    ...ALL_MAJOR_IDS,
+    ...ALL_MINOR_IDS,
+    ...ALL_DOM7_IDS,
+    ...ALL_MAJ7_IDS,
+    ...ALL_MIN7_IDS,
+    ...ALL_DIM_IDS,
+    ...ALL_SUS2_IDS,
+    ...ALL_SUS4_IDS,
+  ], // 96 chords
 };
+
+/**
+ * Returns the distinct ChordQualities present in a given pool so the mobile tap selector
+ * only displays relevant quality buttons (zero unnecessary clutter).
+ */
+export function getPoolQualities(poolId: ChordNamingPoolId): readonly Exclude<ChordQuality, 'augmented'>[] {
+  switch (poolId) {
+    case 'core_triads':
+    case 'all_triads':
+      return ['major', 'minor'];
+    case 'triads_and_dom7':
+      return ['major', 'minor', 'dominant7'];
+    case 'triads_and_7ths':
+      return ['major', 'minor', 'dominant7', 'major7', 'minor7'];
+    case 'all_chords':
+      return ['major', 'minor', 'dominant7', 'major7', 'minor7', 'diminished', 'sus2', 'sus4'];
+  }
+}
 
 export interface DiatonicFunctionEntry {
   readonly roman: string;
@@ -411,9 +364,6 @@ function computeRenderedNotes(
     rotated.push(spec.tones[(safeInv + i) % numTones]!);
   }
 
-  // Choose an octave for the lowest note so the stacked voicing sits comfortably on the staff:
-  // Treble ideal center: ~69 (A4, range C4=60 to A5=81)
-  // Bass ideal center: ~51 (Eb3, range F2=41 to D4=62)
   const idealCenter = clef === 'treble' ? 69 : 51;
   const candidateOctaves = clef === 'treble' ? [3, 4, 5] : [2, 3];
 
@@ -439,14 +389,13 @@ function computeRenderedNotes(
     const minMidi = stack[0]!.midi;
     const maxMidi = stack[stack.length - 1]!.midi;
 
-    // Penalize out-of-comfortable-staff extremes
     let penalty = Math.abs(avgMidi - idealCenter);
     if (clef === 'treble') {
-      if (minMidi < 57) penalty += 20; // below A3
-      if (maxMidi > 81) penalty += 20; // above A5
+      if (minMidi < 57) penalty += 20;
+      if (maxMidi > 81) penalty += 20;
     } else {
-      if (minMidi < 40) penalty += 20; // below E2
-      if (maxMidi > 64) penalty += 20; // above E4
+      if (minMidi < 40) penalty += 20;
+      if (maxMidi > 64) penalty += 20;
     }
 
     if (penalty < bestScore) {
@@ -456,7 +405,7 @@ function computeRenderedNotes(
   }
 
   const keySigSpec = KEY_SIGNATURES[keySignature];
-  const baseDiatonicStep = clef === 'treble' ? 4 * 7 + 2 : 2 * 7 + 4; // E4=30 for treble, G2=18 for bass
+  const baseDiatonicStep = clef === 'treble' ? 4 * 7 + 2 : 2 * 7 + 4;
 
   return bestStack.map((n) => {
     const diatonicStep = n.octave * 7 + LETTER_INDEX[n.letter];
@@ -523,8 +472,9 @@ export function generateChordNamingDrill(
     }
 
     const spec = NAMING_CHORD_SPECS[chordId]!;
-    // Pick root position (0), 1st inversion (1), or 2nd inversion (2) (plus 3rd inv for 7th chords)
-    const maxInv = spec.tones.length;
+    // For sus2 and sus4, use root position so they aren't enharmonically ambiguous with each other (Csus2 == Gsus4!)
+    const maxInv =
+      spec.quality === 'sus2' || spec.quality === 'sus4' ? 1 : spec.tones.length;
     const inversion = Math.floor(rng() * maxInv) as 0 | 1 | 2 | 3;
     const bassSpelling = spec.tones[inversion]!;
     const notes = computeRenderedNotes(spec, inversion, clef, keySignature);
@@ -546,9 +496,6 @@ export function generateChordNamingDrill(
   return prompts;
 }
 
-/**
- * Formats a tone spelling (letter + accidental) as a display string under the active notation system.
- */
 function formatToneSpelling(
   spelling: ChordToneSpelling,
   notation: ChordNotationSystem
@@ -558,10 +505,6 @@ function formatToneSpelling(
   return notation === 'german' ? convertToGermanNotation(intl) : intl;
 }
 
-/**
- * Normalize a single pitch token (root or bass) into canonical international pitch string, e.g. 'C', 'F#', 'Bb', 'B'.
- * Respects International (B = B natural, Bb = B-flat) vs German (H = B natural, B = B-flat).
- */
 function normalizeNoteToken(rawToken: string, notation: ChordNotationSystem): string | null {
   const token = rawToken
     .trim()
@@ -579,14 +522,13 @@ function normalizeNoteToken(rawToken: string, notation: ChordNotationSystem): st
     if (letter === 'h' && acc === '') return 'B';
     if (letter === 'h' && acc === 'b') return 'Bb';
     if (letter === 'b' && acc === '') return 'Bb';
-    if (letter === 'b' && acc === 'b') return 'Bb'; // forgive typing 'bb' even in German mode
+    if (letter === 'b' && acc === 'b') return 'Bb';
     if (letter === 'h' && acc === '#') return null;
   } else {
     if (letter === 'h') return null;
   }
 
   const upper = letter.toUpperCase();
-  // Normalize common enharmonics for flats/sharps? Keep exact spelling + simple enharmonic equivalence for black keys
   const ENHARMONIC_CANONICAL: Record<string, string> = {
     'C#': 'C#',
     Db: 'C#',
@@ -605,9 +547,9 @@ function normalizeNoteToken(rawToken: string, notation: ChordNotationSystem): st
 }
 
 interface ParsedChordAnswer {
-  readonly root: string; // Canonical international root, e.g. 'C', 'F#', 'Bb', 'B'
+  readonly root: string;
   readonly quality: ChordQuality;
-  readonly bass?: string; // Optional slash bass in canonical international pitch
+  readonly bass?: string;
 }
 
 function parseChordAnswer(
@@ -619,7 +561,8 @@ function parseChordAnswer(
     .replace(/\s+/g, '')
     .replace(/♯/g, '#')
     .replace(/♭/g, 'b')
-    .replace(/Δ/g, 'maj');
+    .replace(/Δ/g, 'maj')
+    .replace(/°/g, 'dim');
 
   if (!cleaned) return null;
 
@@ -629,7 +572,6 @@ function parseChordAnswer(
   const mainPart = parts[0]!;
   const bassPart = parts[1];
 
-  // Match root note (letter + optional #/b) followed by quality suffix
   const mainMatch = mainPart.match(/^([a-hA-H][#b]?)(.*)$/);
   if (!mainMatch) return null;
 
@@ -649,6 +591,12 @@ function parseChordAnswer(
     quality = 'major7';
   } else if (suffix === 'm7' || suffix === 'min7' || suffix === '-7') {
     quality = 'minor7';
+  } else if (suffix === 'dim' || suffix === 'o') {
+    quality = 'diminished';
+  } else if (suffix === 'sus2') {
+    quality = 'sus2';
+  } else if (suffix === 'sus4' || suffix === 'sus') {
+    quality = 'sus4';
   } else {
     return null;
   }
@@ -664,16 +612,6 @@ function parseChordAnswer(
   return { root, quality, bass };
 }
 
-/**
- * Evaluates a user's typed answer against a ChordNamingPrompt.
- * - In `chord_name` mode:
- *   - Case-insensitive (`c` -> `C`, `am` -> `Am`, `g7` -> `G7`)
- *   - Lenient on inversions: typing `C` for `C/E` or `C/G` is ACCEPTED!
- *   - If the user explicitly types a slash bass (e.g. `C/E`), it must match the lowest note on the staff.
- *   - Respects active International (`Bb/B`) vs German (`B/H`) notation.
- * - In `roman_numeral` mode:
- *   - Case-insensitive Roman numeral matching (`i`, `ii`, `iii`, `iv`, `v`, `v7`, `vi`).
- */
 export function evaluateChordNamingAnswer(
   rawInput: string,
   prompt: ChordNamingPrompt,
@@ -703,7 +641,6 @@ export function evaluateChordNamingAnswer(
     return false;
   }
 
-  // If user explicitly provided a slash bass, verify it matches the actual lowest note on the staff
   if (parsed.bass !== undefined) {
     const expectedBass = normalizeNoteToken(
       `${prompt.bassSpelling.letter}${prompt.bassSpelling.accidental === 1 ? '#' : prompt.bassSpelling.accidental === -1 ? 'b' : ''}`,
@@ -717,9 +654,6 @@ export function evaluateChordNamingAnswer(
   return true;
 }
 
-/**
- * Returns the canonical display label for a prompt's answer (e.g. "C" or "C (C/E)" or "IV (F)")
- */
 export function formatPromptCanonicalAnswer(
   prompt: ChordNamingPrompt,
   answerMode: ChordNamingAnswerMode,

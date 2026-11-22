@@ -24,7 +24,9 @@ export type ChordQuality =
   | 'major7'
   | 'minor7'
   | 'diminished'
-  | 'augmented';
+  | 'augmented'
+  | 'sus2'
+  | 'sus4';
 
 /**
  * Canonical close-position reference voicing for visual display and learn mode.

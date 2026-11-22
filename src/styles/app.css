@@ -127,7 +127,8 @@ body {
 }
 
 .nnsr-main-column {
-  width: var(--main-column-width);
+  width: 100%;
+  max-width: var(--main-column-width);
   display: flex;
   flex-direction: column;
   gap: 12px;

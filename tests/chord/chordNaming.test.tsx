@@ -237,5 +237,85 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
       expect(screen.getByTestId('chord-naming-summary')).toBeDefined();
       expect(screen.getByTestId('chord-naming-speed-result').textContent).toContain('s / chord');
     });
+
+    it('supports full 96-chord pool (+ dim, sus2, sus4) and touch-friendly root + quality tap pad', () => {
+      const config: ChordNamingConfig = {
+        answerMode: 'chord_name',
+        clefMode: 'treble',
+        poolId: 'all_chords',
+        fixedKey: 'C_MAJOR',
+        totalChords: 2,
+      };
+
+      const fullPoolDrill = generateChordNamingDrill({ ...config, totalChords: 96 });
+      expect(fullPoolDrill.length).toBe(96);
+
+      const deterministicPrompts: ChordNamingPrompt[] = [
+        { ...fullPoolDrill[0]!, chordId: 'F#m', quality: 'minor' },
+        { ...fullPoolDrill[1]!, chordId: 'Csus4', quality: 'sus4' },
+      ];
+
+      render(
+        <ChordNamingArena
+          config={config}
+          onExit={vi.fn()}
+          onReconfigure={vi.fn()}
+          initialPrompts={deterministicPrompts}
+        />
+      );
+
+      // Tap F#/Gb root + m quality + Check
+      act(() => {
+        fireEvent.click(screen.getByTestId('root-btn-F#'));
+        fireEvent.click(screen.getByTestId('quality-btn-minor'));
+      });
+      act(() => {
+        fireEvent.click(screen.getByTestId('chord-naming-submit-btn'));
+      });
+
+      expect(screen.getByTestId('chord-naming-counter').textContent).toBe('2 / 2');
+
+      // Tap C root + sus4 quality + Check
+      act(() => {
+        fireEvent.click(screen.getByTestId('root-btn-C'));
+        fireEvent.click(screen.getByTestId('quality-btn-sus4'));
+      });
+      act(() => {
+        fireEvent.click(screen.getByTestId('chord-naming-submit-btn'));
+      });
+
+      expect(screen.getByTestId('chord-naming-summary')).toBeDefined();
+    });
+
+    it('supports 1-tap Roman numeral buttons for mobile/tablet', () => {
+      const config: ChordNamingConfig = {
+        answerMode: 'roman_numeral',
+        clefMode: 'bass',
+        poolId: 'core_triads',
+        fixedKey: 'G_MAJOR',
+        totalChords: 1,
+      };
+
+      const prompts = generateChordNamingDrill(config, () => 0.1);
+      const deterministicPrompts: ChordNamingPrompt[] = [
+        { ...prompts[0]!, chordId: 'C', quality: 'major', romanNumeral: 'IV' },
+      ];
+
+      render(
+        <ChordNamingArena
+          config={config}
+          onExit={vi.fn()}
+          onReconfigure={vi.fn()}
+          initialPrompts={deterministicPrompts}
+        />
+      );
+
+      // Single tap on IV completes the 1-chord drill immediately!
+      act(() => {
+        fireEvent.click(screen.getByTestId('roman-btn-IV'));
+      });
+
+      expect(screen.getByTestId('chord-naming-summary')).toBeDefined();
+    });
   });
 });
