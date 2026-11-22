@@ -7,6 +7,7 @@ describe('App Integration Test', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     window.localStorage.clear();
+    window.history.replaceState(null, '', '/');
     useAppStore.setState({
       currentLevelId: 'treble-1',
       directlyCompletedLevelIds: [],

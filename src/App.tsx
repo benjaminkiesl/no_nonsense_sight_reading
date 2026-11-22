@@ -13,7 +13,11 @@ import { ActiveKeyHighlight, PianoKeyboard } from './components/PianoKeyboard';
 import { ProgressBar } from './components/ProgressBar';
 import { RhythmArena, RhythmStreamOptionsProp } from './components/RhythmArena';
 import { getChordLevelById, isChordLevelId } from './chord/curriculum';
-import { ChordNamingConfig, DEFAULT_CHORD_NAMING_CONFIG } from './chord/naming';
+import {
+  ChordNamingConfig,
+  ChordNamingKeyId,
+  DEFAULT_CHORD_NAMING_CONFIG,
+} from './chord/naming';
 import { getLevelById, getNextRecommendedLevel } from './curriculum/graph';
 import { getRhythmLevelById, isRhythmLevelId } from './rhythm/curriculum';
 import { SightReadingEngine } from './engine/engine';
@@ -25,6 +29,68 @@ import { useAppStore } from './store/useAppStore';
 import { EngineSnapshot } from './types/engine';
 import { UserNoteInput } from './types/input';
 import { StaffNoteTarget } from './types/music';
+
+const VALID_ROMAN_KEYS: readonly ChordNamingKeyId[] = ['C_MAJOR', 'G_MAJOR', 'F_MAJOR', 'D_MAJOR'];
+
+function parseInitialHash(): {
+  activeView: 'practice' | 'levels';
+  isChordNamingActive: boolean;
+  chordNamingConfig: ChordNamingConfig;
+  levelIdOverride: string | null;
+  openModal: 'accelerando' | 'rhythm-stream' | null;
+} {
+  const defaults = {
+    activeView: 'practice' as const,
+    isChordNamingActive: false,
+    chordNamingConfig: DEFAULT_CHORD_NAMING_CONFIG,
+    levelIdOverride: null as string | null,
+    openModal: null as 'accelerando' | 'rhythm-stream' | null,
+  };
+
+  if (typeof window === 'undefined') return defaults;
+  const rawHash = window.location.hash.replace(/^#\/?/, '').trim();
+  if (!rawHash) return defaults;
+
+  const lower = rawHash.toLowerCase();
+  if (lower === 'levels') {
+    return { ...defaults, activeView: 'levels' };
+  }
+  if (lower === 'name-the-chord' || lower === 'flashcards') {
+    return {
+      ...defaults,
+      isChordNamingActive: true,
+      chordNamingConfig: { ...DEFAULT_CHORD_NAMING_CONFIG, answerMode: 'chord_name' },
+    };
+  }
+  if (lower === 'roman' || lower.startsWith('roman/')) {
+    const keyPart = rawHash.split('/')[1]?.toUpperCase() as ChordNamingKeyId | undefined;
+    const fixedKey: ChordNamingKeyId =
+      keyPart && VALID_ROMAN_KEYS.includes(keyPart) ? keyPart : 'C_MAJOR';
+    return {
+      ...defaults,
+      isChordNamingActive: true,
+      chordNamingConfig: {
+        ...DEFAULT_CHORD_NAMING_CONFIG,
+        answerMode: 'roman_numeral',
+        fixedKey,
+      },
+    };
+  }
+  if (lower === 'accelerando') {
+    return { ...defaults, activeView: 'levels', openModal: 'accelerando' };
+  }
+  if (lower === 'rhythm-stream') {
+    return { ...defaults, activeView: 'levels', openModal: 'rhythm-stream' };
+  }
+  if (lower.startsWith('level/')) {
+    const id = rawHash.slice('level/'.length).trim();
+    if (id) {
+      return { ...defaults, levelIdOverride: id };
+    }
+  }
+
+  return defaults;
+}
 
 export default function App(): React.JSX.Element {
   const {
@@ -43,14 +109,22 @@ export default function App(): React.JSX.Element {
     setChordNotationSystem,
   } = useAppStore();
 
-  const [isAccelerandoModalOpen, setIsAccelerandoModalOpen] = useState(false);
+  const initialRoute = useRef(parseInitialHash()).current;
+
+  const [isAccelerandoModalOpen, setIsAccelerandoModalOpen] = useState(
+    initialRoute.openModal === 'accelerando'
+  );
   const [isAccelerandoActive, setIsAccelerandoActive] = useState(false);
-  const [isRhythmStreamModalOpen, setIsRhythmStreamModalOpen] = useState(false);
+  const [isRhythmStreamModalOpen, setIsRhythmStreamModalOpen] = useState(
+    initialRoute.openModal === 'rhythm-stream'
+  );
   const [isRhythmStreamActive, setIsRhythmStreamActive] = useState(false);
   const [rhythmStreamOptions, setRhythmStreamOptions] = useState<RhythmStreamOptionsProp | null>(null);
   const [isChordNamingModalOpen, setIsChordNamingModalOpen] = useState(false);
-  const [isChordNamingActive, setIsChordNamingActive] = useState(false);
-  const [chordNamingConfig, setChordNamingConfig] = useState<ChordNamingConfig>(DEFAULT_CHORD_NAMING_CONFIG);
+  const [isChordNamingActive, setIsChordNamingActive] = useState(initialRoute.isChordNamingActive);
+  const [chordNamingConfig, setChordNamingConfig] = useState<ChordNamingConfig>(
+    initialRoute.chordNamingConfig
+  );
   const [isRhythmLevelCelebrating, setIsRhythmLevelCelebrating] = useState(false);
   const [isChordLevelCelebrating, setIsChordLevelCelebrating] = useState(false);
   const [isManuallyPaused, setIsManuallyPaused] = useState(false);
@@ -62,10 +136,71 @@ export default function App(): React.JSX.Element {
   const isPitchMode = !isChordMode && !isRhythmMode && !isChordNamingActive;
   const currentLevel = isPitchMode ? getLevelById(currentLevelId) : getLevelById('treble-1');
 
-  const [activeView, setActiveView] = useState<'practice' | 'levels'>('practice');
+  const [activeView, setActiveView] = useState<'practice' | 'levels'>(initialRoute.activeView);
   const engineRef = useRef<SightReadingEngine>(new SightReadingEngine(currentLevel));
   const [snapshot, setSnapshot] = useState<EngineSnapshot>(() => engineRef.current.getSnapshot());
   const [activeHighlights, setActiveHighlights] = useState<ActiveKeyHighlight[]>([]);
+
+  // Apply #level/<id> override on initial mount if valid
+  useEffect(() => {
+    const id = initialRoute.levelIdOverride;
+    if (!id) return;
+    try {
+      if (isChordLevelId(id)) {
+        getChordLevelById(id);
+        selectLevel(id);
+      } else if (isRhythmLevelId(id)) {
+        getRhythmLevelById(id);
+        selectLevel(id);
+      } else {
+        getLevelById(id);
+        selectLevel(id);
+      }
+    } catch {
+      // Ignore invalid level IDs in hash
+    }
+  }, [initialRoute.levelIdOverride, selectLevel]);
+
+  // Keep URL hash in sync when entering special modes or after navigating, without polluting empty initial hash
+  const isFirstHashSyncRef = useRef(true);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.history?.replaceState) return;
+    if (isFirstHashSyncRef.current) {
+      isFirstHashSyncRef.current = false;
+      if (!window.location.hash) return;
+    }
+
+    let nextHash = '';
+    if (activeView === 'levels') {
+      if (window.location.hash && window.location.hash !== '#levels') {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+      return;
+    } else if (isChordNamingActive) {
+      nextHash =
+        chordNamingConfig.answerMode === 'roman_numeral'
+          ? `#roman/${chordNamingConfig.fixedKey}`
+          : '#name-the-chord';
+    } else if (isAccelerandoActive) {
+      nextHash = '#accelerando';
+    } else if (isRhythmStreamActive) {
+      nextHash = '#rhythm-stream';
+    } else {
+      nextHash = `#level/${currentLevelId}`;
+    }
+
+    if (window.location.hash !== nextHash) {
+      window.history.replaceState(null, '', nextHash);
+    }
+  }, [
+    activeView,
+    isChordNamingActive,
+    chordNamingConfig.answerMode,
+    chordNamingConfig.fixedKey,
+    isAccelerandoActive,
+    isRhythmStreamActive,
+    currentLevelId,
+  ]);
 
   // Transition to Levels view and mark level completed upon LEVEL_COMPLETE phase
   useEffect(() => {

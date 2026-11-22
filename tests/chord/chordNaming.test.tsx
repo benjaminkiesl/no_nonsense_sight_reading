@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import App from '../../src/App';
 import {
   AdaptiveNamingScheduler,
   ChordNamingConfig,
@@ -21,6 +22,10 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
       bestChordNamingSecPerChord: null,
       chordNamingAdaptiveState: INITIAL_ADAPTIVE_NAMING_STATE,
     });
+  });
+
+  afterEach(() => {
+    window.history.replaceState(null, '', '#');
   });
 
   describe('Lenient-but-honest chord answer parser', () => {
@@ -367,6 +372,22 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
       expect(scheduler.getUnlockedCount()).toBe(4);
       expect(scheduler.getActiveKeys()).toEqual(['C', 'F', 'G', 'Am']);
       expect(scheduler.getStats('Am').urgency).toBe(5.0);
+    });
+  });
+
+  describe('Bookmarkable Hash URL Routing', () => {
+    it('launches Name the Chord directly when opening #name-the-chord', () => {
+      window.history.replaceState(null, '', '#name-the-chord');
+      render(<App />);
+      expect(screen.getByTestId('chord-naming-arena')).toBeDefined();
+      expect(screen.getByTestId('chord-tap-pad')).toBeDefined();
+    });
+
+    it('launches Roman Numerals in G Major directly when opening #roman/G_MAJOR', () => {
+      window.history.replaceState(null, '', '#roman/G_MAJOR');
+      render(<App />);
+      expect(screen.getByTestId('chord-naming-arena')).toBeDefined();
+      expect(screen.getByTestId('roman-tap-grid')).toBeDefined();
     });
   });
 });
