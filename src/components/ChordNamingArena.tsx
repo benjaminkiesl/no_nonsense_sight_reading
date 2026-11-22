@@ -497,8 +497,9 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
     );
   }
 
-  const staffLines = [76, 88, 100, 112, 124];
-  const chordX = 420;
+  const staffLines = [66, 78, 90, 102, 114];
+  const staffBottomY = 114;
+  const chordX = 192;
 
   return (
     <div
@@ -573,40 +574,42 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         </div>
       </div>
 
-      {/* Responsive Staff Card */}
+      {/* Compact Portrait-Friendly Staff Card (320 x 180 viewBox so notes are large & crisp on phones) */}
       <div
         className="nnsr-staff-container"
         style={{
           position: 'relative',
           width: '100%',
+          maxWidth: '440px',
           height: 'auto',
+          margin: '0 auto',
         }}
       >
         <svg
-          viewBox="0 0 840 200"
+          viewBox="0 0 320 180"
           style={{ width: '100%', height: 'auto', display: 'block', backgroundColor: '#ffffff' }}
         >
           {staffLines.map((y) => (
             <line
               key={`naming-staff-line-${y}`}
-              x1={24}
+              x1={20}
               y1={y}
-              x2={816}
+              x2={300}
               y2={y}
               stroke="#2c332f"
-              strokeWidth={1.2}
+              strokeWidth={1.3}
             />
           ))}
 
-          <line x1={24} y1={76} x2={24} y2={124} stroke="#2c332f" strokeWidth={2.0} />
-          <line x1={816} y1={76} x2={816} y2={124} stroke="#2c332f" strokeWidth={2.0} />
+          <line x1={20} y1={66} x2={20} y2={114} stroke="#2c332f" strokeWidth={2.0} />
+          <line x1={300} y1={66} x2={300} y2={114} stroke="#2c332f" strokeWidth={2.0} />
 
           {currentPrompt && currentPrompt.clef === 'treble' ? (
             <text
-              x={54}
-              y={109}
+              x={50}
+              y={99}
               fontFamily="serif"
-              fontSize={52}
+              fontSize={54}
               fill="#1f2421"
               textAnchor="middle"
               dominantBaseline="middle"
@@ -616,10 +619,10 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
             </text>
           ) : (
             <text
-              x={54}
-              y={107}
+              x={50}
+              y={97}
               fontFamily="serif"
-              fontSize={52}
+              fontSize={54}
               fill="#1f2421"
               textAnchor="middle"
               dominantBaseline="middle"
@@ -637,8 +640,8 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
               ).map((offset, idx) => (
                 <text
                   key={`naming-ks-${idx}`}
-                  x={88 + idx * 14}
-                  y={124 - offset * 6 + 7}
+                  x={84 + idx * 14}
+                  y={staffBottomY - offset * 6 + 7}
                 >
                   {keySigSpec.accidentalType === 'sharp' ? '♯' : '♭'}
                 </text>
@@ -652,29 +655,29 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
               let accSlot = 0;
 
               return currentPrompt.notes.map((note) => {
-                const y = 124 - note.stepOffset * 6;
+                const y = staffBottomY - note.stepOffset * 6;
                 const isSecond = prevStepOffset !== null && note.stepOffset - prevStepOffset <= 1;
                 prevStepOffset = note.stepOffset;
 
-                const noteheadX = isSecond ? chordX + 14 : chordX;
+                const noteheadX = isSecond ? chordX + 15 : chordX;
                 const ledgerLines = getLedgerLines(note.stepOffset);
 
-                let accX = chordX - 18;
+                let accX = chordX - 19;
                 if (note.displayAccidental) {
-                  accX = chordX - 18 - accSlot * 12;
+                  accX = chordX - 19 - accSlot * 12;
                   accSlot = (accSlot + 1) % 2;
                 }
 
                 return (
                   <g key={`naming-note-${note.midi}`}>
                     {ledgerLines.map((lOffset) => {
-                      const ly = 124 - lOffset * 6;
+                      const ly = staffBottomY - lOffset * 6;
                       return (
                         <line
                           key={`naming-ledger-${note.midi}-${lOffset}`}
-                          x1={noteheadX - 14}
+                          x1={noteheadX - 15}
                           y1={ly}
-                          x2={noteheadX + 14}
+                          x2={noteheadX + 15}
                           y2={ly}
                           stroke="#1f2421"
                           strokeWidth={1.8}
@@ -704,8 +707,8 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
                       data-testid={`naming-notehead-${note.midi}`}
                       cx={noteheadX}
                       cy={y}
-                      rx={8}
-                      ry={5.6}
+                      rx={8.5}
+                      ry={5.8}
                       fill="#1f2421"
                       transform={`rotate(-20 ${noteheadX} ${y})`}
                     />
