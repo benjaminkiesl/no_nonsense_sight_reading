@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  ADAPTIVE_CHORD_LADDER,
   ChordNamingAnswerMode,
   ChordNamingClefMode,
   ChordNamingConfig,
@@ -7,6 +8,7 @@ import {
   ChordNamingPoolId,
   DEFAULT_CHORD_NAMING_CONFIG,
 } from '../chord/naming';
+import { useAppStore } from '../store/useAppStore';
 
 export interface ChordNamingModalProps {
   readonly isOpen: boolean;
@@ -23,6 +25,11 @@ const KEY_OPTIONS: readonly { id: ChordNamingKeyId; label: string; detail: strin
 ];
 
 const POOL_OPTIONS: readonly { id: ChordNamingPoolId; label: string; detail: string }[] = [
+  {
+    id: 'adaptive',
+    label: 'Adaptive Ladder (Recommended)',
+    detail: 'Starts with C, F, G · Unlocks highest-ROI chords as you master them',
+  },
   { id: 'core_triads', label: 'Songbook Triads (11)', detail: 'C, F, G, D, A, Bb, Am, Dm, Em, Gm, Bm' },
   { id: 'all_triads', label: 'All Major & Minor Triads (24)', detail: 'All 12 roots · Major & minor' },
   { id: 'triads_and_7ths', label: 'Triads + 7ths (60)', detail: 'All 12 roots · Maj, m, 7, maj7, m7' },
@@ -58,6 +65,8 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
   const [totalChords, setTotalChords] = useState<number>(
     DEFAULT_CHORD_NAMING_CONFIG.totalChords
   );
+  const adaptiveState = useAppStore((state) => state.chordNamingAdaptiveState);
+  const resetAdaptiveState = useAppStore((state) => state.resetChordNamingAdaptiveState);
 
   if (!isOpen) return null;
 
@@ -230,15 +239,47 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
             <div>
               <div
                 style={{
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'var(--ink-secondary)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                   marginBottom: '8px',
                 }}
               >
-                Chord Vocabulary
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: 'var(--ink-secondary)',
+                  }}
+                >
+                  Chord Vocabulary
+                </span>
+                {poolId === 'adaptive' && (
+                  <span style={{ fontSize: '11px', color: 'var(--emerald)', fontWeight: 700 }}>
+                    Unlocked: {adaptiveState.unlockedChordCount} / {ADAPTIVE_CHORD_LADDER.length}
+                    {adaptiveState.unlockedChordCount > 3 && (
+                      <button
+                        type="button"
+                        onClick={resetAdaptiveState}
+                        data-testid="reset-adaptive-btn"
+                        style={{
+                          marginLeft: '8px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--ink-secondary)',
+                          textDecoration: 'underline',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          padding: 0,
+                        }}
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </span>
+                )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {POOL_OPTIONS.map((opt) => (

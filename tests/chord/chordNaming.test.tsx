@@ -1,8 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  AdaptiveNamingScheduler,
   ChordNamingConfig,
   ChordNamingPrompt,
+  INITIAL_ADAPTIVE_NAMING_STATE,
   evaluateChordNamingAnswer,
   generateChordNamingDrill,
 } from '../../src/chord/naming';
@@ -17,6 +19,7 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
     useAppStore.setState({
       chordNotationSystem: 'international',
       bestChordNamingSecPerChord: null,
+      chordNamingAdaptiveState: INITIAL_ADAPTIVE_NAMING_STATE,
     });
   });
 
@@ -177,7 +180,7 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
       expect(onStart).toHaveBeenCalledWith({
         answerMode: 'roman_numeral',
         clefMode: 'both',
-        poolId: 'core_triads',
+        poolId: 'adaptive',
         fixedKey: 'G_MAJOR',
         totalChords: 25,
       });
@@ -316,6 +319,54 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
       });
 
       expect(screen.getByTestId('chord-naming-summary')).toBeDefined();
+    });
+  });
+
+  describe('AdaptiveNamingScheduler (Spaced Repetition + Gradual Unlock)', () => {
+    it('starts with 3 highest-ROI chords (C, F, G), boosts missed chords, and unlocks Am once comfortable', () => {
+      const config: ChordNamingConfig = {
+        answerMode: 'chord_name',
+        clefMode: 'both',
+        poolId: 'adaptive',
+        fixedKey: 'C_MAJOR',
+        totalChords: 50,
+      };
+      const scheduler = new AdaptiveNamingScheduler(config, INITIAL_ADAPTIVE_NAMING_STATE);
+
+      expect(scheduler.getUnlockedCount()).toBe(3);
+      expect(scheduler.getActiveKeys()).toEqual(['C', 'F', 'G']);
+
+      const makePrompt = (chordId: string): ChordNamingPrompt => ({
+        index: 0,
+        clef: 'treble',
+        keySignature: 'C_MAJOR',
+        chordId,
+        quality: 'major',
+        inversion: 0,
+        inversionLabel: 'Root position',
+        bassSpelling: { letter: 'C', accidental: 0 },
+        notes: [],
+      });
+
+      // Miss on C boosts urgency significantly and keeps streak at 0
+      scheduler.recordResult(makePrompt('C'), { firstTry: false, elapsedMs: 3000 });
+      expect(scheduler.getStats('C').urgency).toBeGreaterThanOrEqual(6.0);
+      expect(scheduler.getStats('C').streak).toBe(0);
+
+      // Clean fast hits on C, F, G until all 3 are comfortable (streak >= 2, urgency <= 1.5)
+      for (let i = 0; i < 4; i++) {
+        scheduler.recordResult(makePrompt('C'), { firstTry: true, elapsedMs: 1500 });
+      }
+      scheduler.recordResult(makePrompt('F'), { firstTry: true, elapsedMs: 1500 });
+      scheduler.recordResult(makePrompt('F'), { firstTry: true, elapsedMs: 1500 });
+      scheduler.recordResult(makePrompt('G'), { firstTry: true, elapsedMs: 1500 });
+      const res = scheduler.recordResult(makePrompt('G'), { firstTry: true, elapsedMs: 1500 });
+
+      // Am (4th highest-ROI chord) unlocks automatically!
+      expect(res.newlyUnlockedId).toBe('Am');
+      expect(scheduler.getUnlockedCount()).toBe(4);
+      expect(scheduler.getActiveKeys()).toEqual(['C', 'F', 'G', 'Am']);
+      expect(scheduler.getStats('Am').urgency).toBe(5.0);
     });
   });
 });

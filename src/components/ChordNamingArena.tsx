@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { playMutedFeltThud, playSanctuaryWakeChime } from '../audio/recoveryAudio';
+import { formatChordLabel } from '../chord/chords';
 import {
+  AdaptiveNamingScheduler,
   ChordNamingConfig,
   ChordNamingPrompt,
   evaluateChordNamingAnswer,
   formatPromptCanonicalAnswer,
-  generateChordNamingDrill,
   getPoolQualities,
 } from '../chord/naming';
 import { getLedgerLines } from '../music/notation';
@@ -89,11 +90,26 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
   const updateBestChordNamingSecPerChord = useAppStore(
     (state) => state.updateBestChordNamingSecPerChord
   );
+  const persistedAdaptiveState = useAppStore((state) => state.chordNamingAdaptiveState);
+  const setChordNamingAdaptiveState = useAppStore((state) => state.setChordNamingAdaptiveState);
 
-  const [prompts, setPrompts] = useState<readonly ChordNamingPrompt[]>(() =>
-    initialPrompts ? [...initialPrompts] : generateChordNamingDrill(config)
+  const totalCount = initialPrompts ? initialPrompts.length : config.totalChords;
+
+  const schedulerRef = useRef<AdaptiveNamingScheduler>(
+    new AdaptiveNamingScheduler(config, persistedAdaptiveState)
   );
+
   const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [currentPrompt, setCurrentPrompt] = useState<ChordNamingPrompt | null>(() =>
+    initialPrompts ? initialPrompts[0] ?? null : schedulerRef.current.sampleNextPrompt()
+  );
+  const [unlockedCount, setUnlockedCount] = useState<number>(() =>
+    schedulerRef.current.getUnlockedCount()
+  );
+  const [unlockedThisSession, setUnlockedThisSession] = useState<string[]>([]);
+  const [newlyUnlockedBanner, setNewlyUnlockedBanner] = useState<string | null>(null);
+  const [weakSpots, setWeakSpots] = useState<{ key: string; misses: number; avgSec: number }[]>([]);
+
   const [inputValue, setInputValue] = useState<string>('');
   const [selectedRoot, setSelectedRoot] = useState<string | null>(null);
   const [selectedQuality, setSelectedQuality] = useState<Exclude<ChordQuality, 'augmented'>>('major');
@@ -103,13 +119,17 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
   const [hadMistakeOnCurrent, setHadMistakeOnCurrent] = useState<boolean>(false);
   const [firstTryCorrectCount, setFirstTryCorrectCount] = useState<number>(0);
   const [startedAtMs, setStartedAtMs] = useState<number>(() => performance.now());
+  const [promptStartedAtMs, setPromptStartedAtMs] = useState<number>(() => performance.now());
   const [finishedAtMs, setFinishedAtMs] = useState<number | null>(null);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const selectedRootRef = useRef<string | null>(null);
   const selectedQualityRef = useRef<Exclude<ChordQuality, 'augmented'>>('major');
 
-  const activeQualities = useMemo(() => getPoolQualities(config.poolId), [config.poolId]);
+  const activeQualities = useMemo(
+    () => getPoolQualities(config.poolId, unlockedCount),
+    [config.poolId, unlockedCount]
+  );
 
   const resetForNextPrompt = useCallback(() => {
     setInputValue('');
@@ -120,35 +140,34 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
     setRevealedAnswer(null);
   }, []);
 
+  const initSession = useCallback(() => {
+    const latestAdaptive = useAppStore.getState().chordNamingAdaptiveState;
+    const nextScheduler = new AdaptiveNamingScheduler(config, latestAdaptive);
+    schedulerRef.current = nextScheduler;
+
+    const now = performance.now();
+    setCurrentIndex(0);
+    setCurrentPrompt(initialPrompts ? initialPrompts[0] ?? null : nextScheduler.sampleNextPrompt());
+    setUnlockedCount(nextScheduler.getUnlockedCount());
+    setUnlockedThisSession([]);
+    setNewlyUnlockedBanner(null);
+    setWeakSpots([]);
+    resetForNextPrompt();
+    setFeedback('idle');
+    setLastSolvedLabel(null);
+    setHadMistakeOnCurrent(false);
+    setFirstTryCorrectCount(0);
+    setStartedAtMs(now);
+    setPromptStartedAtMs(now);
+    setFinishedAtMs(null);
+  }, [config, initialPrompts, resetForNextPrompt]);
+
   // Reset drill when config changes
   useEffect(() => {
-    if (!initialPrompts) {
-      setPrompts(generateChordNamingDrill(config));
-    }
-    setCurrentIndex(0);
-    resetForNextPrompt();
-    setFeedback('idle');
-    setLastSolvedLabel(null);
-    setHadMistakeOnCurrent(false);
-    setFirstTryCorrectCount(0);
-    setStartedAtMs(performance.now());
-    setFinishedAtMs(null);
-  }, [config, initialPrompts, resetForNextPrompt]);
+    initSession();
+  }, [initSession]);
 
-  const handleRestart = useCallback(() => {
-    setPrompts(initialPrompts ? [...initialPrompts] : generateChordNamingDrill(config));
-    setCurrentIndex(0);
-    resetForNextPrompt();
-    setFeedback('idle');
-    setLastSolvedLabel(null);
-    setHadMistakeOnCurrent(false);
-    setFirstTryCorrectCount(0);
-    setStartedAtMs(performance.now());
-    setFinishedAtMs(null);
-  }, [config, initialPrompts, resetForNextPrompt]);
-
-  const isFinished = finishedAtMs !== null || currentIndex >= prompts.length;
-  const currentPrompt = !isFinished ? prompts[currentIndex]! : null;
+  const isFinished = finishedAtMs !== null || currentIndex >= totalCount || currentPrompt === null;
 
   const submitAnswerString = useCallback(
     (rawAnswer: string) => {
@@ -165,6 +184,10 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
 
       if (isCorrect) {
         playSanctuaryWakeChime();
+        const now = performance.now();
+        const elapsedMs = Math.max(100, now - promptStartedAtMs);
+        const wasFirstTry = !hadMistakeOnCurrent;
+
         const solvedLabel = formatPromptCanonicalAnswer(
           currentPrompt,
           config.answerMode,
@@ -174,21 +197,51 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         setFeedback('correct');
         resetForNextPrompt();
 
-        if (!hadMistakeOnCurrent) {
+        if (wasFirstTry) {
           setFirstTryCorrectCount((c) => c + 1);
         }
         setHadMistakeOnCurrent(false);
 
+        // Update adaptive scheduler & persist progress
+        const { newlyUnlockedId } = schedulerRef.current.recordResult(currentPrompt, {
+          firstTry: wasFirstTry,
+          elapsedMs,
+        });
+        setUnlockedCount(schedulerRef.current.getUnlockedCount());
+
+        if (newlyUnlockedId) {
+          const displayUnlocked =
+            config.answerMode === 'roman_numeral'
+              ? newlyUnlockedId
+              : formatChordLabel(newlyUnlockedId, chordNotationSystem);
+          setUnlockedThisSession((prev) => [...prev, displayUnlocked]);
+          setNewlyUnlockedBanner(
+            `★ Unlocked: ${displayUnlocked} (${schedulerRef.current.getUnlockedCount()} / ${schedulerRef.current.getTotalPoolSize()})`
+          );
+        } else {
+          setNewlyUnlockedBanner(null);
+        }
+
+        const prevPersisted = useAppStore.getState().chordNamingAdaptiveState;
+        setChordNamingAdaptiveState(schedulerRef.current.toPersistedState(prevPersisted));
+
         const nextIndex = currentIndex + 1;
-        if (nextIndex >= prompts.length) {
-          const now = performance.now();
+        if (nextIndex >= totalCount) {
           setFinishedAtMs(now);
           setCurrentIndex(nextIndex);
+          setCurrentPrompt(null);
+          setWeakSpots(schedulerRef.current.getWeakSpots(3));
           const totalSec = Math.max(0.1, (now - startedAtMs) / 1000);
-          const secPerChord = totalSec / prompts.length;
+          const secPerChord = totalSec / totalCount;
           updateBestChordNamingSecPerChord(secPerChord);
         } else {
           setCurrentIndex(nextIndex);
+          setPromptStartedAtMs(now);
+          setCurrentPrompt(
+            initialPrompts
+              ? initialPrompts[nextIndex] ?? null
+              : schedulerRef.current.sampleNextPrompt()
+          );
         }
       } else {
         playMutedFeltThud();
@@ -201,12 +254,15 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
       isFinished,
       config.answerMode,
       chordNotationSystem,
-      resetForNextPrompt,
+      promptStartedAtMs,
       hadMistakeOnCurrent,
+      resetForNextPrompt,
+      setChordNamingAdaptiveState,
       currentIndex,
-      prompts.length,
+      totalCount,
       startedAtMs,
       updateBestChordNamingSecPerChord,
+      initialPrompts,
     ]
   );
 
@@ -250,13 +306,14 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
       ? KEY_SIGNATURES[currentPrompt.keySignature]
       : KEY_SIGNATURES.C_MAJOR;
 
-  const progressFraction = prompts.length > 0 ? Math.min(1, currentIndex / prompts.length) : 0;
+  const progressFraction = totalCount > 0 ? Math.min(1, currentIndex / totalCount) : 0;
+  const isAdaptiveMode = config.answerMode === 'roman_numeral' || config.poolId === 'adaptive';
 
   // Completion summary view
   if (isFinished) {
     const totalSeconds = Math.max(0.1, ((finishedAtMs ?? performance.now()) - startedAtMs) / 1000);
-    const secPerChord = totalSeconds / Math.max(1, prompts.length);
-    const accuracyPct = Math.round((firstTryCorrectCount / Math.max(1, prompts.length)) * 100);
+    const secPerChord = totalSeconds / Math.max(1, totalCount);
+    const accuracyPct = Math.round((firstTryCorrectCount / Math.max(1, totalCount)) * 100);
 
     return (
       <div
@@ -283,7 +340,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
             marginBottom: '6px',
           }}
         >
-          Drill Complete · {prompts.length} Chords
+          Drill Complete · {totalCount} Chords
         </div>
         <h2
           style={{
@@ -296,11 +353,31 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         >
           {secPerChord.toFixed(2)} s / chord
         </h2>
-        <p style={{ color: 'var(--ink-secondary)', fontSize: '0.95rem', marginBottom: '22px' }}>
+        <p style={{ color: 'var(--ink-secondary)', fontSize: '0.95rem', marginBottom: '20px' }}>
           {config.answerMode === 'roman_numeral'
             ? `Roman Numerals in ${KEY_SIGNATURES[config.fixedKey].label}`
+            : config.poolId === 'adaptive'
+            ? `Adaptive Ladder · ${unlockedCount} / ${schedulerRef.current.getTotalPoolSize()} Chords Unlocked`
             : 'Chord Symbol Recognition'}
         </p>
+
+        {unlockedThisSession.length > 0 && (
+          <div
+            data-testid="chord-naming-unlocked-summary"
+            style={{
+              display: 'inline-block',
+              marginBottom: '18px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              backgroundColor: 'rgba(95, 173, 86, 0.14)',
+              color: 'var(--emerald)',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+            }}
+          >
+            ★ Unlocked this session: {unlockedThisSession.join(', ')}
+          </div>
+        )}
 
         <div
           style={{
@@ -308,7 +385,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
             gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
             gap: '10px',
             maxWidth: '540px',
-            margin: '0 auto 24px auto',
+            margin: '0 auto 20px auto',
           }}
         >
           <div style={{ background: 'var(--surface-subtle)', padding: '14px', borderRadius: '8px' }}>
@@ -339,10 +416,31 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
           </div>
         </div>
 
+        {weakSpots.length > 0 && (
+          <div
+            style={{
+              fontSize: '0.85rem',
+              color: 'var(--ink-secondary)',
+              marginBottom: '22px',
+            }}
+          >
+            <strong>Practice focus next run:</strong>{' '}
+            {weakSpots
+              .map((w) => {
+                const label =
+                  config.answerMode === 'roman_numeral'
+                    ? w.key
+                    : formatChordLabel(w.key, chordNotationSystem);
+                return `${label} (${w.avgSec.toFixed(1)}s${w.misses > 0 ? `, ${w.misses} miss${w.misses > 1 ? 'es' : ''}` : ''})`;
+              })
+              .join(' · ')}
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <button
             type="button"
-            onClick={handleRestart}
+            onClick={initSession}
             data-testid="chord-naming-restart-btn"
             style={{
               background: 'var(--emerald)',
@@ -424,11 +522,15 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
             Name the Chord —{' '}
             {config.answerMode === 'roman_numeral'
               ? `Roman Numerals (${KEY_SIGNATURES[config.fixedKey].label})`
+              : config.poolId === 'adaptive'
+              ? 'Adaptive Ladder'
               : 'Chord Symbols'}
           </h2>
           <p style={{ margin: '3px 0 0', fontSize: '0.82rem', color: 'var(--ink-secondary)' }}>
             {config.answerMode === 'roman_numeral'
-              ? 'Tap a Roman numeral below or type it and press Enter.'
+              ? `Unlocked: ${unlockedCount} / ${schedulerRef.current.getTotalPoolSize()} functions · Tap a Roman numeral below.`
+              : isAdaptiveMode
+              ? `Unlocked: ${unlockedCount} / ${schedulerRef.current.getTotalPoolSize()} chords · Missed chords return sooner; master them to unlock more.`
               : 'Tap Root + Quality below (or type in the box) — inversions accepted as root.'}
           </p>
         </div>
@@ -445,7 +547,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
               border: '1px solid var(--border-subtle)',
             }}
           >
-            {currentIndex + 1} / {prompts.length}
+            {currentIndex + 1} / {totalCount}
           </span>
           <button
             type="button"
@@ -479,7 +581,6 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
           viewBox="0 0 840 200"
           style={{ width: '100%', height: 'auto', display: 'block', backgroundColor: '#ffffff' }}
         >
-          {/* 5 Staff Lines */}
           {staffLines.map((y) => (
             <line
               key={`naming-staff-line-${y}`}
@@ -492,11 +593,9 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
             />
           ))}
 
-          {/* Left & Right Barlines */}
           <line x1={24} y1={76} x2={24} y2={124} stroke="#2c332f" strokeWidth={2.0} />
           <line x1={816} y1={76} x2={816} y2={124} stroke="#2c332f" strokeWidth={2.0} />
 
-          {/* Clef */}
           {currentPrompt && currentPrompt.clef === 'treble' ? (
             <text
               x={54}
@@ -525,7 +624,6 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
             </text>
           )}
 
-          {/* Key Signature Accidentals */}
           {currentPrompt && keySigSpec.accidentalType !== 'none' && (
             <g fontFamily="serif" fontSize={22} fill="#1f2421" textAnchor="middle">
               {(currentPrompt.clef === 'treble'
@@ -543,7 +641,6 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
             </g>
           )}
 
-          {/* Stacked Chord Notes */}
           {currentPrompt &&
             (() => {
               let prevStepOffset: number | null = null;
@@ -613,22 +710,43 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
             })()}
         </svg>
 
-        {lastSolvedLabel && feedback === 'correct' && (
+        {newlyUnlockedBanner ? (
           <div
+            data-testid="chord-naming-unlock-banner"
             style={{
               position: 'absolute',
               top: '10px',
               right: '14px',
-              fontSize: '0.8rem',
+              fontSize: '0.82rem',
               fontWeight: 700,
-              color: 'var(--emerald)',
-              background: 'rgba(77, 144, 120, 0.12)',
-              padding: '3px 10px',
+              color: '#ffffff',
+              background: 'var(--moss-green)',
+              padding: '4px 12px',
               borderRadius: '9999px',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
             }}
           >
-            ✓ {lastSolvedLabel}
+            {newlyUnlockedBanner}
           </div>
+        ) : (
+          lastSolvedLabel &&
+          feedback === 'correct' && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '14px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: 'var(--emerald)',
+                background: 'rgba(77, 144, 120, 0.12)',
+                padding: '3px 10px',
+                borderRadius: '9999px',
+              }}
+            >
+              ✓ {lastSolvedLabel}
+            </div>
+          )
         )}
       </div>
 
@@ -673,7 +791,6 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         }}
       >
         {config.answerMode === 'roman_numeral' ? (
-          /* Single-Row 1-Tap Roman Numeral Selector */
           <div
             data-testid="roman-tap-grid"
             style={{
@@ -706,7 +823,6 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
             ))}
           </div>
         ) : (
-          /* Two-Part Touch Selector: 12 Direct Roots (2 piano-style rows) + Quality Row */
           <div
             data-testid="chord-tap-pad"
             style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
@@ -845,6 +961,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
             value={inputValue}
             onChange={(e) => {
               setInputValue(e.target.value);
+              selectedRootRef.current = null;
               setSelectedRoot(null);
               if (feedback === 'wrong') setFeedback('idle');
             }}

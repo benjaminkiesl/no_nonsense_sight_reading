@@ -7,6 +7,7 @@ import { convertToGermanNotation, formatChordLabel } from './chords';
 export type ChordNamingAnswerMode = 'chord_name' | 'roman_numeral';
 export type ChordNamingClefMode = 'treble' | 'bass' | 'both';
 export type ChordNamingPoolId =
+  | 'adaptive'
   | 'core_triads'
   | 'all_triads'
   | 'triads_and_dom7'
@@ -25,7 +26,7 @@ export interface ChordNamingConfig {
 export const DEFAULT_CHORD_NAMING_CONFIG: ChordNamingConfig = {
   answerMode: 'chord_name',
   clefMode: 'both',
-  poolId: 'core_triads',
+  poolId: 'adaptive',
   fixedKey: 'C_MAJOR',
   totalChords: 50,
 };
@@ -254,7 +255,51 @@ const ALL_DIM_IDS = ALL_MAJOR_IDS.map((id) => `${id}dim`);
 const ALL_SUS2_IDS = ALL_MAJOR_IDS.map((id) => `${id}sus2`);
 const ALL_SUS4_IDS = ALL_MAJOR_IDS.map((id) => `${id}sus4`);
 
+const HIGH_ROI_CORE_LADDER: readonly string[] = [
+  // Primary triads (80/20 foundation)
+  'C', 'F', 'G',
+  // Relative minor & C-major diatonic family + #1 dominant 7th
+  'Am', 'Dm', 'G7', 'Em',
+  // G Major & F Major essentials
+  'D', 'D7', 'Bb', 'C7',
+  // D Major & A minor dominants + songbook minors
+  'A', 'A7', 'E7', 'Bm', 'Gm', 'E',
+  // Core pop/jazz 7ths
+  'Cmaj7', 'Dm7', 'Am7', 'Fmaj7', 'Em7',
+  // Remaining common flat/sharp triads
+  'Eb', 'Cm', 'Fm', 'Ab', 'Db', 'F#m', 'B', 'C#m', 'F#', 'Bbm', 'G#m', 'Ebm',
+  // Common dominant & minor 7ths
+  'B7', 'F7', 'Bb7', 'Eb7', 'Gm7', 'Bm7', 'Cm7', 'Fm7', 'F#m7', 'Gmaj7', 'Dmaj7', 'Bbmaj7', 'Ebmaj7', 'Amaj7',
+  // Common suspended & diminished chords
+  'Csus4', 'Gsus4', 'Dsus4', 'Asus4', 'Csus2', 'Gsus2', 'Dsus2', 'Asus2',
+  'Bdim', 'Cdim', 'Ddim', 'Edim', 'Fdim', 'Gdim', 'Adim', 'F#dim',
+];
+
+const ALL_96_IDS: readonly string[] = [
+  ...ALL_MAJOR_IDS,
+  ...ALL_MINOR_IDS,
+  ...ALL_DOM7_IDS,
+  ...ALL_MAJ7_IDS,
+  ...ALL_MIN7_IDS,
+  ...ALL_DIM_IDS,
+  ...ALL_SUS2_IDS,
+  ...ALL_SUS4_IDS,
+];
+
+/**
+ * Full 96-chord ladder ordered by real-world frequency / pedagogical ROI (80/20 principle).
+ */
+export const ADAPTIVE_CHORD_LADDER: readonly string[] = [
+  ...HIGH_ROI_CORE_LADDER,
+  ...ALL_96_IDS.filter((id) => !HIGH_ROI_CORE_LADDER.includes(id)),
+];
+
+export const ADAPTIVE_ROMAN_LADDER: readonly string[] = [
+  'I', 'IV', 'V', 'vi', 'V7', 'ii', 'iii',
+];
+
 export const CHORD_NAMING_POOLS: Record<ChordNamingPoolId, readonly string[]> = {
+  adaptive: ADAPTIVE_CHORD_LADDER,
   core_triads: ['C', 'F', 'G', 'D', 'A', 'Bb', 'Am', 'Dm', 'Em', 'Gm', 'Bm'],
   all_triads: [...ALL_MAJOR_IDS, ...ALL_MINOR_IDS], // 24 chords
   triads_and_dom7: [
@@ -268,23 +313,40 @@ export const CHORD_NAMING_POOLS: Record<ChordNamingPoolId, readonly string[]> = 
     ...ALL_MAJ7_IDS,
     ...ALL_MIN7_IDS,
   ], // 60 chords
-  all_chords: [
-    ...ALL_MAJOR_IDS,
-    ...ALL_MINOR_IDS,
-    ...ALL_DOM7_IDS,
-    ...ALL_MAJ7_IDS,
-    ...ALL_MIN7_IDS,
-    ...ALL_DIM_IDS,
-    ...ALL_SUS2_IDS,
-    ...ALL_SUS4_IDS,
-  ], // 96 chords
+  all_chords: ALL_96_IDS, // 96 chords
 };
 
 /**
- * Returns the distinct ChordQualities present in a given pool so the mobile tap selector
- * only displays relevant quality buttons (zero unnecessary clutter).
+ * Returns the distinct ChordQualities present in a given pool (or currently unlocked adaptive slice)
+ * so the mobile tap selector only displays relevant quality buttons (zero unnecessary clutter).
  */
-export function getPoolQualities(poolId: ChordNamingPoolId): readonly Exclude<ChordQuality, 'augmented'>[] {
+export function getPoolQualities(
+  poolId: ChordNamingPoolId,
+  unlockedCount?: number
+): readonly Exclude<ChordQuality, 'augmented'>[] {
+  if (poolId === 'adaptive') {
+    const count = Math.max(3, Math.min(ADAPTIVE_CHORD_LADDER.length, unlockedCount ?? 3));
+    const unlockedIds = ADAPTIVE_CHORD_LADDER.slice(0, count);
+    const present = new Set<Exclude<ChordQuality, 'augmented'>>();
+    for (const id of unlockedIds) {
+      const spec = NAMING_CHORD_SPECS[id];
+      if (spec && spec.quality !== 'augmented') {
+        present.add(spec.quality);
+      }
+    }
+    const order: readonly Exclude<ChordQuality, 'augmented'>[] = [
+      'major',
+      'minor',
+      'dominant7',
+      'major7',
+      'minor7',
+      'diminished',
+      'sus2',
+      'sus4',
+    ];
+    return order.filter((q) => present.has(q));
+  }
+
   switch (poolId) {
     case 'core_triads':
     case 'all_triads':
@@ -652,6 +714,283 @@ export function evaluateChordNamingAnswer(
   }
 
   return true;
+}
+
+export interface AdaptiveItemStats {
+  streak: number;
+  urgency: number;
+  attempts: number;
+  misses: number;
+  avgMs: number;
+}
+
+export interface PersistedAdaptiveNamingState {
+  readonly unlockedChordCount: number;
+  readonly unlockedRomanCount: number;
+  readonly statsByKey: Record<string, AdaptiveItemStats>;
+}
+
+export const INITIAL_ADAPTIVE_NAMING_STATE: PersistedAdaptiveNamingState = {
+  unlockedChordCount: 3, // Starts with C, F, G
+  unlockedRomanCount: 3, // Starts with I, IV, V
+  statsByKey: {},
+};
+
+/**
+ * Adaptive spaced-repetition + gradual level-up scheduler for Name the Chord mode.
+ * - Starts with the top 3 highest-ROI chords (C, F, G or I, IV, V).
+ * - Boosts urgency on misses (+6.0) and slow answers (+2.0 if > 5s), decays on clean hits (x0.65).
+ * - Dampens immediate back-to-back repeats so missed chords return after a 2-card recall gap.
+ * - Automatically unlocks the next highest-ROI chord when all currently unlocked chords are comfortable
+ *   (streak >= 2 and urgency <= 1.5).
+ */
+export class AdaptiveNamingScheduler {
+  private readonly config: ChordNamingConfig;
+  private readonly rng: () => number;
+  private readonly fullPool: readonly string[];
+  private readonly isAdaptive: boolean;
+
+  private unlockedCount: number;
+  private readonly stats: Map<string, AdaptiveItemStats> = new Map();
+  private lastKey: string | null = null;
+  private secondLastKey: string | null = null;
+  private promptCounter = 0;
+
+  constructor(
+    config: ChordNamingConfig,
+    persisted?: PersistedAdaptiveNamingState | null,
+    rng: () => number = Math.random
+  ) {
+    this.config = config;
+    this.rng = rng;
+    this.isAdaptive = config.answerMode === 'roman_numeral' || config.poolId === 'adaptive';
+
+    if (config.answerMode === 'roman_numeral') {
+      this.fullPool = ADAPTIVE_ROMAN_LADDER;
+      this.unlockedCount = Math.max(
+        3,
+        Math.min(
+          ADAPTIVE_ROMAN_LADDER.length,
+          persisted?.unlockedRomanCount ?? INITIAL_ADAPTIVE_NAMING_STATE.unlockedRomanCount
+        )
+      );
+    } else if (config.poolId === 'adaptive') {
+      this.fullPool = ADAPTIVE_CHORD_LADDER;
+      this.unlockedCount = Math.max(
+        3,
+        Math.min(
+          ADAPTIVE_CHORD_LADDER.length,
+          persisted?.unlockedChordCount ?? INITIAL_ADAPTIVE_NAMING_STATE.unlockedChordCount
+        )
+      );
+    } else {
+      this.fullPool = CHORD_NAMING_POOLS[config.poolId];
+      this.unlockedCount = this.fullPool.length;
+    }
+
+    if (persisted?.statsByKey) {
+      for (const [key, st] of Object.entries(persisted.statsByKey)) {
+        this.stats.set(key, { ...st });
+      }
+    }
+
+    for (const key of this.getActiveKeys()) {
+      if (!this.stats.has(key)) {
+        this.stats.set(key, { streak: 0, urgency: 1.0, attempts: 0, misses: 0, avgMs: 0 });
+      }
+    }
+  }
+
+  public getActiveKeys(): readonly string[] {
+    return this.fullPool.slice(0, this.unlockedCount);
+  }
+
+  public getUnlockedCount(): number {
+    return this.unlockedCount;
+  }
+
+  public getTotalPoolSize(): number {
+    return this.fullPool.length;
+  }
+
+  public getStats(key: string): AdaptiveItemStats {
+    return this.stats.get(key) ?? { streak: 0, urgency: 0, attempts: 0, misses: 0, avgMs: 0 };
+  }
+
+  public sampleNextPrompt(): ChordNamingPrompt {
+    const activeKeys = this.getActiveKeys();
+    const weights: number[] = [];
+    let totalWeight = 0;
+
+    for (const key of activeKeys) {
+      const st = this.getStats(key);
+      // Mastered items fade gently to 0.45 baseline so new/weak chords get priority
+      const baseline = st.streak >= 3 && st.urgency < 0.5 ? 0.45 : 1.0;
+      let recencyFactor = 1.0;
+      if (activeKeys.length > 2 && key === this.lastKey) {
+        recencyFactor = 0.04;
+      } else if (activeKeys.length > 2 && key === this.secondLastKey) {
+        recencyFactor = 0.35;
+      } else if (activeKeys.length === 2 && key === this.lastKey) {
+        recencyFactor = 0.2;
+      }
+
+      const w = (baseline + st.urgency) * recencyFactor;
+      weights.push(w);
+      totalWeight += w;
+    }
+
+    let r = this.rng() * totalWeight;
+    let chosenKey = activeKeys[activeKeys.length - 1]!;
+    for (let i = 0; i < activeKeys.length; i++) {
+      if (r <= weights[i]!) {
+        chosenKey = activeKeys[i]!;
+        break;
+      }
+      r -= weights[i]!;
+    }
+
+    this.secondLastKey = this.lastKey;
+    this.lastKey = chosenKey;
+
+    const clef: 'treble' | 'bass' =
+      this.config.clefMode === 'both'
+        ? this.rng() < 0.5
+          ? 'treble'
+          : 'bass'
+        : this.config.clefMode;
+
+    let chordId: string;
+    let romanNumeral: string | undefined;
+    let keySignature: KeySignatureId;
+
+    if (this.config.answerMode === 'roman_numeral') {
+      const entry = DIATONIC_ROMAN_CHORDS[this.config.fixedKey].find((e) => e.roman === chosenKey)!;
+      chordId = entry.chordId;
+      romanNumeral = entry.roman;
+      keySignature = this.config.fixedKey;
+    } else {
+      chordId = chosenKey;
+      keySignature = 'C_MAJOR';
+    }
+
+    const spec = NAMING_CHORD_SPECS[chordId]!;
+    const maxInv =
+      spec.quality === 'sus2' || spec.quality === 'sus4' ? 1 : spec.tones.length;
+    const inversion = Math.floor(this.rng() * maxInv) as 0 | 1 | 2 | 3;
+    const bassSpelling = spec.tones[inversion]!;
+    const notes = computeRenderedNotes(spec, inversion, clef, keySignature);
+
+    return {
+      index: this.promptCounter++,
+      clef,
+      keySignature,
+      chordId,
+      quality: spec.quality,
+      inversion,
+      inversionLabel: INVERSION_LABELS[inversion],
+      bassSpelling,
+      romanNumeral,
+      notes,
+    };
+  }
+
+  public recordResult(
+    prompt: ChordNamingPrompt,
+    params: { firstTry: boolean; elapsedMs: number }
+  ): { newlyUnlockedId: string | null } {
+    const key =
+      this.config.answerMode === 'roman_numeral' && prompt.romanNumeral
+        ? prompt.romanNumeral
+        : prompt.chordId;
+
+    const prev = this.getStats(key);
+    const next: AdaptiveItemStats = { ...prev };
+    next.attempts += 1;
+    next.avgMs =
+      prev.avgMs === 0 ? params.elapsedMs : prev.avgMs * 0.65 + params.elapsedMs * 0.35;
+
+    if (!params.firstTry) {
+      next.streak = 0;
+      next.misses += 1;
+      next.urgency = Math.min(18.0, prev.urgency + 6.0);
+    } else if (params.elapsedMs > 5000) {
+      // Correct on first try, but hesitant -> gentle urgency boost
+      next.streak += 1;
+      next.urgency = Math.min(18.0, prev.urgency + 2.0);
+    } else {
+      next.streak += 1;
+      const decayed = prev.urgency * 0.65;
+      next.urgency = decayed < 0.1 ? 0 : decayed;
+    }
+
+    this.stats.set(key, next);
+
+    // Check if we should unlock the next highest-ROI chord in the ladder
+    let newlyUnlockedId: string | null = null;
+    if (this.isAdaptive && this.unlockedCount < this.fullPool.length) {
+      const activeKeys = this.getActiveKeys();
+      const allComfortable = activeKeys.every((k) => {
+        const s = this.getStats(k);
+        return s.streak >= 2 && s.urgency <= 1.5;
+      });
+
+      if (allComfortable) {
+        const unlockedKey = this.fullPool[this.unlockedCount]!;
+        this.unlockedCount += 1;
+        this.stats.set(unlockedKey, {
+          streak: 0,
+          urgency: 5.0, // Prioritize the newly unlocked chord right away
+          attempts: 0,
+          misses: 0,
+          avgMs: 0,
+        });
+        newlyUnlockedId = unlockedKey;
+      }
+    }
+
+    return { newlyUnlockedId };
+  }
+
+  public getWeakSpots(limit = 3): { key: string; misses: number; avgSec: number }[] {
+    const entries: { key: string; misses: number; avgSec: number; score: number }[] = [];
+    for (const key of this.getActiveKeys()) {
+      const st = this.getStats(key);
+      if (st.attempts === 0) continue;
+      const avgSec = st.avgMs / 1000;
+      const score = st.misses * 4 + (avgSec > 3 ? avgSec - 3 : 0);
+      if (st.misses > 0 || avgSec > 4.0) {
+        entries.push({ key, misses: st.misses, avgSec, score });
+      }
+    }
+    return entries
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map(({ key, misses, avgSec }) => ({ key, misses, avgSec }));
+  }
+
+  public toPersistedState(
+    previous?: PersistedAdaptiveNamingState | null
+  ): PersistedAdaptiveNamingState {
+    const mergedStats: Record<string, AdaptiveItemStats> = {
+      ...(previous?.statsByKey ?? {}),
+    };
+    for (const [k, v] of this.stats.entries()) {
+      mergedStats[k] = { ...v };
+    }
+
+    return {
+      unlockedChordCount:
+        this.config.answerMode === 'chord_name' && this.config.poolId === 'adaptive'
+          ? this.unlockedCount
+          : previous?.unlockedChordCount ?? INITIAL_ADAPTIVE_NAMING_STATE.unlockedChordCount,
+      unlockedRomanCount:
+        this.config.answerMode === 'roman_numeral'
+          ? this.unlockedCount
+          : previous?.unlockedRomanCount ?? INITIAL_ADAPTIVE_NAMING_STATE.unlockedRomanCount,
+      statsByKey: mergedStats,
+    };
+  }
 }
 
 export function formatPromptCanonicalAnswer(
