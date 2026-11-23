@@ -176,7 +176,6 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
       });
       act(() => {
         fireEvent.click(screen.getByTestId('naming-key-G_MAJOR'));
-        fireEvent.click(screen.getByTestId('naming-length-25'));
       });
       act(() => {
         fireEvent.click(screen.getByTestId('start-chord-naming-btn'));
@@ -187,21 +186,20 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
         clefMode: 'both',
         poolId: 'adaptive',
         fixedKey: 'G_MAJOR',
-        totalChords: 25,
+        totalChords: 50,
       });
     });
 
-    it('runs a complete drill in ChordNamingArena and shows seconds/chord summary', () => {
+    it('runs continuous infinite flashcards in ChordNamingArena with live s/chord speed and Unlocked m/n', () => {
       const config: ChordNamingConfig = {
         answerMode: 'chord_name',
         clefMode: 'treble',
         poolId: 'core_triads',
         fixedKey: 'C_MAJOR',
-        totalChords: 2,
+        totalChords: 50,
       };
 
       const prompts = generateChordNamingDrill(config, () => 0.1);
-      // Force deterministic chord IDs for test assertions
       const deterministicPrompts: ChordNamingPrompt[] = [
         { ...prompts[0]!, chordId: 'C', quality: 'major' },
         { ...prompts[1]!, chordId: 'Am', quality: 'minor' },
@@ -216,7 +214,7 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
         />
       );
 
-      expect(screen.getByTestId('chord-naming-counter').textContent).toBe('1 / 2');
+      expect(screen.getByTestId('chord-naming-unlocked').textContent).toContain('Unlocked:');
 
       const input = screen.getByTestId('chord-naming-input') as HTMLInputElement;
       const submitBtn = screen.getByTestId('chord-naming-submit-btn');
@@ -233,17 +231,14 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
         fireEvent.change(input, { target: { value: 'c' } });
         fireEvent.click(submitBtn);
       });
-      expect(screen.getByTestId('chord-naming-counter').textContent).toBe('2 / 2');
+      expect(screen.getByTestId('chord-naming-speed').textContent).toContain('s/chord');
 
-      // Second chord correct on first try
+      // Second chord correct -> continues seamlessly without stopping
       act(() => {
         fireEvent.change(input, { target: { value: 'am' } });
         fireEvent.click(submitBtn);
       });
-
-      // Summary screen appears with s / chord result
-      expect(screen.getByTestId('chord-naming-summary')).toBeDefined();
-      expect(screen.getByTestId('chord-naming-speed-result').textContent).toContain('s / chord');
+      expect(screen.getByTestId('chord-naming-last-solved').textContent).toContain('Am');
     });
 
     it('supports full 96-chord pool (+ dim, sus2, sus4) and touch-friendly root + quality tap pad', () => {
@@ -252,7 +247,7 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
         clefMode: 'treble',
         poolId: 'all_chords',
         fixedKey: 'C_MAJOR',
-        totalChords: 2,
+        totalChords: 50,
       };
 
       const fullPoolDrill = generateChordNamingDrill({ ...config, totalChords: 96 });
@@ -280,8 +275,7 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
       act(() => {
         fireEvent.click(screen.getByTestId('chord-naming-submit-btn'));
       });
-
-      expect(screen.getByTestId('chord-naming-counter').textContent).toBe('2 / 2');
+      expect(screen.getByTestId('chord-naming-last-solved').textContent).toContain('F#m');
 
       // Tap C root + sus4 quality + Check
       act(() => {
@@ -291,8 +285,7 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
       act(() => {
         fireEvent.click(screen.getByTestId('chord-naming-submit-btn'));
       });
-
-      expect(screen.getByTestId('chord-naming-summary')).toBeDefined();
+      expect(screen.getByTestId('chord-naming-last-solved').textContent).toContain('Csus4');
     });
 
     it('supports 1-tap Roman numeral buttons for mobile/tablet', () => {
@@ -301,7 +294,7 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
         clefMode: 'bass',
         poolId: 'core_triads',
         fixedKey: 'G_MAJOR',
-        totalChords: 1,
+        totalChords: 50,
       };
 
       const prompts = generateChordNamingDrill(config, () => 0.1);
@@ -318,12 +311,11 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
         />
       );
 
-      // Single tap on IV completes the 1-chord drill immediately!
+      // Single tap on IV solves immediately and keeps going
       act(() => {
         fireEvent.click(screen.getByTestId('roman-btn-IV'));
       });
-
-      expect(screen.getByTestId('chord-naming-summary')).toBeDefined();
+      expect(screen.getByTestId('chord-naming-last-solved').textContent).toContain('IV');
     });
   });
 

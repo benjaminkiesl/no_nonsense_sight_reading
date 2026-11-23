@@ -29,8 +29,6 @@ const CLEF_OPTIONS: readonly { id: ChordNamingClefMode; label: string }[] = [
   { id: 'bass', label: 'Bass (𝄢)' },
 ];
 
-const LENGTH_OPTIONS: readonly number[] = [25, 50, 100];
-
 export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
   isOpen,
   onClose,
@@ -46,9 +44,6 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
   const [fixedKey, setFixedKey] = useState<ChordNamingKeyId>(
     DEFAULT_CHORD_NAMING_CONFIG.fixedKey
   );
-  const [totalChords, setTotalChords] = useState<number>(
-    DEFAULT_CHORD_NAMING_CONFIG.totalChords
-  );
   const adaptiveState = useAppStore((state) => state.chordNamingAdaptiveState);
   const resetAdaptiveState = useAppStore((state) => state.resetChordNamingAdaptiveState);
 
@@ -60,7 +55,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
       clefMode,
       poolId: 'adaptive',
       fixedKey,
-      totalChords,
+      totalChords: DEFAULT_CHORD_NAMING_CONFIG.totalChords,
     });
     onClose();
   };
@@ -242,88 +237,54 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
             </div>
           )}
 
-          {/* Clef & Length */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-            <div>
-              <div
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'var(--ink-secondary)',
-                  marginBottom: '8px',
-                }}
-              >
-                Clef
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {CLEF_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    data-testid={`naming-clef-${opt.id}`}
-                    onClick={() => setClefMode(opt.id)}
-                    style={pillStyle(clefMode === opt.id)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+          {/* Clef & Reset */}
+          <div>
+            <div
+              style={{
+                fontSize: '12px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: 'var(--ink-secondary)',
+                marginBottom: '8px',
+              }}
+            >
+              Clef
             </div>
-
-            <div>
-              <div
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'var(--ink-secondary)',
-                  marginBottom: '8px',
-                }}
-              >
-                Chords per Run
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {LENGTH_OPTIONS.map((count) => (
-                  <button
-                    key={count}
-                    type="button"
-                    data-testid={`naming-length-${count}`}
-                    onClick={() => setTotalChords(count)}
-                    style={{
-                      ...pillStyle(totalChords === count),
-                      flex: 1,
-                      textAlign: 'center',
-                    }}
-                  >
-                    {count}
-                  </button>
-                ))}
-              </div>
-
-              {(adaptiveState.unlockedChordCount > 3 || adaptiveState.unlockedRomanCount > 3) && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+              {CLEF_OPTIONS.map((opt) => (
                 <button
+                  key={opt.id}
                   type="button"
-                  onClick={resetAdaptiveState}
-                  data-testid="reset-adaptive-btn"
-                  style={{
-                    marginTop: '14px',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--vibrant-coral)',
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    padding: 0,
-                  }}
+                  data-testid={`naming-clef-${opt.id}`}
+                  onClick={() => setClefMode(opt.id)}
+                  style={{ ...pillStyle(clefMode === opt.id), textAlign: 'center' }}
                 >
-                  Reset Adaptive Progress
+                  {opt.label}
                 </button>
-              )}
+              ))}
             </div>
+
+            {(adaptiveState.unlockedChordCount > 3 || adaptiveState.unlockedRomanCount > 3) && (
+              <button
+                type="button"
+                onClick={resetAdaptiveState}
+                data-testid="reset-adaptive-btn"
+                style={{
+                  marginTop: '14px',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--vibrant-coral)',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  padding: 0,
+                }}
+              >
+                Reset Adaptive Progress
+              </button>
+            )}
           </div>
         </div>
 
