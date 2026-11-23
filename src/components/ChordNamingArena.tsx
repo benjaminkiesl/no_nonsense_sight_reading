@@ -281,10 +281,26 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
 
   const trebleLines = [42, 54, 66, 78, 90];
   const bassLines = [132, 144, 156, 168, 180];
-  const activeStaffBottomY = currentPrompt.clef === 'treble' ? 90 : 180;
   const keyAccCount = keySigSpec.trebleStepOffsets.length;
   const keyAccSpacing = keyAccCount >= 4 ? 11 : 14;
-  const chordX = keyAccCount >= 4 ? 210 : 194;
+  const maxSlot = currentPrompt.notes.reduce((m, n) => Math.max(m, n.slot ?? 0), 0);
+  const leftNoteStartX =
+    keyAccCount === 0 ? 104 : 78 + (keyAccCount - 1) * keyAccSpacing + 30;
+  const rightNoteEndX = 278;
+
+  const getSlotX = (slot: number): number => {
+    if (maxSlot === 0) {
+      return Math.max(leftNoteStartX + 18, keyAccCount >= 4 ? 210 : 194);
+    }
+    if (maxSlot === 1) {
+      const center = (leftNoteStartX + rightNoteEndX) / 2;
+      const gap = Math.min(58, (rightNoteEndX - leftNoteStartX) * 0.44);
+      return slot === 0 ? center - gap / 2 : center + gap / 2;
+    }
+    const usableLeft = leftNoteStartX + 8;
+    const usableRight = rightNoteEndX - 8;
+    return usableLeft + (slot / maxSlot) * (usableRight - usableLeft);
+  };
 
   return (
     <div
@@ -462,67 +478,124 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
           )}
 
           {(() => {
-            let prevStepOffset: number | null = null;
-            let accSlot = 0;
-
-            return currentPrompt.notes.map((note) => {
-              const y = activeStaffBottomY - note.stepOffset * 6;
-              const isSecond = prevStepOffset !== null && note.stepOffset - prevStepOffset <= 1;
-              prevStepOffset = note.stepOffset;
-
-              const noteheadX = isSecond ? chordX + 15 : chordX;
-              const ledgerLines = getLedgerLines(note.stepOffset);
-
-              let accX = chordX - 19;
-              if (note.displayAccidental) {
-                accX = chordX - 19 - accSlot * 12;
-                accSlot = (accSlot + 1) % 2;
+            // Group notes by (clef, slot) so seconds, accidentals, and stems align per vertical column
+            const groups = new Map<
+              string,
+              {
+                clef: 'treble' | 'bass';
+                slot: number;
+                items: { note: (typeof currentPrompt.notes)[number]; idx: number }[];
               }
+            >();
+
+            currentPrompt.notes.forEach((note, idx) => {
+              const noteClef = note.clef ?? currentPrompt.clef;
+              const slot = note.slot ?? 0;
+              const groupKey = `${noteClef}:${slot}`;
+              const existing = groups.get(groupKey);
+              if (existing) {
+                existing.items.push({ note, idx });
+              } else {
+                groups.set(groupKey, { clef: noteClef, slot, items: [{ note, idx }] });
+              }
+            });
+
+            const showStems = maxSlot > 0;
+
+            return Array.from(groups.values()).map((group) => {
+              const staffBottomY = group.clef === 'treble' ? 90 : 180;
+              const baseX = getSlotX(group.slot);
+              const sorted = [...group.items].sort(
+                (a, b) => a.note.stepOffset - b.note.stepOffset
+              );
+
+              let prevStepOffset: number | null = null;
+              let accSlot = 0;
+
+              const avgStep =
+                sorted.reduce((sum, item) => sum + item.note.stepOffset, 0) / sorted.length;
+              const stemUp = avgStep < 4;
+              const lowestY = staffBottomY - sorted[0]!.note.stepOffset * 6;
+              const highestY = staffBottomY - sorted[sorted.length - 1]!.note.stepOffset * 6;
+              const stemX = stemUp ? baseX + 7.5 : baseX - 7.5;
+              const stemY1 = stemUp ? lowestY - 1 : highestY + 1;
+              const stemY2 = stemUp ? highestY - 30 : lowestY + 30;
 
               return (
-                <g key={`naming-note-${note.midi}`}>
-                  {ledgerLines.map((lOffset) => {
-                    const ly = activeStaffBottomY - lOffset * 6;
+                <g key={`naming-group-${group.clef}-${group.slot}`}>
+                  {showStems && (
+                    <line
+                      x1={stemX}
+                      y1={stemY1}
+                      x2={stemX}
+                      y2={stemY2}
+                      stroke="#1f2421"
+                      strokeWidth={1.6}
+                      strokeLinecap="round"
+                    />
+                  )}
+                  {sorted.map(({ note, idx }) => {
+                    const y = staffBottomY - note.stepOffset * 6;
+                    const isSecond =
+                      prevStepOffset !== null && note.stepOffset - prevStepOffset <= 1;
+                    prevStepOffset = note.stepOffset;
+
+                    const noteheadX = isSecond ? baseX + 14.5 : baseX;
+                    const ledgerLines = getLedgerLines(note.stepOffset);
+
+                    let accX = baseX - 18;
+                    if (note.displayAccidental) {
+                      accX = baseX - 18 - accSlot * 11;
+                      accSlot = (accSlot + 1) % 2;
+                    }
+
                     return (
-                      <line
-                        key={`naming-ledger-${note.midi}-${lOffset}`}
-                        x1={noteheadX - 15}
-                        y1={ly}
-                        x2={noteheadX + 15}
-                        y2={ly}
-                        stroke="#1f2421"
-                        strokeWidth={1.8}
-                      />
+                      <g key={`naming-note-${idx}-${note.midi}-${group.slot}`}>
+                        {ledgerLines.map((lOffset) => {
+                          const ly = staffBottomY - lOffset * 6;
+                          return (
+                            <line
+                              key={`naming-ledger-${idx}-${note.midi}-${lOffset}`}
+                              x1={noteheadX - 14}
+                              y1={ly}
+                              x2={noteheadX + 14}
+                              y2={ly}
+                              stroke="#1f2421"
+                              strokeWidth={1.8}
+                            />
+                          );
+                        })}
+
+                        {note.displayAccidental && (
+                          <text
+                            x={accX}
+                            y={y + 1}
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            fontFamily="serif"
+                            fontSize={21}
+                            fill="#1f2421"
+                          >
+                            {note.displayAccidental === 'sharp'
+                              ? '♯'
+                              : note.displayAccidental === 'flat'
+                              ? '♭'
+                              : '♮'}
+                          </text>
+                        )}
+
+                        <ellipse
+                          data-testid={`naming-notehead-${note.midi}`}
+                          cx={noteheadX}
+                          cy={y}
+                          rx={8.2}
+                          ry={5.6}
+                          fill="#1f2421"
+                          transform={`rotate(-20 ${noteheadX} ${y})`}
+                        />
+                      </g>
                     );
                   })}
-
-                  {note.displayAccidental && (
-                    <text
-                      x={accX}
-                      y={y + 1}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fontFamily="serif"
-                      fontSize={22}
-                      fill="#1f2421"
-                    >
-                      {note.displayAccidental === 'sharp'
-                        ? '♯'
-                        : note.displayAccidental === 'flat'
-                        ? '♭'
-                        : '♮'}
-                    </text>
-                  )}
-
-                  <ellipse
-                    data-testid={`naming-notehead-${note.midi}`}
-                    cx={noteheadX}
-                    cy={y}
-                    rx={8.5}
-                    ry={5.8}
-                    fill="#1f2421"
-                    transform={`rotate(-20 ${noteheadX} ${y})`}
-                  />
                 </g>
               );
             });

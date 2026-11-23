@@ -76,6 +76,14 @@ export interface NamingChordSpec {
   readonly tones: readonly ChordToneSpelling[];
 }
 
+export type ChordTextureKind =
+  | 'block'
+  | 'arpeggio_up'
+  | 'arpeggio_down'
+  | 'alberti'
+  | 'bass_and_chord'
+  | 'grand_staff';
+
 export interface RenderedChordNote {
   readonly midi: number;
   readonly letter: LetterName;
@@ -85,6 +93,10 @@ export interface RenderedChordNote {
   readonly stepOffset: number;
   /** Accidental glyph to draw on the staff relative to the active key signature */
   readonly displayAccidental: 'sharp' | 'flat' | 'natural' | null;
+  /** Horizontal column slot (0..3) for broken/arpeggiated chords; defaults to 0 */
+  readonly slot?: number;
+  /** Per-note clef override for grand-staff split voicings; defaults to prompt.clef */
+  readonly clef?: 'treble' | 'bass';
 }
 
 export interface ChordNamingPrompt {
@@ -97,6 +109,8 @@ export interface ChordNamingPrompt {
   readonly inversionLabel: string;
   readonly bassSpelling: ChordToneSpelling;
   readonly romanNumeral?: string;
+  readonly texture?: ChordTextureKind;
+  readonly omittedFifth?: boolean;
   readonly notes: readonly RenderedChordNote[];
 }
 
@@ -594,21 +608,11 @@ const INVERSION_LABELS: Record<0 | 1 | 2 | 3, string> = {
   3: '3rd inversion',
 };
 
-function computeRenderedNotes(
-  spec: NamingChordSpec,
-  inversion: 0 | 1 | 2 | 3,
+function buildToneStack(
+  tones: readonly ChordToneSpelling[],
   clef: 'treble' | 'bass',
   keySignature: KeySignatureId
 ): RenderedChordNote[] {
-  const numTones = spec.tones.length;
-  const safeInv = (inversion % numTones) as 0 | 1 | 2 | 3;
-
-  // Rotate chord tones so the bass note is at index 0
-  const rotated: ChordToneSpelling[] = [];
-  for (let i = 0; i < numTones; i++) {
-    rotated.push(spec.tones[(safeInv + i) % numTones]!);
-  }
-
   const idealCenter = clef === 'treble' ? 69 : 51;
   const candidateOctaves = clef === 'treble' ? [3, 4, 5] : [2, 3];
 
@@ -619,7 +623,7 @@ function computeRenderedNotes(
     const stack: { midi: number; letter: LetterName; accidental: Accidental; octave: number }[] = [];
     let prevMidi = -1;
 
-    for (const tone of rotated) {
+    for (const tone of tones) {
       let oct = startOctave;
       let midi = (oct + 1) * 12 + LETTER_SEMITONE[tone.letter] + tone.accidental;
       while (prevMidi !== -1 && midi <= prevMidi) {
@@ -672,8 +676,135 @@ function computeRenderedNotes(
       diatonicStep,
       stepOffset,
       displayAccidental,
+      slot: 0,
+      clef,
     };
   });
+}
+
+function pickTexture(clefMode: ChordNamingClefMode, rng: () => number): ChordTextureKind {
+  const r = rng();
+  if (clefMode === 'both') {
+    if (r < 0.38) return 'block';
+    if (r < 0.54) return 'arpeggio_up';
+    if (r < 0.64) return 'arpeggio_down';
+    if (r < 0.76) return 'alberti';
+    if (r < 0.88) return 'bass_and_chord';
+    return 'grand_staff';
+  }
+  if (r < 0.44) return 'block';
+  if (r < 0.64) return 'arpeggio_up';
+  if (r < 0.76) return 'arpeggio_down';
+  if (r < 0.88) return 'alberti';
+  return 'bass_and_chord';
+}
+
+function suppressRepeatedMeasureAccidentals(notes: RenderedChordNote[]): RenderedChordNote[] {
+  const seenInMeasure = new Set<string>();
+  return notes.map((n) => {
+    const pitchKey = `${n.clef ?? 'treble'}:${n.letter}:${n.octave}:${n.accidental}`;
+    if (n.displayAccidental && seenInMeasure.has(pitchKey)) {
+      return { ...n, displayAccidental: null };
+    }
+    if (n.displayAccidental) {
+      seenInMeasure.add(pitchKey);
+    }
+    return n;
+  });
+}
+
+function buildVariedChordVoicing(
+  spec: NamingChordSpec,
+  clef: 'treble' | 'bass',
+  clefMode: ChordNamingClefMode,
+  keySignature: KeySignatureId,
+  rng: () => number
+): {
+  inversion: 0 | 1 | 2 | 3;
+  bassSpelling: ChordToneSpelling;
+  texture: ChordTextureKind;
+  omittedFifth: boolean;
+  notes: RenderedChordNote[];
+} {
+  // For 4-note 7th chords (dom7, maj7, min7), frequently omit the 5th (realistic piano shell voicing)
+  const canOmitFifth = spec.tones.length === 4;
+  const omittedFifth = canOmitFifth && rng() < 0.45;
+  const activeTones: readonly ChordToneSpelling[] = omittedFifth
+    ? [spec.tones[0]!, spec.tones[1]!, spec.tones[3]!]
+    : spec.tones;
+
+  // Keep sus2/sus4 in root position so Csus2 isn't enharmonically identical to Gsus4
+  const maxInv =
+    spec.quality === 'sus2' || spec.quality === 'sus4' ? 1 : activeTones.length;
+  const invIdx = Math.floor(rng() * maxInv) as 0 | 1 | 2 | 3;
+  const bassSpelling = activeTones[invIdx]!;
+
+  const rotated: ChordToneSpelling[] = [];
+  for (let i = 0; i < activeTones.length; i++) {
+    rotated.push(activeTones[(invIdx + i) % activeTones.length]!);
+  }
+
+  const texture = pickTexture(clefMode, rng);
+
+  if (texture === 'grand_staff') {
+    const bassNote = buildToneStack([rotated[0]!], 'bass', keySignature)[0]!;
+    const upperNotes = buildToneStack(rotated.slice(1), 'treble', keySignature);
+    const brokenSplit = rng() < 0.5;
+    const combined: RenderedChordNote[] = [
+      { ...bassNote, slot: 0, clef: 'bass' },
+      ...upperNotes.map((n) => ({ ...n, slot: brokenSplit ? 1 : 0, clef: 'treble' as const })),
+    ];
+    return {
+      inversion: invIdx,
+      bassSpelling,
+      texture,
+      omittedFifth,
+      notes: suppressRepeatedMeasureAccidentals(combined),
+    };
+  }
+
+  const baseStack = buildToneStack(rotated, clef, keySignature);
+
+  let arranged: RenderedChordNote[];
+  if (texture === 'block') {
+    arranged = baseStack.map((n) => ({ ...n, slot: 0 }));
+  } else if (texture === 'arpeggio_up') {
+    arranged = baseStack.map((n, idx) => ({ ...n, slot: idx }));
+  } else if (texture === 'arpeggio_down') {
+    arranged = [...baseStack].reverse().map((n, idx) => ({ ...n, slot: idx }));
+  } else if (texture === 'alberti') {
+    if (baseStack.length === 3) {
+      // Classic piano Alberti pattern: low -> high -> mid -> high
+      arranged = [
+        { ...baseStack[0]!, slot: 0 },
+        { ...baseStack[2]!, slot: 1 },
+        { ...baseStack[1]!, slot: 2 },
+        { ...baseStack[2]!, slot: 3 },
+      ];
+    } else {
+      // 4-note broken zig-zag: 0 -> 2 -> 1 -> 3
+      arranged = [
+        { ...baseStack[0]!, slot: 0 },
+        { ...baseStack[2]!, slot: 1 },
+        { ...baseStack[1]!, slot: 2 },
+        { ...baseStack[3]!, slot: 3 },
+      ];
+    }
+  } else {
+    // 'bass_and_chord': bass note on slot 0, upper chord tones stacked on slot 1
+    arranged = [
+      { ...baseStack[0]!, slot: 0 },
+      ...baseStack.slice(1).map((n) => ({ ...n, slot: 1 })),
+    ];
+  }
+
+  return {
+    inversion: invIdx,
+    bassSpelling,
+    texture,
+    omittedFifth,
+    notes: suppressRepeatedMeasureAccidentals(arranged),
+  };
 }
 
 export function generateChordNamingDrill(
@@ -717,12 +848,7 @@ export function generateChordNamingDrill(
     }
 
     const spec = NAMING_CHORD_SPECS[chordId]!;
-    // For sus2 and sus4, use root position so they aren't enharmonically ambiguous with each other (Csus2 == Gsus4!)
-    const maxInv =
-      spec.quality === 'sus2' || spec.quality === 'sus4' ? 1 : spec.tones.length;
-    const inversion = Math.floor(rng() * maxInv) as 0 | 1 | 2 | 3;
-    const bassSpelling = spec.tones[inversion]!;
-    const notes = computeRenderedNotes(spec, inversion, clef, keySignature);
+    const voicing = buildVariedChordVoicing(spec, clef, config.clefMode, keySignature, rng);
 
     prompts.push({
       index: i,
@@ -730,11 +856,13 @@ export function generateChordNamingDrill(
       keySignature,
       chordId,
       quality: spec.quality,
-      inversion,
-      inversionLabel: INVERSION_LABELS[inversion],
-      bassSpelling,
+      inversion: voicing.inversion,
+      inversionLabel: INVERSION_LABELS[voicing.inversion],
+      bassSpelling: voicing.bassSpelling,
       romanNumeral,
-      notes,
+      texture: voicing.texture,
+      omittedFifth: voicing.omittedFifth,
+      notes: voicing.notes,
     });
   }
 
@@ -1062,11 +1190,13 @@ export class AdaptiveNamingScheduler {
     }
 
     const spec = NAMING_CHORD_SPECS[chordId]!;
-    const maxInv =
-      spec.quality === 'sus2' || spec.quality === 'sus4' ? 1 : spec.tones.length;
-    const inversion = Math.floor(this.rng() * maxInv) as 0 | 1 | 2 | 3;
-    const bassSpelling = spec.tones[inversion]!;
-    const notes = computeRenderedNotes(spec, inversion, clef, keySignature);
+    const voicing = buildVariedChordVoicing(
+      spec,
+      clef,
+      this.config.clefMode,
+      keySignature,
+      this.rng
+    );
 
     return {
       index: this.promptCounter++,
@@ -1074,11 +1204,13 @@ export class AdaptiveNamingScheduler {
       keySignature,
       chordId,
       quality: spec.quality,
-      inversion,
-      inversionLabel: INVERSION_LABELS[inversion],
-      bassSpelling,
+      inversion: voicing.inversion,
+      inversionLabel: INVERSION_LABELS[voicing.inversion],
+      bassSpelling: voicing.bassSpelling,
       romanNumeral,
-      notes,
+      texture: voicing.texture,
+      omittedFifth: voicing.omittedFifth,
+      notes: voicing.notes,
     };
   }
 

@@ -148,6 +148,39 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
       expect(drill.some((p) => p.clef === 'treble')).toBe(true);
       expect(drill.some((p) => p.clef === 'bass')).toBe(true);
       expect(drill.some((p) => p.inversion > 0)).toBe(true);
+      // Varied textures: both vertical block chords and horizontally split broken/arpeggio chords
+      expect(drill.some((p) => p.texture === 'block')).toBe(true);
+      expect(drill.some((p) => p.notes.some((n) => (n.slot ?? 0) > 0))).toBe(true);
+    });
+
+    it('uses shell voicings (omitting the 5th) on some 7th chords and splits across grand staff', () => {
+      const drill = generateChordNamingDrill({
+        answerMode: 'chord_name',
+        clefMode: 'both',
+        poolId: 'triads_and_7ths',
+        fixedKey: 'C_MAJOR',
+        totalChords: 120,
+      });
+
+      const sevenths = drill.filter(
+        (p) => p.quality === 'dominant7' || p.quality === 'major7' || p.quality === 'minor7'
+      );
+      expect(sevenths.length).toBeGreaterThan(10);
+      expect(sevenths.some((p) => p.omittedFifth === true)).toBe(true);
+      expect(sevenths.some((p) => p.omittedFifth === false)).toBe(true);
+
+      // Triads never omit the 5th
+      const triads = drill.filter((p) => p.quality === 'major' || p.quality === 'minor');
+      expect(triads.every((p) => !p.omittedFifth)).toBe(true);
+
+      // Grand-staff split voicings place notes on both bass and treble clefs
+      const grandStaffPrompts = drill.filter((p) => p.texture === 'grand_staff');
+      expect(grandStaffPrompts.length).toBeGreaterThan(0);
+      expect(
+        grandStaffPrompts.every(
+          (p) => p.notes.some((n) => n.clef === 'bass') && p.notes.some((n) => n.clef === 'treble')
+        )
+      ).toBe(true);
     });
 
     it('generates diatonic Roman numeral prompts across all 24 Major and Minor scales', () => {
