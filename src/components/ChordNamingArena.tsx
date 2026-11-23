@@ -423,10 +423,8 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
           <line x1={22} y1={42} x2={22} y2={180} stroke="#2c332f" strokeWidth={2.0} />
           <line x1={300} y1={42} x2={300} y2={180} stroke="#2c332f" strokeWidth={2.0} />
           <path
-            d="M 22 42 C 13 72, 13 96, 9 111 C 13 126, 13 150, 22 180"
-            fill="none"
-            stroke="#2c332f"
-            strokeWidth={1.6}
+            d="M 20 42 C 8 58, 19 94, 7 111 C 19 128, 8 164, 20 180 C 12 162, 22 129, 9.5 111 C 22 93, 12 60, 20 42 Z"
+            fill="#1f2421"
           />
 
           <text

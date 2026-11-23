@@ -67,13 +67,16 @@ export const GrandStaffCanvas: React.FC<GrandStaffCanvasProps> = ({ snapshot, le
     ctx.lineTo(16, 220);
     ctx.stroke();
 
-    // Classic brace arc
-    ctx.lineWidth = 1.5;
+    // Classic engraved piano curly brace ({)
+    ctx.fillStyle = '#1f2421';
     ctx.beginPath();
-    ctx.moveTo(16, 58);
-    ctx.bezierCurveTo(8, 90, 8, 120, 4, 139);
-    ctx.bezierCurveTo(8, 158, 8, 188, 16, 220);
-    ctx.stroke();
+    ctx.moveTo(14, 58);
+    ctx.bezierCurveTo(3, 76, 13, 119, 2, 139);
+    ctx.bezierCurveTo(13, 159, 3, 202, 14, 220);
+    ctx.bezierCurveTo(7, 200, 16, 160, 4.5, 139);
+    ctx.bezierCurveTo(16, 118, 7, 78, 14, 58);
+    ctx.closePath();
+    ctx.fill();
 
     // Clefs (standard music engraving sizing & positioning)
     ctx.fillStyle = '#1f2421';
