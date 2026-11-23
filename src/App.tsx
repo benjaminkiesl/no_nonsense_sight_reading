@@ -14,6 +14,7 @@ import { ProgressBar } from './components/ProgressBar';
 import { RhythmArena, RhythmStreamOptionsProp } from './components/RhythmArena';
 import { getChordLevelById, isChordLevelId } from './chord/curriculum';
 import {
+  ALL_ROMAN_KEY_IDS,
   ChordNamingConfig,
   ChordNamingKeyId,
   DEFAULT_CHORD_NAMING_CONFIG,
@@ -30,7 +31,7 @@ import { EngineSnapshot } from './types/engine';
 import { UserNoteInput } from './types/input';
 import { StaffNoteTarget } from './types/music';
 
-const VALID_ROMAN_KEYS: readonly ChordNamingKeyId[] = ['C_MAJOR', 'G_MAJOR', 'F_MAJOR', 'D_MAJOR'];
+const VALID_ROMAN_KEYS: readonly ChordNamingKeyId[] = ALL_ROMAN_KEY_IDS;
 
 function parseInitialHash(): {
   activeView: 'practice' | 'levels';

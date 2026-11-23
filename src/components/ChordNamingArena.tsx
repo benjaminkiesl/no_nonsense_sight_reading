@@ -5,6 +5,9 @@ import {
   AdaptiveNamingScheduler,
   ChordNamingConfig,
   ChordNamingPrompt,
+  MAJOR_ROMAN_BUTTONS,
+  MINOR_ROMAN_BUTTONS,
+  ROMAN_SCALE_SPECS,
   evaluateChordNamingAnswer,
   formatPromptCanonicalAnswer,
   getPoolQualities,
@@ -68,8 +71,6 @@ const QUALITY_BUTTON_META: Record<
   sus2: { label: 'sus2', suffix: 'sus2' },
   sus4: { label: 'sus4', suffix: 'sus4' },
 };
-
-const ROMAN_BUTTONS: readonly string[] = ['I', 'ii', 'iii', 'IV', 'V', 'V7', 'vi'];
 
 const IDLE_CLAMP_MS = 30_000;
 const ROLLING_WINDOW_SIZE = 20;
@@ -270,6 +271,9 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
   };
 
   const keySigSpec = KEY_SIGNATURES[currentPrompt.keySignature] ?? KEY_SIGNATURES.C_MAJOR;
+  const romanScaleSpec = ROMAN_SCALE_SPECS[config.fixedKey];
+  const romanButtons =
+    romanScaleSpec.mode === 'minor' ? MINOR_ROMAN_BUTTONS : MAJOR_ROMAN_BUTTONS;
   const rollingSecPerChord =
     recentDurationsMs.length > 0
       ? recentDurationsMs.reduce((a, b) => a + b, 0) / recentDurationsMs.length / 1000
@@ -278,7 +282,9 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
   const trebleLines = [42, 54, 66, 78, 90];
   const bassLines = [132, 144, 156, 168, 180];
   const activeStaffBottomY = currentPrompt.clef === 'treble' ? 90 : 180;
-  const chordX = 194;
+  const keyAccCount = keySigSpec.trebleStepOffsets.length;
+  const keyAccSpacing = keyAccCount >= 4 ? 11 : 14;
+  const chordX = keyAccCount >= 4 ? 210 : 194;
 
   return (
     <div
@@ -304,7 +310,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
       >
         <h2 style={{ fontSize: '1.15rem', margin: 0, color: 'var(--ink-primary)' }}>
           {config.answerMode === 'roman_numeral'
-            ? `Roman Numerals · ${KEY_SIGNATURES[config.fixedKey].label}`
+            ? `Roman Numerals · ${romanScaleSpec.label}`
             : 'Name the Chord'}
         </h2>
 
@@ -437,7 +443,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
               {keySigSpec.trebleStepOffsets.map((offset, idx) => (
                 <text
                   key={`naming-ks-treble-${idx}`}
-                  x={80 + idx * 14}
+                  x={78 + idx * keyAccSpacing}
                   y={90 - offset * 6 + 7}
                 >
                   {keySigSpec.accidentalType === 'sharp' ? '♯' : '♭'}
@@ -446,7 +452,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
               {keySigSpec.bassStepOffsets.map((offset, idx) => (
                 <text
                   key={`naming-ks-bass-${idx}`}
-                  x={80 + idx * 14}
+                  x={78 + idx * keyAccSpacing}
                   y={180 - offset * 6 + 7}
                 >
                   {keySigSpec.accidentalType === 'sharp' ? '♯' : '♭'}
@@ -592,7 +598,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
               gap: '6px',
             }}
           >
-            {ROMAN_BUTTONS.map((roman) => (
+            {romanButtons.map((roman) => (
               <button
                 key={roman}
                 type="button"

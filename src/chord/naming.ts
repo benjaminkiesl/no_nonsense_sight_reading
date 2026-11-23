@@ -13,7 +13,39 @@ export type ChordNamingPoolId =
   | 'triads_and_dom7'
   | 'triads_and_7ths'
   | 'all_chords';
-export type ChordNamingKeyId = 'C_MAJOR' | 'G_MAJOR' | 'F_MAJOR' | 'D_MAJOR';
+export type ChordNamingKeyId =
+  | 'C_MAJOR'
+  | 'G_MAJOR'
+  | 'D_MAJOR'
+  | 'A_MAJOR'
+  | 'E_MAJOR'
+  | 'B_MAJOR'
+  | 'FS_MAJOR'
+  | 'F_MAJOR'
+  | 'BB_MAJOR'
+  | 'EB_MAJOR'
+  | 'AB_MAJOR'
+  | 'DB_MAJOR'
+  | 'A_MINOR'
+  | 'E_MINOR'
+  | 'B_MINOR'
+  | 'FS_MINOR'
+  | 'CS_MINOR'
+  | 'GS_MINOR'
+  | 'D_MINOR'
+  | 'G_MINOR'
+  | 'C_MINOR'
+  | 'F_MINOR'
+  | 'BB_MINOR'
+  | 'EB_MINOR';
+
+export interface RomanScaleSpec {
+  readonly id: ChordNamingKeyId;
+  readonly label: string;
+  readonly mode: 'major' | 'minor';
+  readonly keySignature: KeySignatureId;
+  readonly chords: readonly DiatonicFunctionEntry[];
+}
 
 export interface ChordNamingConfig {
   readonly answerMode: ChordNamingAnswerMode;
@@ -298,6 +330,13 @@ export const ADAPTIVE_ROMAN_LADDER: readonly string[] = [
   'I', 'IV', 'V', 'vi', 'V7', 'ii', 'iii',
 ];
 
+export const ADAPTIVE_MINOR_ROMAN_LADDER: readonly string[] = [
+  'i', 'iv', 'V', 'VI', 'V7', 'III', 'VII',
+];
+
+export const MAJOR_ROMAN_BUTTONS: readonly string[] = ['I', 'ii', 'iii', 'IV', 'V', 'V7', 'vi'];
+export const MINOR_ROMAN_BUTTONS: readonly string[] = ['i', 'III', 'iv', 'V', 'V7', 'VI', 'VII'];
+
 export const CHORD_NAMING_POOLS: Record<ChordNamingPoolId, readonly string[]> = {
   adaptive: ADAPTIVE_CHORD_LADDER,
   core_triads: ['C', 'F', 'G', 'D', 'A', 'Bb', 'Am', 'Dm', 'Em', 'Gm', 'Bm'],
@@ -365,44 +404,188 @@ export interface DiatonicFunctionEntry {
   readonly chordId: string;
 }
 
-export const DIATONIC_ROMAN_CHORDS: Record<ChordNamingKeyId, readonly DiatonicFunctionEntry[]> = {
-  C_MAJOR: [
-    { roman: 'I', chordId: 'C' },
-    { roman: 'ii', chordId: 'Dm' },
-    { roman: 'iii', chordId: 'Em' },
-    { roman: 'IV', chordId: 'F' },
-    { roman: 'V', chordId: 'G' },
-    { roman: 'V7', chordId: 'G7' },
-    { roman: 'vi', chordId: 'Am' },
-  ],
-  G_MAJOR: [
-    { roman: 'I', chordId: 'G' },
-    { roman: 'ii', chordId: 'Am' },
-    { roman: 'iii', chordId: 'Bm' },
-    { roman: 'IV', chordId: 'C' },
-    { roman: 'V', chordId: 'D' },
-    { roman: 'V7', chordId: 'D7' },
-    { roman: 'vi', chordId: 'Em' },
-  ],
-  F_MAJOR: [
-    { roman: 'I', chordId: 'F' },
-    { roman: 'ii', chordId: 'Gm' },
-    { roman: 'iii', chordId: 'Am' },
-    { roman: 'IV', chordId: 'Bb' },
-    { roman: 'V', chordId: 'C' },
-    { roman: 'V7', chordId: 'C7' },
-    { roman: 'vi', chordId: 'Dm' },
-  ],
-  D_MAJOR: [
-    { roman: 'I', chordId: 'D' },
-    { roman: 'ii', chordId: 'Em' },
-    { roman: 'iii', chordId: 'F#m' },
-    { roman: 'IV', chordId: 'G' },
-    { roman: 'V', chordId: 'A' },
-    { roman: 'V7', chordId: 'A7' },
-    { roman: 'vi', chordId: 'Bm' },
-  ],
+export const ROMAN_SCALE_SPECS: Record<ChordNamingKeyId, RomanScaleSpec> = {
+  // 12 Major Scales
+  C_MAJOR: {
+    id: 'C_MAJOR', label: 'C Major', mode: 'major', keySignature: 'C_MAJOR',
+    chords: [
+      { roman: 'I', chordId: 'C' }, { roman: 'ii', chordId: 'Dm' }, { roman: 'iii', chordId: 'Em' },
+      { roman: 'IV', chordId: 'F' }, { roman: 'V', chordId: 'G' }, { roman: 'V7', chordId: 'G7' }, { roman: 'vi', chordId: 'Am' },
+    ],
+  },
+  G_MAJOR: {
+    id: 'G_MAJOR', label: 'G Major', mode: 'major', keySignature: 'G_MAJOR',
+    chords: [
+      { roman: 'I', chordId: 'G' }, { roman: 'ii', chordId: 'Am' }, { roman: 'iii', chordId: 'Bm' },
+      { roman: 'IV', chordId: 'C' }, { roman: 'V', chordId: 'D' }, { roman: 'V7', chordId: 'D7' }, { roman: 'vi', chordId: 'Em' },
+    ],
+  },
+  D_MAJOR: {
+    id: 'D_MAJOR', label: 'D Major', mode: 'major', keySignature: 'D_MAJOR',
+    chords: [
+      { roman: 'I', chordId: 'D' }, { roman: 'ii', chordId: 'Em' }, { roman: 'iii', chordId: 'F#m' },
+      { roman: 'IV', chordId: 'G' }, { roman: 'V', chordId: 'A' }, { roman: 'V7', chordId: 'A7' }, { roman: 'vi', chordId: 'Bm' },
+    ],
+  },
+  A_MAJOR: {
+    id: 'A_MAJOR', label: 'A Major', mode: 'major', keySignature: 'A_MAJOR',
+    chords: [
+      { roman: 'I', chordId: 'A' }, { roman: 'ii', chordId: 'Bm' }, { roman: 'iii', chordId: 'C#m' },
+      { roman: 'IV', chordId: 'D' }, { roman: 'V', chordId: 'E' }, { roman: 'V7', chordId: 'E7' }, { roman: 'vi', chordId: 'F#m' },
+    ],
+  },
+  E_MAJOR: {
+    id: 'E_MAJOR', label: 'E Major', mode: 'major', keySignature: 'E_MAJOR',
+    chords: [
+      { roman: 'I', chordId: 'E' }, { roman: 'ii', chordId: 'F#m' }, { roman: 'iii', chordId: 'G#m' },
+      { roman: 'IV', chordId: 'A' }, { roman: 'V', chordId: 'B' }, { roman: 'V7', chordId: 'B7' }, { roman: 'vi', chordId: 'C#m' },
+    ],
+  },
+  B_MAJOR: {
+    id: 'B_MAJOR', label: 'B Major', mode: 'major', keySignature: 'B_MAJOR',
+    chords: [
+      { roman: 'I', chordId: 'B' }, { roman: 'ii', chordId: 'C#m' }, { roman: 'iii', chordId: 'Ebm' },
+      { roman: 'IV', chordId: 'E' }, { roman: 'V', chordId: 'F#' }, { roman: 'V7', chordId: 'F#7' }, { roman: 'vi', chordId: 'G#m' },
+    ],
+  },
+  FS_MAJOR: {
+    id: 'FS_MAJOR', label: 'F♯ Major', mode: 'major', keySignature: 'FS_MAJOR',
+    chords: [
+      { roman: 'I', chordId: 'F#' }, { roman: 'ii', chordId: 'G#m' }, { roman: 'iii', chordId: 'Bbm' },
+      { roman: 'IV', chordId: 'B' }, { roman: 'V', chordId: 'Db' }, { roman: 'V7', chordId: 'Db7' }, { roman: 'vi', chordId: 'Ebm' },
+    ],
+  },
+  F_MAJOR: {
+    id: 'F_MAJOR', label: 'F Major', mode: 'major', keySignature: 'F_MAJOR',
+    chords: [
+      { roman: 'I', chordId: 'F' }, { roman: 'ii', chordId: 'Gm' }, { roman: 'iii', chordId: 'Am' },
+      { roman: 'IV', chordId: 'Bb' }, { roman: 'V', chordId: 'C' }, { roman: 'V7', chordId: 'C7' }, { roman: 'vi', chordId: 'Dm' },
+    ],
+  },
+  BB_MAJOR: {
+    id: 'BB_MAJOR', label: 'B♭ Major', mode: 'major', keySignature: 'BB_MAJOR',
+    chords: [
+      { roman: 'I', chordId: 'Bb' }, { roman: 'ii', chordId: 'Cm' }, { roman: 'iii', chordId: 'Dm' },
+      { roman: 'IV', chordId: 'Eb' }, { roman: 'V', chordId: 'F' }, { roman: 'V7', chordId: 'F7' }, { roman: 'vi', chordId: 'Gm' },
+    ],
+  },
+  EB_MAJOR: {
+    id: 'EB_MAJOR', label: 'E♭ Major', mode: 'major', keySignature: 'EB_MAJOR',
+    chords: [
+      { roman: 'I', chordId: 'Eb' }, { roman: 'ii', chordId: 'Fm' }, { roman: 'iii', chordId: 'Gm' },
+      { roman: 'IV', chordId: 'Ab' }, { roman: 'V', chordId: 'Bb' }, { roman: 'V7', chordId: 'Bb7' }, { roman: 'vi', chordId: 'Cm' },
+    ],
+  },
+  AB_MAJOR: {
+    id: 'AB_MAJOR', label: 'A♭ Major', mode: 'major', keySignature: 'AB_MAJOR',
+    chords: [
+      { roman: 'I', chordId: 'Ab' }, { roman: 'ii', chordId: 'Bbm' }, { roman: 'iii', chordId: 'Cm' },
+      { roman: 'IV', chordId: 'Db' }, { roman: 'V', chordId: 'Eb' }, { roman: 'V7', chordId: 'Eb7' }, { roman: 'vi', chordId: 'Fm' },
+    ],
+  },
+  DB_MAJOR: {
+    id: 'DB_MAJOR', label: 'D♭ Major', mode: 'major', keySignature: 'DB_MAJOR',
+    chords: [
+      { roman: 'I', chordId: 'Db' }, { roman: 'ii', chordId: 'Ebm' }, { roman: 'iii', chordId: 'Fm' },
+      { roman: 'IV', chordId: 'F#' }, { roman: 'V', chordId: 'Ab' }, { roman: 'V7', chordId: 'Ab7' }, { roman: 'vi', chordId: 'Bbm' },
+    ],
+  },
+
+  // 12 Minor Scales (Natural + Harmonic Minor Dominant V / V7)
+  A_MINOR: {
+    id: 'A_MINOR', label: 'A Minor', mode: 'minor', keySignature: 'C_MAJOR',
+    chords: [
+      { roman: 'i', chordId: 'Am' }, { roman: 'III', chordId: 'C' }, { roman: 'iv', chordId: 'Dm' },
+      { roman: 'V', chordId: 'E' }, { roman: 'V7', chordId: 'E7' }, { roman: 'VI', chordId: 'F' }, { roman: 'VII', chordId: 'G' },
+    ],
+  },
+  E_MINOR: {
+    id: 'E_MINOR', label: 'E Minor', mode: 'minor', keySignature: 'G_MAJOR',
+    chords: [
+      { roman: 'i', chordId: 'Em' }, { roman: 'III', chordId: 'G' }, { roman: 'iv', chordId: 'Am' },
+      { roman: 'V', chordId: 'B' }, { roman: 'V7', chordId: 'B7' }, { roman: 'VI', chordId: 'C' }, { roman: 'VII', chordId: 'D' },
+    ],
+  },
+  B_MINOR: {
+    id: 'B_MINOR', label: 'B Minor', mode: 'minor', keySignature: 'D_MAJOR',
+    chords: [
+      { roman: 'i', chordId: 'Bm' }, { roman: 'III', chordId: 'D' }, { roman: 'iv', chordId: 'Em' },
+      { roman: 'V', chordId: 'F#' }, { roman: 'V7', chordId: 'F#7' }, { roman: 'VI', chordId: 'G' }, { roman: 'VII', chordId: 'A' },
+    ],
+  },
+  FS_MINOR: {
+    id: 'FS_MINOR', label: 'F♯ Minor', mode: 'minor', keySignature: 'A_MAJOR',
+    chords: [
+      { roman: 'i', chordId: 'F#m' }, { roman: 'III', chordId: 'A' }, { roman: 'iv', chordId: 'Bm' },
+      { roman: 'V', chordId: 'Db' }, { roman: 'V7', chordId: 'Db7' }, { roman: 'VI', chordId: 'D' }, { roman: 'VII', chordId: 'E' },
+    ],
+  },
+  CS_MINOR: {
+    id: 'CS_MINOR', label: 'C♯ Minor', mode: 'minor', keySignature: 'E_MAJOR',
+    chords: [
+      { roman: 'i', chordId: 'C#m' }, { roman: 'III', chordId: 'E' }, { roman: 'iv', chordId: 'F#m' },
+      { roman: 'V', chordId: 'Ab' }, { roman: 'V7', chordId: 'Ab7' }, { roman: 'VI', chordId: 'A' }, { roman: 'VII', chordId: 'B' },
+    ],
+  },
+  GS_MINOR: {
+    id: 'GS_MINOR', label: 'G♯ Minor', mode: 'minor', keySignature: 'B_MAJOR',
+    chords: [
+      { roman: 'i', chordId: 'G#m' }, { roman: 'III', chordId: 'B' }, { roman: 'iv', chordId: 'C#m' },
+      { roman: 'V', chordId: 'Eb' }, { roman: 'V7', chordId: 'Eb7' }, { roman: 'VI', chordId: 'E' }, { roman: 'VII', chordId: 'F#' },
+    ],
+  },
+  D_MINOR: {
+    id: 'D_MINOR', label: 'D Minor', mode: 'minor', keySignature: 'F_MAJOR',
+    chords: [
+      { roman: 'i', chordId: 'Dm' }, { roman: 'III', chordId: 'F' }, { roman: 'iv', chordId: 'Gm' },
+      { roman: 'V', chordId: 'A' }, { roman: 'V7', chordId: 'A7' }, { roman: 'VI', chordId: 'Bb' }, { roman: 'VII', chordId: 'C' },
+    ],
+  },
+  G_MINOR: {
+    id: 'G_MINOR', label: 'G Minor', mode: 'minor', keySignature: 'BB_MAJOR',
+    chords: [
+      { roman: 'i', chordId: 'Gm' }, { roman: 'III', chordId: 'Bb' }, { roman: 'iv', chordId: 'Cm' },
+      { roman: 'V', chordId: 'D' }, { roman: 'V7', chordId: 'D7' }, { roman: 'VI', chordId: 'Eb' }, { roman: 'VII', chordId: 'F' },
+    ],
+  },
+  C_MINOR: {
+    id: 'C_MINOR', label: 'C Minor', mode: 'minor', keySignature: 'EB_MAJOR',
+    chords: [
+      { roman: 'i', chordId: 'Cm' }, { roman: 'III', chordId: 'Eb' }, { roman: 'iv', chordId: 'Fm' },
+      { roman: 'V', chordId: 'G' }, { roman: 'V7', chordId: 'G7' }, { roman: 'VI', chordId: 'Ab' }, { roman: 'VII', chordId: 'Bb' },
+    ],
+  },
+  F_MINOR: {
+    id: 'F_MINOR', label: 'F Minor', mode: 'minor', keySignature: 'AB_MAJOR',
+    chords: [
+      { roman: 'i', chordId: 'Fm' }, { roman: 'III', chordId: 'Ab' }, { roman: 'iv', chordId: 'Bbm' },
+      { roman: 'V', chordId: 'C' }, { roman: 'V7', chordId: 'C7' }, { roman: 'VI', chordId: 'Db' }, { roman: 'VII', chordId: 'Eb' },
+    ],
+  },
+  BB_MINOR: {
+    id: 'BB_MINOR', label: 'B♭ Minor', mode: 'minor', keySignature: 'DB_MAJOR',
+    chords: [
+      { roman: 'i', chordId: 'Bbm' }, { roman: 'III', chordId: 'Db' }, { roman: 'iv', chordId: 'Ebm' },
+      { roman: 'V', chordId: 'F' }, { roman: 'V7', chordId: 'F7' }, { roman: 'VI', chordId: 'F#' }, { roman: 'VII', chordId: 'Ab' },
+    ],
+  },
+  EB_MINOR: {
+    id: 'EB_MINOR', label: 'E♭ Minor', mode: 'minor', keySignature: 'FS_MAJOR',
+    chords: [
+      { roman: 'i', chordId: 'Ebm' }, { roman: 'III', chordId: 'F#' }, { roman: 'iv', chordId: 'G#m' },
+      { roman: 'V', chordId: 'Bb' }, { roman: 'V7', chordId: 'Bb7' }, { roman: 'VI', chordId: 'B' }, { roman: 'VII', chordId: 'Db' },
+    ],
+  },
 };
+
+export const ALL_ROMAN_KEY_IDS: readonly ChordNamingKeyId[] = Object.keys(
+  ROMAN_SCALE_SPECS
+) as ChordNamingKeyId[];
+
+export const DIATONIC_ROMAN_CHORDS: Record<ChordNamingKeyId, readonly DiatonicFunctionEntry[]> =
+  Object.fromEntries(
+    ALL_ROMAN_KEY_IDS.map((k) => [k, ROMAN_SCALE_SPECS[k].chords])
+  ) as Record<ChordNamingKeyId, readonly DiatonicFunctionEntry[]>;
 
 const INVERSION_LABELS: Record<0 | 1 | 2 | 3, string> = {
   0: 'Root position',
@@ -520,7 +703,7 @@ export function generateChordNamingDrill(
       }
       chordId = picked.chordId;
       romanNumeral = picked.roman;
-      keySignature = config.fixedKey;
+      keySignature = ROMAN_SCALE_SPECS[config.fixedKey].keySignature;
       prevKey = `${picked.roman}:${clef}`;
     } else {
       const pool = CHORD_NAMING_POOLS[config.poolId];
@@ -766,11 +949,15 @@ export class AdaptiveNamingScheduler {
     this.isAdaptive = config.answerMode === 'roman_numeral' || config.poolId === 'adaptive';
 
     if (config.answerMode === 'roman_numeral') {
-      this.fullPool = ADAPTIVE_ROMAN_LADDER;
+      const romanLadder =
+        ROMAN_SCALE_SPECS[config.fixedKey].mode === 'minor'
+          ? ADAPTIVE_MINOR_ROMAN_LADDER
+          : ADAPTIVE_ROMAN_LADDER;
+      this.fullPool = romanLadder;
       this.unlockedCount = Math.max(
         3,
         Math.min(
-          ADAPTIVE_ROMAN_LADDER.length,
+          romanLadder.length,
           persisted?.unlockedRomanCount ?? INITIAL_ADAPTIVE_NAMING_STATE.unlockedRomanCount
         )
       );
@@ -868,7 +1055,7 @@ export class AdaptiveNamingScheduler {
       const entry = DIATONIC_ROMAN_CHORDS[this.config.fixedKey].find((e) => e.roman === chosenKey)!;
       chordId = entry.chordId;
       romanNumeral = entry.roman;
-      keySignature = this.config.fixedKey;
+      keySignature = ROMAN_SCALE_SPECS[this.config.fixedKey].keySignature;
     } else {
       chordId = chosenKey;
       keySignature = 'C_MAJOR';

@@ -2,10 +2,12 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../src/App';
 import {
+  ALL_ROMAN_KEY_IDS,
   AdaptiveNamingScheduler,
   ChordNamingConfig,
   ChordNamingPrompt,
   INITIAL_ADAPTIVE_NAMING_STATE,
+  ROMAN_SCALE_SPECS,
   evaluateChordNamingAnswer,
   generateChordNamingDrill,
 } from '../../src/chord/naming';
@@ -146,6 +148,36 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
       expect(drill.some((p) => p.clef === 'treble')).toBe(true);
       expect(drill.some((p) => p.clef === 'bass')).toBe(true);
       expect(drill.some((p) => p.inversion > 0)).toBe(true);
+    });
+
+    it('generates diatonic Roman numeral prompts across all 24 Major and Minor scales', () => {
+      expect(ALL_ROMAN_KEY_IDS.length).toBe(24);
+      for (const keyId of ALL_ROMAN_KEY_IDS) {
+        const spec = ROMAN_SCALE_SPECS[keyId];
+        const drill = generateChordNamingDrill({
+          answerMode: 'roman_numeral',
+          clefMode: 'treble',
+          poolId: 'adaptive',
+          fixedKey: keyId,
+          totalChords: 10,
+        });
+        expect(drill.length).toBe(10);
+        expect(drill.every((p) => p.keySignature === spec.keySignature)).toBe(true);
+        expect(drill.every((p) => p.notes.length >= 3)).toBe(true);
+      }
+
+      // Minor scale uses harmonic minor V with leading-tone accidental (G# in A minor)
+      const aMinorScheduler = new AdaptiveNamingScheduler(
+        {
+          answerMode: 'roman_numeral',
+          clefMode: 'treble',
+          poolId: 'adaptive',
+          fixedKey: 'A_MINOR',
+          totalChords: 50,
+        },
+        INITIAL_ADAPTIVE_NAMING_STATE
+      );
+      expect(aMinorScheduler.getActiveKeys()).toEqual(['i', 'iv', 'V']);
     });
 
     it('generates diatonic Roman numeral prompts with the fixed key signature', () => {
@@ -380,6 +412,18 @@ describe('Name the Chord Mode (Staff -> Textbox)', () => {
       render(<App />);
       expect(screen.getByTestId('chord-naming-arena')).toBeDefined();
       expect(screen.getByTestId('roman-tap-grid')).toBeDefined();
+      expect(screen.getByTestId('roman-btn-I')).toBeDefined();
+    });
+
+    it('launches Roman Numerals in A Minor directly when opening #roman/A_MINOR with minor buttons', () => {
+      window.history.replaceState(null, '', '#roman/A_MINOR');
+      render(<App />);
+      expect(screen.getByTestId('chord-naming-arena')).toBeDefined();
+      expect(screen.getByTestId('roman-tap-grid')).toBeDefined();
+      expect(screen.getByTestId('roman-btn-i')).toBeDefined();
+      expect(screen.getByTestId('roman-btn-iv')).toBeDefined();
+      expect(screen.getByTestId('roman-btn-V')).toBeDefined();
+      expect(screen.getByTestId('roman-btn-VI')).toBeDefined();
     });
   });
 });

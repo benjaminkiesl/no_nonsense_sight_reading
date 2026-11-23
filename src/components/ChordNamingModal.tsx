@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import {
   ADAPTIVE_CHORD_LADDER,
+  ALL_ROMAN_KEY_IDS,
   ChordNamingAnswerMode,
   ChordNamingClefMode,
   ChordNamingConfig,
   ChordNamingKeyId,
   DEFAULT_CHORD_NAMING_CONFIG,
+  ROMAN_SCALE_SPECS,
 } from '../chord/naming';
+import { KEY_SIGNATURES } from '../music/scales';
 import { useAppStore } from '../store/useAppStore';
 
 export interface ChordNamingModalProps {
@@ -16,12 +19,19 @@ export interface ChordNamingModalProps {
   readonly bestSecPerChord?: number | null;
 }
 
-const KEY_OPTIONS: readonly { id: ChordNamingKeyId; label: string; detail: string }[] = [
-  { id: 'C_MAJOR', label: 'C Major', detail: 'No sharps/flats' },
-  { id: 'G_MAJOR', label: 'G Major', detail: '1 sharp (F♯)' },
-  { id: 'F_MAJOR', label: 'F Major', detail: '1 flat (B♭)' },
-  { id: 'D_MAJOR', label: 'D Major', detail: '2 sharps (F♯, C♯)' },
-];
+const MAJOR_KEY_IDS: readonly ChordNamingKeyId[] = ALL_ROMAN_KEY_IDS.filter(
+  (id) => ROMAN_SCALE_SPECS[id].mode === 'major'
+);
+const MINOR_KEY_IDS: readonly ChordNamingKeyId[] = ALL_ROMAN_KEY_IDS.filter(
+  (id) => ROMAN_SCALE_SPECS[id].mode === 'minor'
+);
+
+function formatKeyAccidentalBadge(keyId: ChordNamingKeyId): string {
+  const sig = KEY_SIGNATURES[ROMAN_SCALE_SPECS[keyId].keySignature];
+  if (sig.accidentalType === 'none') return '0';
+  const count = sig.trebleStepOffsets.length;
+  return `${count}${sig.accidentalType === 'sharp' ? '♯' : '♭'}`;
+}
 
 const CLEF_OPTIONS: readonly { id: ChordNamingClefMode; label: string }[] = [
   { id: 'both', label: 'Both Clefs' },
@@ -44,6 +54,7 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
   const [fixedKey, setFixedKey] = useState<ChordNamingKeyId>(
     DEFAULT_CHORD_NAMING_CONFIG.fixedKey
   );
+  const [scaleModeTab, setScaleModeTab] = useState<'major' | 'minor'>('major');
   const adaptiveState = useAppStore((state) => state.chordNamingAdaptiveState);
   const resetAdaptiveState = useAppStore((state) => state.resetChordNamingAdaptiveState);
 
@@ -203,36 +214,90 @@ export const ChordNamingModal: React.FC<ChordNamingModalProps> = ({
             </div>
           </div>
 
-          {/* Key Picker (only in Roman Numerals mode) */}
+          {/* Key Picker (only in Roman Numerals mode — all 12 Major + 12 Minor scales) */}
           {answerMode === 'roman_numeral' && (
             <div>
               <div
                 style={{
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'var(--ink-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   marginBottom: '8px',
                 }}
               >
-                Scale / Key Signature
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {KEY_OPTIONS.map((opt) => (
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: 'var(--ink-secondary)',
+                  }}
+                >
+                  Scale ({scaleModeTab === 'major' ? '12 Major' : '12 Minor'})
+                </span>
+                <div style={{ display: 'flex', gap: '4px' }}>
                   <button
-                    key={opt.id}
                     type="button"
-                    data-testid={`naming-key-${opt.id}`}
-                    onClick={() => setFixedKey(opt.id)}
-                    style={pillStyle(fixedKey === opt.id)}
+                    data-testid="naming-scale-tab-major"
+                    onClick={() => {
+                      setScaleModeTab('major');
+                      if (ROMAN_SCALE_SPECS[fixedKey].mode !== 'major') {
+                        setFixedKey('C_MAJOR');
+                      }
+                    }}
+                    style={{
+                      ...pillStyle(scaleModeTab === 'major'),
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      textAlign: 'center',
+                    }}
                   >
-                    <div>{opt.label}</div>
-                    <div style={{ fontSize: '11px', fontWeight: 400, color: 'var(--ink-secondary)', marginTop: '2px' }}>
-                      {opt.detail}
-                    </div>
+                    Major
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    data-testid="naming-scale-tab-minor"
+                    onClick={() => {
+                      setScaleModeTab('minor');
+                      if (ROMAN_SCALE_SPECS[fixedKey].mode !== 'minor') {
+                        setFixedKey('A_MINOR');
+                      }
+                    }}
+                    style={{
+                      ...pillStyle(scaleModeTab === 'minor'),
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Minor
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                {(scaleModeTab === 'major' ? MAJOR_KEY_IDS : MINOR_KEY_IDS).map((keyId) => {
+                  const spec = ROMAN_SCALE_SPECS[keyId];
+                  const shortName = spec.label.replace(' Major', '').replace(' Minor', 'm');
+                  return (
+                    <button
+                      key={keyId}
+                      type="button"
+                      data-testid={`naming-key-${keyId}`}
+                      onClick={() => setFixedKey(keyId)}
+                      style={{
+                        ...pillStyle(fixedKey === keyId),
+                        padding: '7px 6px',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <div>{shortName}</div>
+                      <div style={{ fontSize: '10px', fontWeight: 400, color: 'var(--ink-secondary)', marginTop: '1px' }}>
+                        {formatKeyAccidentalBadge(keyId)}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
