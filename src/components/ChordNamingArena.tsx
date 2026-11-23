@@ -28,17 +28,21 @@ interface RootButtonSpec {
   readonly germanLabel: string;
 }
 
-interface BlackKeySpec extends RootButtonSpec {
+interface BlackKeySpec {
+  readonly intlValue: string;
+  readonly germanValue: string;
+  readonly intlLines: readonly [string] | readonly [string, string];
+  readonly germanLines: readonly [string] | readonly [string, string];
   /** Exact boundary index between white keys (1=C/D, 2=D/E, 4=F/G, 5=G/A, 6=A/B) */
   readonly boundaryIndex: number;
 }
 
 const ACCIDENTAL_ROOT_BUTTONS: readonly BlackKeySpec[] = [
-  { intlValue: 'C#', germanValue: 'C#', intlLabel: 'C♯/D♭', germanLabel: 'C♯/D♭', boundaryIndex: 1 },
-  { intlValue: 'Eb', germanValue: 'Eb', intlLabel: 'E♭', germanLabel: 'E♭', boundaryIndex: 2 },
-  { intlValue: 'F#', germanValue: 'F#', intlLabel: 'F♯/G♭', germanLabel: 'F♯/G♭', boundaryIndex: 4 },
-  { intlValue: 'Ab', germanValue: 'Ab', intlLabel: 'A♭', germanLabel: 'A♭', boundaryIndex: 5 },
-  { intlValue: 'Bb', germanValue: 'B', intlLabel: 'B♭', germanLabel: 'B', boundaryIndex: 6 },
+  { intlValue: 'C#', germanValue: 'C#', intlLines: ['C♯', 'D♭'], germanLines: ['C♯', 'D♭'], boundaryIndex: 1 },
+  { intlValue: 'Eb', germanValue: 'Eb', intlLines: ['D♯', 'E♭'], germanLines: ['D♯', 'E♭'], boundaryIndex: 2 },
+  { intlValue: 'F#', germanValue: 'F#', intlLines: ['F♯', 'G♭'], germanLines: ['F♯', 'G♭'], boundaryIndex: 4 },
+  { intlValue: 'Ab', germanValue: 'Ab', intlLines: ['G♯', 'A♭'], germanLines: ['G♯', 'A♭'], boundaryIndex: 5 },
+  { intlValue: 'Bb', germanValue: 'B', intlLines: ['A♯', 'B♭'], germanLines: ['B'], boundaryIndex: 6 },
 ];
 
 const NATURAL_ROOT_BUTTONS: readonly RootButtonSpec[] = [
@@ -76,7 +80,10 @@ function formatDuration(totalSeconds: number): string {
   return `${mins}m ${Math.floor(secs).toString().padStart(2, '0')}s`;
 }
 
-function getRootValue(btn: RootButtonSpec, notation: ChordNotationSystem): string {
+function getRootValue(
+  btn: { readonly intlValue: string; readonly germanValue: string },
+  notation: ChordNotationSystem
+): string {
   return notation === 'german' ? btn.germanValue : btn.intlValue;
 }
 
@@ -496,9 +503,10 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
     );
   }
 
-  const staffLines = [66, 78, 90, 102, 114];
-  const staffBottomY = 114;
-  const chordX = 192;
+  const trebleLines = [42, 54, 66, 78, 90];
+  const bassLines = [132, 144, 156, 168, 180];
+  const activeStaffBottomY = currentPrompt?.clef === 'treble' ? 90 : 180;
+  const chordX = 194;
 
   return (
     <div
@@ -573,7 +581,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         </div>
       </div>
 
-      {/* Compact Portrait-Friendly Staff Card (320 x 180 viewBox so notes are large & crisp on phones) */}
+      {/* Compact Portrait-Friendly Grand Staff Card (320 x 220 viewBox, always showing Treble & Bass clefs) */}
       <div
         className="nnsr-staff-container"
         style={{
@@ -585,62 +593,88 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
         }}
       >
         <svg
-          viewBox="0 0 320 180"
+          viewBox="0 0 320 220"
           style={{ width: '100%', height: 'auto', display: 'block', backgroundColor: '#ffffff' }}
         >
-          {staffLines.map((y) => (
+          {/* Treble Staff Lines */}
+          {trebleLines.map((y) => (
             <line
-              key={`naming-staff-line-${y}`}
-              x1={20}
+              key={`naming-treble-line-${y}`}
+              x1={22}
               y1={y}
               x2={300}
               y2={y}
               stroke="#2c332f"
-              strokeWidth={1.3}
+              strokeWidth={1.25}
             />
           ))}
 
-          <line x1={20} y1={66} x2={20} y2={114} stroke="#2c332f" strokeWidth={2.0} />
-          <line x1={300} y1={66} x2={300} y2={114} stroke="#2c332f" strokeWidth={2.0} />
+          {/* Bass Staff Lines */}
+          {bassLines.map((y) => (
+            <line
+              key={`naming-bass-line-${y}`}
+              x1={22}
+              y1={y}
+              x2={300}
+              y2={y}
+              stroke="#2c332f"
+              strokeWidth={1.25}
+            />
+          ))}
 
-          {currentPrompt && currentPrompt.clef === 'treble' ? (
-            <text
-              x={50}
-              y={99}
-              fontFamily="serif"
-              fontSize={54}
-              fill="#1f2421"
-              textAnchor="middle"
-              dominantBaseline="middle"
-              data-testid="chord-naming-clef-treble"
-            >
-              𝄞
-            </text>
-          ) : (
-            <text
-              x={50}
-              y={97}
-              fontFamily="serif"
-              fontSize={54}
-              fill="#1f2421"
-              textAnchor="middle"
-              dominantBaseline="middle"
-              data-testid="chord-naming-clef-bass"
-            >
-              𝄢
-            </text>
-          )}
+          {/* Left & Right Grand Staff Barlines + Brace */}
+          <line x1={22} y1={42} x2={22} y2={180} stroke="#2c332f" strokeWidth={2.0} />
+          <line x1={300} y1={42} x2={300} y2={180} stroke="#2c332f" strokeWidth={2.0} />
+          <path
+            d="M 22 42 C 13 72, 13 96, 9 111 C 13 126, 13 150, 22 180"
+            fill="none"
+            stroke="#2c332f"
+            strokeWidth={1.6}
+          />
 
+          {/* Both Clefs Always Visible */}
+          <text
+            x={48}
+            y={75}
+            fontFamily="serif"
+            fontSize={52}
+            fill="#1f2421"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            data-testid="chord-naming-clef-treble"
+          >
+            𝄞
+          </text>
+          <text
+            x={48}
+            y={163}
+            fontFamily="serif"
+            fontSize={52}
+            fill="#1f2421"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            data-testid="chord-naming-clef-bass"
+          >
+            𝄢
+          </text>
+
+          {/* Key Signature Accidentals on Both Staves */}
           {currentPrompt && keySigSpec.accidentalType !== 'none' && (
             <g fontFamily="serif" fontSize={22} fill="#1f2421" textAnchor="middle">
-              {(currentPrompt.clef === 'treble'
-                ? keySigSpec.trebleStepOffsets
-                : keySigSpec.bassStepOffsets
-              ).map((offset, idx) => (
+              {keySigSpec.trebleStepOffsets.map((offset, idx) => (
                 <text
-                  key={`naming-ks-${idx}`}
-                  x={84 + idx * 14}
-                  y={staffBottomY - offset * 6 + 7}
+                  key={`naming-ks-treble-${idx}`}
+                  x={80 + idx * 14}
+                  y={90 - offset * 6 + 7}
+                >
+                  {keySigSpec.accidentalType === 'sharp' ? '♯' : '♭'}
+                </text>
+              ))}
+              {keySigSpec.bassStepOffsets.map((offset, idx) => (
+                <text
+                  key={`naming-ks-bass-${idx}`}
+                  x={80 + idx * 14}
+                  y={180 - offset * 6 + 7}
                 >
                   {keySigSpec.accidentalType === 'sharp' ? '♯' : '♭'}
                 </text>
@@ -648,13 +682,14 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
             </g>
           )}
 
+          {/* Stacked Chord Notes on the Active Clef Staff */}
           {currentPrompt &&
             (() => {
               let prevStepOffset: number | null = null;
               let accSlot = 0;
 
               return currentPrompt.notes.map((note) => {
-                const y = staffBottomY - note.stepOffset * 6;
+                const y = activeStaffBottomY - note.stepOffset * 6;
                 const isSecond = prevStepOffset !== null && note.stepOffset - prevStepOffset <= 1;
                 prevStepOffset = note.stepOffset;
 
@@ -670,7 +705,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
                 return (
                   <g key={`naming-note-${note.midi}`}>
                     {ledgerLines.map((lOffset) => {
-                      const ly = staffBottomY - lOffset * 6;
+                      const ly = activeStaffBottomY - lOffset * 6;
                       return (
                         <line
                           key={`naming-ledger-${note.midi}-${lOffset}`}
@@ -890,7 +925,7 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
               {/* 5 Black Keys positioned at exact piano key boundaries (2-then-3 grouping with E-F gap) */}
               {ACCIDENTAL_ROOT_BUTTONS.map((btn) => {
                 const val = getRootValue(btn, chordNotationSystem);
-                const label = getRootLabel(btn, chordNotationSystem);
+                const lines = chordNotationSystem === 'german' ? btn.germanLines : btn.intlLines;
                 const isSelected = selectedRoot === val;
                 const leftPct = (btn.boundaryIndex / 7) * 100;
                 return (
@@ -904,16 +939,18 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
                       top: 0,
                       left: `${leftPct}%`,
                       transform: 'translateX(-50%)',
-                      width: '11.2%',
-                      height: '60%',
+                      width: '11.4%',
+                      height: '62%',
                       zIndex: 2,
                       padding: '0 2px 6px 2px',
                       display: 'flex',
-                      alignItems: 'flex-end',
-                      justifyContent: 'center',
-                      fontSize: label.length > 3 ? '0.68rem' : '0.82rem',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end',
+                      gap: '1px',
+                      fontSize: lines.length > 1 ? '0.72rem' : '0.88rem',
                       fontWeight: 700,
-                      lineHeight: 1.1,
+                      lineHeight: 1.05,
                       borderRadius: '0 0 5px 5px',
                       border: isSelected ? '2px solid var(--tuscan-sun)' : '1px solid #141816',
                       backgroundColor: isSelected ? 'var(--emerald)' : '#1f2421',
@@ -923,7 +960,9 @@ export const ChordNamingArena: React.FC<ChordNamingArenaProps> = ({
                       boxShadow: '0 2px 4px rgba(0, 0, 0, 0.28)',
                     }}
                   >
-                    {label}
+                    {lines.map((line) => (
+                      <span key={line}>{line}</span>
+                    ))}
                   </button>
                 );
               })}
